@@ -18,30 +18,35 @@ pub fn render_table(graph: &Graph) -> String {
         graph.edges.len(),
         graph.schema_version,
     ));
-    s.push_str("--- nodes (weight-desc) ---\n");
-    for (n, w) in graph.nodes_by_weight() {
+    s.push_str("--- nodes (fan-in desc: most depended-upon first) ---\n");
+    for (n, fan_in) in graph.nodes_by_fan_in() {
         let vis = if n.visible { "vis" } else { "hid" };
         let fork = if n.fork { " fork" } else { "" };
         let privm = if n.private { " private" } else { "" };
         s.push_str(&format!(
-            "{n_id:30} w={w:6.1} {vis}{fork}{privm}\n",
+            "{n_id:30} fan-in {fan_in:<3} {vis}{fork}{privm}\n",
             n_id = n.id
         ));
     }
-    s.push_str("--- heaviest edges (top 20) ---\n");
+    // Edges grouped by target: under each dependency, who depends on it.
+    // Targets ordered by fan-in desc — the "most common dependencies" view.
+    s.push_str("--- edges (grouped by dependency, fan-in desc) ---\n");
+    let fan_in = graph.node_fan_in();
     let mut edges = graph.edges.clone();
     edges.sort_by(|a, b| {
-        b.weight
-            .partial_cmp(&a.weight)
-            .unwrap_or(std::cmp::Ordering::Equal)
+        fan_in
+            .get(&b.target)
+            .unwrap_or(&0)
+            .cmp(fan_in.get(&a.target).unwrap_or(&0))
+            .then_with(|| a.target.cmp(&b.target))
+            .then_with(|| a.source.cmp(&b.source))
     });
-    for e in edges.iter().take(20) {
+    for e in edges.iter().take(40) {
         s.push_str(&format!(
-            "{:30} -> {:30} {:9} w={:.1}\n",
+            "{:30} -> {:30} {:9}\n",
             e.source,
             e.target,
             format!("{:?}", e.kind).to_lowercase(),
-            e.weight
         ));
     }
     s
@@ -60,8 +65,8 @@ pub fn render_dot(graph: &Graph) -> String {
     for e in &graph.edges {
         let kind = format!("{:?}", e.kind).to_lowercase();
         s.push_str(&format!(
-            "  \"{}\" -> \"{}\" [label=\"{} {:.1}\"];\n",
-            e.source, e.target, kind, e.weight
+            "  \"{}\" -> \"{}\" [label=\"{}\"];\n",
+            e.source, e.target, kind
         ));
     }
     s.push_str("}\n");
@@ -106,7 +111,6 @@ mod tests {
             kind: EdgeKind::Manifest,
             declaring_branches: vec!["main".into()],
             recency: None,
-            weight: 1.0,
             version: Some("1.0.0".into()),
             note: None,
         }];

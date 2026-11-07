@@ -3,9 +3,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Stable schema version. Bump only with a documented migration.
-pub const SCHEMA_VERSION: u32 = 1;
+pub const SCHEMA_VERSION: u32 = 2;
 
-/// Mechanically collected edge kinds. Dependence kinds weigh;
+/// Mechanically collected edge kinds. Dependence kinds count toward fan-in;
 /// association kinds display only (see plan: workflow/docs/xrefs).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
@@ -19,9 +19,10 @@ pub enum EdgeKind {
 }
 
 impl EdgeKind {
-    /// Per spec: manifest/submodule/registry contribute to node weight;
-    /// lockfile is a gate (not a kind); workflow/docs/xrefs are associations.
-    pub fn contributes_weight(self) -> bool {
+    /// Per spec: manifest/submodule/registry are dependence (count toward
+    /// fan-in); lockfile is a gate (not a kind); workflow/docs/xrefs are
+    /// associations (displayed only).
+    pub fn is_dependence(self) -> bool {
         matches!(
             self,
             EdgeKind::Manifest | EdgeKind::Submodule | EdgeKind::Registry
@@ -59,9 +60,6 @@ pub struct Edge {
     pub declaring_branches: Vec<String>,
     /// Recency of the most recent declaring branch (RFC3339), if known.
     pub recency: Option<DateTime<Utc>>,
-    /// manifest arithmetic x use-site Boolean (optional -> 0.5, else 1.0;
-    /// zero use-sites nullifies to 0.0). Associations carry 0.0.
-    pub weight: f32,
     /// Resolved version as briefing fact (lockfile), never scored.
     pub version: Option<String>,
     /// Nullified phantom deps log this (which file had zero use-sites, etc.).
@@ -91,34 +89,32 @@ impl Graph {
         }
     }
 
-    /// Node weight = summed incoming *dependence* edge weight.
-    /// Associations (workflow/docs/xrefs) never contribute.
-    pub fn node_weights(&self) -> BTreeMap<String, f32> {
-        let mut weights: BTreeMap<String, f32> = BTreeMap::new();
+    /// Node fan-in: count of incoming *dependence* edges (how many portfolio
+    /// repos depend on this node). Associations never contribute.
+    /// This is the "most depended-upon" ranking — no scope, no counting
+    /// declaration sites.
+    pub fn node_fan_in(&self) -> BTreeMap<String, u32> {
+        let mut counts: BTreeMap<String, u32> = BTreeMap::new();
         for n in &self.nodes {
-            weights.entry(n.id.clone()).or_insert(0.0);
+            counts.entry(n.id.clone()).or_insert(0);
         }
         for e in &self.edges {
-            if e.kind.contributes_weight() {
-                *weights.entry(e.target.clone()).or_insert(0.0) += e.weight;
+            if e.kind.is_dependence() {
+                *counts.entry(e.target.clone()).or_insert(0) += 1;
             }
         }
-        weights
+        counts
     }
 
-    /// Ordering: weight-desc, stability tiebreak (id asc). Pure helper for renderers.
-    pub fn nodes_by_weight(&self) -> Vec<(&Node, f32)> {
-        let weights = self.node_weights();
-        let mut out: Vec<(&Node, f32)> = self
+    /// Ordering: fan-in desc, stability tiebreak (id asc). Pure helper for renderers.
+    pub fn nodes_by_fan_in(&self) -> Vec<(&Node, u32)> {
+        let counts = self.node_fan_in();
+        let mut out: Vec<(&Node, u32)> = self
             .nodes
             .iter()
-            .map(|n| (n, *weights.get(&n.id).unwrap_or(&0.0)))
+            .map(|n| (n, *counts.get(&n.id).unwrap_or(&0)))
             .collect();
-        out.sort_by(|a, b| {
-            b.1.partial_cmp(&a.1)
-                .unwrap_or(std::cmp::Ordering::Equal)
-                .then_with(|| a.0.id.cmp(&b.0.id))
-        });
+        out.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.id.cmp(&b.0.id)));
         out
     }
 }
@@ -149,7 +145,7 @@ pub fn apply_visibility(nodes: &mut [Node], edges: &[Edge]) {
         has_portfolio_edge.insert(e.target.clone());
         // Fan-in: someone in the portfolio depends *on* this node.
         // Any edge kind counts as structural fan-in for the fork rule;
-        // weight only matters for scoring, not for load-bearing admission.
+        // the fan-in *count* (scoring) uses dependence edges only.
         has_fanin.insert(e.target.clone());
     }
 
@@ -232,14 +228,13 @@ mod tests {
         }
     }
 
-    fn edge(source: &str, target: &str, kind: EdgeKind, weight: f32) -> Edge {
+    fn edge(source: &str, target: &str, kind: EdgeKind) -> Edge {
         Edge {
             source: source.into(),
             target: target.into(),
             kind,
             declaring_branches: vec!["main".into()],
             recency: None,
-            weight,
             version: None,
             note: None,
         }
@@ -253,7 +248,7 @@ mod tests {
             node("me/diverged-fork", true, false, Some(7)),
         ];
         let edges = vec![
-            edge("me/a", "me/diverged-fork", EdgeKind::Manifest, 1.0),
+            edge("me/a", "me/diverged-fork", EdgeKind::Manifest),
             // study-fork points at someone else's repo: no portfolio edge.
         ];
         apply_visibility(&mut nodes, &edges);
@@ -270,12 +265,7 @@ mod tests {
             node("me/app", false, false, None),
             node("me/load-bearing-fork", true, false, Some(0)),
         ];
-        let edges = vec![edge(
-            "me/app",
-            "me/load-bearing-fork",
-            EdgeKind::Manifest,
-            2.0,
-        )];
+        let edges = vec![edge("me/app", "me/load-bearing-fork", EdgeKind::Manifest)];
         apply_visibility(&mut nodes, &edges);
         assert!(
             nodes
@@ -304,7 +294,7 @@ mod tests {
             node("me/pub", false, false, None),
             node("me/secret", false, true, None),
         ];
-        let edges = vec![edge("me/pub", "me/secret", EdgeKind::Manifest, 1.0)];
+        let edges = vec![edge("me/pub", "me/secret", EdgeKind::Manifest)];
         apply_visibility(&mut nodes, &edges);
         // Private computes (edge exists in the true graph) but is never visible.
         assert!(!nodes.iter().find(|n| n.id == "me/secret").unwrap().visible);
@@ -315,18 +305,18 @@ mod tests {
     }
 
     #[test]
-    fn node_weights_sum_only_dependence() {
+    fn fan_in_counts_dependence_only() {
         let g = Graph::new(
             vec![
                 node("me/a", false, false, None),
                 node("me/b", false, false, None),
             ],
             vec![
-                edge("me/a", "me/b", EdgeKind::Manifest, 2.0),
-                edge("me/a", "me/b", EdgeKind::Workflow, 0.0),
-                edge("me/a", "me/b", EdgeKind::Docs, 0.0),
+                edge("me/a", "me/b", EdgeKind::Manifest),
+                edge("me/a", "me/b", EdgeKind::Workflow),
+                edge("me/a", "me/b", EdgeKind::Docs),
             ],
         );
-        assert_eq!(g.node_weights()["me/b"], 2.0);
+        assert_eq!(g.node_fan_in()["me/b"], 1);
     }
 }

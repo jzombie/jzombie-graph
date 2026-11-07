@@ -6,10 +6,7 @@ use std::sync::OnceLock;
 
 #[derive(Debug, Clone)]
 pub struct ManifestDep {
-    #[allow(dead_code)]
     pub package: String,
-    pub optional: bool,
-    pub declaring_members: usize,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -46,8 +43,6 @@ struct CargoDepDetailed {
     #[allow(dead_code)]
     version: Option<String>,
     #[serde(default)]
-    optional: bool,
-    #[serde(default)]
     path: Option<String>,
 }
 
@@ -55,8 +50,6 @@ struct CargoDepDetailed {
 struct CargoWorkspace {
     #[serde(default)]
     members: Vec<String>,
-    #[serde(default)]
-    dependencies: HashMap<String, CargoDep>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -66,45 +59,37 @@ struct CargoPackage {
     name: Option<String>,
 }
 
-/// Parse Cargo.toml: `[dependencies]` + `[build-dependencies]` +
-/// `[workspace.dependencies]` (dev-deps excluded — test-only coupling
-/// isn't architectural). Returns per-package optional flag.
+/// Parse Cargo.toml: `[dependencies]` + `[build-dependencies]`
+/// (dev-deps excluded — test-only coupling isn't architectural).
+/// One manifest = one consumer: a package counts once no matter how many
+/// sections name it. A `[workspace.dependencies]` pin plus a
+/// `.workspace = true` use is a single relationship, not two; pins alone
+/// (never used by this manifest) count as zero. Presence-union across
+/// manifests (root + members) is the caller's job.
 pub fn parse_cargo_manifest(text: &str) -> anyhow::Result<ManifestSet> {
     let m: CargoManifest = toml::from_str(text)?;
     let mut deps: BTreeMap<String, ManifestDep> = BTreeMap::new();
-    let mut insert = |name: String, optional: bool| {
+    let mut insert = |name: String| {
         deps.entry(name.clone())
-            .and_modify(|d: &mut ManifestDep| {
-                d.optional = d.optional && optional;
-                d.declaring_members += 1;
-            })
-            .or_insert(ManifestDep {
-                package: name,
-                optional,
-                declaring_members: 1,
-            });
+            .or_insert(ManifestDep { package: name });
     };
     for (name, dep) in m.dependencies {
-        let optional = matches!(&dep, CargoDep::Detailed(d) if d.optional);
         // path-only deps are workspace-internal; skip (collapsed to repo node).
         let is_path = matches!(&dep, CargoDep::Detailed(d) if d.path.is_some());
         if !is_path {
-            insert(normalize_pkg(&name), optional);
+            insert(normalize_pkg(&name));
         }
     }
     for (name, dep) in m.build_dependencies {
-        let optional = matches!(&dep, CargoDep::Detailed(d) if d.optional);
         let is_path = matches!(&dep, CargoDep::Detailed(d) if d.path.is_some());
         if !is_path {
-            insert(normalize_pkg(&name), optional);
+            insert(normalize_pkg(&name));
         }
     }
     let mut members = vec![];
     if let Some(ws) = m.workspace {
-        for (name, dep) in ws.dependencies {
-            let optional = matches!(&dep, CargoDep::Detailed(d) if d.optional);
-            insert(normalize_pkg(&name), optional);
-        }
+        // Workspace pins are version pins, not use — the manifests that
+        // inherit them declare their own use. Never counted here.
         members = ws.members;
     }
     Ok(ManifestSet {
@@ -211,40 +196,38 @@ pub fn manifest_kind_for_member(path: &str) -> Option<&'static ManifestKind> {
     })
 }
 
-/// package.json: `dependencies` full weight; peer/optional -> 0.5 scope.
+/// package.json: `dependencies` + peer + optional, all uniform presence.
+/// No scope distinctions: they aren't comparable across ecosystems.
 pub fn parse_package_json(text: &str) -> anyhow::Result<ManifestSet> {
     let v: serde_json::Value = serde_json::from_str(text)?;
     let mut deps = BTreeMap::new();
-    let mut insert = |obj: Option<&serde_json::Value>, optional: bool| {
+    let mut insert = |obj: Option<&serde_json::Value>| {
         if let Some(serde_json::Value::Object(map)) = obj {
             for name in map.keys() {
                 deps.insert(
                     normalize_pkg(name),
                     ManifestDep {
                         package: normalize_pkg(name),
-                        optional,
-                        declaring_members: 1,
                     },
                 );
             }
         }
     };
-    insert(v.get("dependencies"), false);
-    insert(v.get("peerDependencies"), true);
-    insert(v.get("optionalDependencies"), true);
+    insert(v.get("dependencies"));
+    insert(v.get("peerDependencies"));
+    insert(v.get("optionalDependencies"));
     Ok(ManifestSet {
         deps,
         workspace_members: vec![],
     })
 }
 
-/// pyproject.toml / requirements.txt markers -> 0.5 scope on extras.
-/// Minimal: PEP 508 `; extra ==` markers flag optional.
+/// pyproject.toml: `[project] dependencies` + poetry deps, uniform presence.
+/// No extras-marker heuristics: they aren't reliable enough to score on.
 pub fn parse_pyproject(text: &str) -> anyhow::Result<ManifestSet> {
     let v: toml::Value = toml::from_str(text).unwrap_or(toml::Value::Table(Default::default()));
     let mut deps = BTreeMap::new();
     let mut push = |req: &str| {
-        let optional = req.contains("extra ==") || req.contains("extra==");
         let pkg = req
             .split([' ', ';', '[', '>', '<', '=', '!', '~'])
             .next()
@@ -253,14 +236,7 @@ pub fn parse_pyproject(text: &str) -> anyhow::Result<ManifestSet> {
             .to_lowercase()
             .replace('_', "-");
         if !pkg.is_empty() {
-            deps.insert(
-                pkg.clone(),
-                ManifestDep {
-                    package: pkg,
-                    optional,
-                    declaring_members: 1,
-                },
-            );
+            deps.insert(pkg.clone(), ManifestDep { package: pkg });
         }
     };
     if let Some(arr) = v
@@ -272,7 +248,7 @@ pub fn parse_pyproject(text: &str) -> anyhow::Result<ManifestSet> {
             push(item);
         }
     }
-    // poetry groups land here too; extras markers carry the 0.5 scope.
+    // poetry groups land here too, same uniform presence.
     if let Some(deps_tbl) = v
         .get("tool")
         .and_then(|t| t.get("poetry"))
@@ -285,8 +261,6 @@ pub fn parse_pyproject(text: &str) -> anyhow::Result<ManifestSet> {
                     normalize_pkg(name),
                     ManifestDep {
                         package: normalize_pkg(name),
-                        optional: false,
-                        declaring_members: 1,
                     },
                 );
             }
@@ -298,7 +272,7 @@ pub fn parse_pyproject(text: &str) -> anyhow::Result<ManifestSet> {
     })
 }
 
-/// go.mod: every `require` counts 1.0 (no optional scope in Go).
+/// go.mod: every `require` is a dep, uniform presence.
 pub fn parse_go_mod(text: &str) -> anyhow::Result<ManifestSet> {
     let mut deps = BTreeMap::new();
     let re = Regex::new(r"(?m)^\s*([a-zA-Z0-9._~/+-]+)\s+v[0-9]").unwrap();
@@ -308,14 +282,7 @@ pub fn parse_go_mod(text: &str) -> anyhow::Result<ManifestSet> {
             let module = cap[1].to_string();
             // Last path segment is the package-ish name for alias mapping.
             let short = module.rsplit('/').next().unwrap_or(&module).to_lowercase();
-            deps.insert(
-                short.clone(),
-                ManifestDep {
-                    package: short,
-                    optional: false,
-                    declaring_members: 1,
-                },
-            );
+            deps.insert(short.clone(), ManifestDep { package: short });
         }
     } else {
         for line in text.lines() {
@@ -324,14 +291,7 @@ pub fn parse_go_mod(text: &str) -> anyhow::Result<ManifestSet> {
                 let module = rest.split_whitespace().next().unwrap_or("");
                 if !module.is_empty() {
                     let short = module.rsplit('/').next().unwrap_or(module).to_lowercase();
-                    deps.insert(
-                        short.clone(),
-                        ManifestDep {
-                            package: short,
-                            optional: false,
-                            declaring_members: 1,
-                        },
-                    );
+                    deps.insert(short.clone(), ManifestDep { package: short });
                 }
             }
         }
@@ -484,7 +444,8 @@ pub struct BranchDecl {
 }
 
 /// Build manifest edges for one repo: providers map package -> portfolio
-/// repos, apply scope (optional 0.5), use-site Boolean, lockfile gate.
+/// repos. Presence is binary: the dep is declared or it isn't — no scope,
+/// no per-manifest counting (those measured manifest style, not architecture).
 ///
 /// - `lockfile: None` -> no lockfile, manifest suffices.
 /// - `lockfile: Some(set)` -> package present confirms; absent deletes edge.
@@ -535,12 +496,10 @@ pub fn build_manifest_edges(
             continue; // absent-with-lockfile: unresolvable, delete edge
         }
         // Use-site Boolean: zero references nullifies (phantom dep).
-        let referenced = *use_sites.get(&normalize_pkg(&dep.package)).unwrap_or(&true);
+        let referenced = *use_sites.get(&pkg).unwrap_or(&true);
         if !referenced {
             continue; // caller logs the nullification in the digest
         }
-        let scope: f32 = if dep.optional { 0.5 } else { 1.0 };
-        let weight = (dep.declaring_members.max(1) as f32) * scope;
         let recency = branches.iter().filter_map(|b| b.recency).max();
         out.push(Edge {
             source: source_repo.into(),
@@ -548,8 +507,7 @@ pub fn build_manifest_edges(
             kind: EdgeKind::Manifest,
             declaring_branches: branches.iter().map(|b| b.branch.clone()).collect(),
             recency,
-            weight,
-            version: lock_versions.get(&normalize_pkg(&dep.package)).cloned(),
+            version: lock_versions.get(&pkg).cloned(),
             note: None,
         });
     }
@@ -609,7 +567,7 @@ name = "demo"
 
 [dependencies]
 serde = "1"
-tokio = { version = "1", optional = true }
+tokio = "1"
 local = { path = "../local" }
 
 [dev-dependencies]
@@ -621,7 +579,6 @@ cc = "1"
         let m = parse_cargo_manifest(text).unwrap();
         assert!(m.deps.contains_key("serde"));
         assert!(m.deps.contains_key("tokio"));
-        assert!(m.deps["tokio"].optional);
         assert!(
             !m.deps.contains_key("local"),
             "path dep is workspace-internal"
@@ -631,7 +588,7 @@ cc = "1"
     }
 
     #[test]
-    fn cargo_workspace_deps_counted() {
+    fn cargo_workspace_pins_are_not_use() {
         let text = r#"
 [workspace]
 members = ["crates/a"]
@@ -640,7 +597,10 @@ members = ["crates/a"]
 serde = "1"
 "#;
         let m = parse_cargo_manifest(text).unwrap();
-        assert!(m.deps.contains_key("serde"));
+        assert!(
+            !m.deps.contains_key("serde"),
+            "pins are versions, not use — members declare their own"
+        );
         assert_eq!(m.workspace_members, vec!["crates/a".to_string()]);
     }
 
@@ -674,22 +634,18 @@ serde = "1"
     }
 
     #[test]
-    fn manifest_edges_weight_gate_and_use_site() {
+    fn manifest_edges_gate_and_use_site() {
         let mut manifest = ManifestSet::default();
         manifest.deps.insert(
             "foo".into(),
             ManifestDep {
                 package: "foo".into(),
-                optional: true,
-                declaring_members: 3,
             },
         );
         manifest.deps.insert(
             "phantom".into(),
             ManifestDep {
                 package: "phantom".into(),
-                optional: false,
-                declaring_members: 1,
             },
         );
         let providers: HashMap<String, Vec<String>> = [
@@ -721,7 +677,7 @@ serde = "1"
             &mut ambiguities,
         );
         assert_eq!(edges.len(), 1);
-        assert_eq!(edges[0].weight, 3.0 * 0.5);
+        assert_eq!(edges[0].target, "me/lib");
         assert!(ambiguities.is_empty());
         // Absent-with-lockfile deletes the edge.
         let locked: BTreeSet<String> = ["bar".into()].into_iter().collect();
@@ -746,8 +702,6 @@ serde = "1"
             "dup".into(),
             ManifestDep {
                 package: "dup".into(),
-                optional: false,
-                declaring_members: 1,
             },
         );
         let providers: HashMap<String, Vec<String>> =
@@ -796,6 +750,22 @@ serde = "1"
         assert_eq!(go_mod_name(go).as_deref(), Some("my-mod"));
         let go_single = "module my-tool\n";
         assert_eq!(go_mod_name(go_single).as_deref(), Some("my-tool"));
+    }
+
+    #[test]
+    fn cargo_workspace_inheritance_counts_once() {
+        // Pin + `.workspace = true` use in one manifest: one relationship.
+        let text = "[package]\nname = \"demo\"\n[workspace.dependencies]\nfoo = \"1\"\n[dependencies]\nfoo.workspace = true\n";
+        let m = parse_cargo_manifest(text).unwrap();
+        assert!(m.deps.contains_key("foo"));
+        // Same package in [dependencies] + [build-dependencies]: still one.
+        let text2 = "[package]\nname = \"demo\"\n[dependencies]\nfoo = \"1\"\n[build-dependencies]\nfoo = \"1\"\n";
+        let m2 = parse_cargo_manifest(text2).unwrap();
+        assert!(m2.deps.contains_key("foo"));
+        // Pins alone (never used by this manifest): zero, not one.
+        let pins = "[workspace]\nmembers = [\"a\"]\n[workspace.dependencies]\nfoo = \"1\"\n";
+        let m3 = parse_cargo_manifest(pins).unwrap();
+        assert!(!m3.deps.contains_key("foo"));
     }
 
     #[test]

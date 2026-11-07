@@ -60,8 +60,8 @@ Provision the cron token for the highest tier you plan to use so it isn't re-sco
 jq '.edges | map(select(.target == "me/some-lib"))' graph.json
 # orphans (nodes with zero edges either way)
 jq '.nodes | map(.id) as $n | $n - ([.edges[] | .source, .target] | unique)' graph.json
-# heaviest edges, top 20
-jq '[.edges | sort_by(-.weight) | .[:20]]' graph.json
+# most depended-upon (fan-in count per node, desc)
+jq '[.edges[] | select(.kind == "manifest") | .target] | group_by(.) | map({target: .[0], fan_in: length}) | sort_by(-.fan_in)' graph.json
 # what-changed (yesterday vs today — assumes yesterday.json exists)
 diff <(jq -S . yesterday.json) <(jq -S . graph.json)
 ```
@@ -75,11 +75,16 @@ diff <(jq -S . yesterday.json) <(jq -S . graph.json)
 - Default branch only, always. Unmerged branch deps are proposals, not structure;
   each edge carries the single declaring branch. (A repo developing on `next`
   while `main` lags needs a per-repo override, not a sweep.)
-- Manifests: `Cargo.toml` first (deps + build-deps, dev-deps excluded), then
-  package.json / pyproject / go.mod. Workspace members collapsed to the repo node.
-- Edge kinds: `manifest` (weight = members × scope × use-site), `submodule` (1.0 flat),
-  `registry` (reverse-deps), lockfile **gate** (confirms, never scores),
-  `workflow` / `docs` / `xrefs` (associations, shown not scored).
+- Manifests: `Cargo.toml` (deps + build-deps, dev-deps excluded; workspace pins
+  are versions, not use), then package.json / pyproject / go.mod. Presence is
+  binary — no required/optional scope (not comparable across ecosystems), no
+  per-manifest counting. Workspace members collapsed to the repo node.
+- Edge kinds: `manifest` / `submodule` / `registry` are dependence (count toward
+  fan-in); lockfile is a **gate** (confirms, never scores); `workflow` / `docs` /
+  `xrefs` are associations (shown, never scored). One edge per (source, target),
+  never inflated by declaration count.
+- Node score = fan-in: the count of incoming dependence edges (how many portfolio
+  repos depend on it). That count is the "most depended-upon" ranking.
 - Use-site check: Rust via `syn` AST (`use` items incl. `pub use`; unparseable = match),
   regex fallback elsewhere. Default branch only, `.rs` files capped (budget bound).
   Partial coverage is fail-open (edges kept); only a full scan with zero refs

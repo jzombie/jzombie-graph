@@ -353,9 +353,9 @@ async fn collect_live(
             };
 
             // Manifests, registry-driven: one loop over MANIFEST_KINDS.
-            // declaring_members is MAX on union (not sum). Walked kinds
-            // (Cargo) additionally merge workspace members (below) and run
-            // the use-site scan. No per-ecosystem branches.
+            // Presence-union: the package is declared or it isn't. Walked
+            // kinds (Cargo) additionally merge workspace members (below) and
+            // run the use-site scan. No per-ecosystem branches.
             let mut walked_present = false;
             for kind in collect::MANIFEST_KINDS {
                 if !has(kind.file) {
@@ -371,15 +371,9 @@ async fn collect_live(
                 if let Some(text) = text
                     && let Ok(m) = (kind.parse)(&text)
                 {
+                    // Presence-union: the package is declared or it isn't.
                     for (k, v) in m.deps {
-                        manifest_union
-                            .deps
-                            .entry(k.clone())
-                            .and_modify(|d: &mut collect::ManifestDep| {
-                                d.declaring_members = d.declaring_members.max(v.declaring_members);
-                                d.optional = d.optional && v.optional;
-                            })
-                            .or_insert(v);
+                        manifest_union.deps.entry(k).or_insert(v);
                     }
                     manifest_union.workspace_members.extend(m.workspace_members);
                     manifest_union.workspace_members.sort();
@@ -402,14 +396,7 @@ async fn collect_live(
                         && let Ok(mm) = (kind.parse)(&mt)
                     {
                         for (k, v) in mm.deps {
-                            manifest_union
-                                .deps
-                                .entry(k.clone())
-                                .and_modify(|d: &mut collect::ManifestDep| {
-                                    d.declaring_members =
-                                        d.declaring_members.max(v.declaring_members);
-                                })
-                                .or_insert(v);
+                            manifest_union.deps.entry(k).or_insert(v);
                         }
                     }
                 }
@@ -559,7 +546,7 @@ async fn collect_live(
                 candidates.join(", ")
             ));
         }
-        // Submodule / workflow / docs associations (weight 0, displayed only).
+        // Submodule / workflow / docs associations (displayed only).
         for t in submodule_targets {
             edges.push(Edge {
                 source: repo.full_name.clone(),
@@ -567,7 +554,6 @@ async fn collect_live(
                 kind: EdgeKind::Submodule,
                 declaring_branches: branch_names.clone(),
                 recency: None,
-                weight: 1.0,
                 version: None,
                 note: None,
             });
@@ -579,7 +565,6 @@ async fn collect_live(
                 kind: EdgeKind::Workflow,
                 declaring_branches: branch_names.clone(),
                 recency: None,
-                weight: 0.0,
                 version: None,
                 note: None,
             });
@@ -591,7 +576,6 @@ async fn collect_live(
                 kind: EdgeKind::Docs,
                 declaring_branches: branch_names.clone(),
                 recency: None,
-                weight: 0.0,
                 version: None,
                 note: None,
             });
@@ -675,7 +659,6 @@ mod tests {
             kind: EdgeKind::Manifest,
             declaring_branches: vec!["main".into()],
             recency: None,
-            weight: 1.0,
             version: None,
             note: None,
         }];

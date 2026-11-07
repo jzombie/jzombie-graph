@@ -1,5 +1,5 @@
 //! Snapshot tests: the continuous form of having inspected the graph.
-//! Locks the output contract (schema v1, visibility flags, weight rules).
+//! Locks the output contract (visibility flags, fan-in counts).
 //! Regressions show as diffs — the spec's required suite in miniature:
 //! fan-in floor, fork promotion, zero private nodes in public output.
 
@@ -41,7 +41,6 @@ fn snapshot_reference_portfolio() {
             kind: EdgeKind::Manifest,
             declaring_branches: vec!["main".into()],
             recency: None,
-            weight: 2.0,
             version: Some("0.9.0".into()),
             note: None,
         },
@@ -51,7 +50,6 @@ fn snapshot_reference_portfolio() {
             kind: EdgeKind::Manifest,
             declaring_branches: vec!["main".into(), "next".into()],
             recency: None,
-            weight: 1.0,
             version: None,
             note: None,
         },
@@ -62,7 +60,6 @@ fn snapshot_reference_portfolio() {
             kind: EdgeKind::Manifest,
             declaring_branches: vec!["main".into()],
             recency: None,
-            weight: 1.0,
             version: None,
             note: None,
         },
@@ -72,7 +69,6 @@ fn snapshot_reference_portfolio() {
             kind: EdgeKind::Manifest,
             declaring_branches: vec!["main".into()],
             recency: None,
-            weight: 1.0,
             version: None,
             note: None,
         },
@@ -81,10 +77,10 @@ fn snapshot_reference_portfolio() {
     let g = Graph::new(nodes, edges);
 
     // Known truths (asserted, then snapshotted):
-    let weights = g.node_weights();
-    assert!(
-        weights["me/simd-r-drive"] >= 3.0,
-        "fan-in floor holds (incl. private transit)"
+    let fan_in = g.node_fan_in();
+    assert_eq!(
+        fan_in["me/simd-r-drive"], 2,
+        "fan-in counts dependence edges (incl. private transit)"
     );
     assert!(
         g.nodes
