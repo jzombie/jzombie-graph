@@ -45,6 +45,16 @@ Key knobs: `source.repos` (explicit list) XOR `source.user`/`source.org` (enumer
 
 Two input modes: `--repos a,b,c` (explicit) or `--user`/`--org` (enumerate-all, forks included).
 
+## Token scopes (least privilege)
+
+| Tier | Classic PAT | Fine-grained PAT | Notes |
+|---|---|---|---|
+| Public-only graph (default output today) | no scopes | public repos, Contents read | Token is rate-limit only (5000/hr vs 60/hr unauthenticated). Token required by default; empty only with explicit `--allow-unauthenticated` (public repos only, 60/hr — never silent) |
+| Private transit (compute, stripped from default output) | `repo` | private repos, Contents read + Metadata read | Needed to read private manifests/branches for transit edges |
+| Traffic (milestone 2) | `repo` | Administration read | GitHub requires push access for views/clones/referrers |
+
+Provision the cron token for the highest tier you plan to use so it isn't re-scoped later.
+
 ## Documented jq recipes (no code, day one)
 
 ```bash
