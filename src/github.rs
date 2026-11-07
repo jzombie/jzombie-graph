@@ -87,18 +87,34 @@ impl GitHubClient {
     pub fn with_base(token: String, api_base: String) -> Result<Self> {
         anyhow::ensure!(
             !token.is_empty(),
-            "GitHub token is empty (set GITHUB_TOKEN)"
+            "GitHub token is empty (set GITHUB_TOKEN or pass --allow-unauthenticated explicitly)"
+        );
+        Self::with_base_optional(token, api_base, false)
+    }
+
+    /// Empty token only when the caller explicitly opts in
+    /// (`--allow-unauthenticated`). Never silent: default path still bails.
+    pub fn with_base_optional(
+        token: String,
+        api_base: String,
+        allow_unauthenticated: bool,
+    ) -> Result<Self> {
+        anyhow::ensure!(
+            !token.is_empty() || allow_unauthenticated,
+            "GitHub token is empty (set GITHUB_TOKEN or pass --allow-unauthenticated explicitly)"
         );
         let mut headers = HeaderMap::new();
         headers.insert(
             ACCEPT,
             HeaderValue::from_static("application/vnd.github+json"),
         );
-        headers.insert(
-            AUTHORIZATION,
-            HeaderValue::from_str(&format!("Bearer {token}"))
-                .context("token is not a valid header value")?,
-        );
+        if !token.is_empty() {
+            headers.insert(
+                AUTHORIZATION,
+                HeaderValue::from_str(&format!("Bearer {token}"))
+                    .context("token is not a valid header value")?,
+            );
+        }
         headers.insert(USER_AGENT, HeaderValue::from_static("jzombie-graph/0.1"));
         let inner = reqwest::Client::builder()
             .default_headers(headers)

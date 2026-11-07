@@ -57,9 +57,15 @@ struct Cli {
     #[arg(long, default_value_t = false)]
     include_private: bool,
 
-    /// GitHub token (or GITHUB_TOKEN env). Only needed for enumeration/live fetch.
+    /// GitHub token (or GITHUB_TOKEN env). Required by default; empty only
+    /// with explicit `--allow-unauthenticated` (public-only, 60/hr).
     #[arg(long, env = "GITHUB_TOKEN", default_value = "")]
     token: String,
+
+    /// Allow empty token (explicit opt-in only, never silent). Public repos
+    /// only at 60/hr; private transit and traffic tiers still need a token.
+    #[arg(long, default_value_t = false)]
+    allow_unauthenticated: bool,
 }
 
 #[tokio::main]
@@ -91,7 +97,7 @@ async fn main() -> Result<()> {
             "offline mode: no cached repos; pass --repos with a local stub or unset JZOMBIE_GRAPH_OFFLINE for live fetch"
         )
     } else {
-        collect_live(&cfg, &cli.token).await?
+        collect_live(&cfg, &cli.token, cli.allow_unauthenticated).await?
     };
 
     // Default output is the public subgraph (store-safe): private repos
@@ -123,8 +129,15 @@ fn select_output(graph: Graph, include_private: bool) -> Graph {
     }
 }
 
-async fn collect_live(cfg: &Config, token: &str) -> Result<Graph> {
-    let client = GitHubClient::new(token.to_string())?;
+async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) -> Result<Graph> {
+    let client = GitHubClient::with_base_optional(
+        token.to_string(),
+        "https://api.github.com".into(),
+        allow_unauthenticated,
+    )?;
+    if token.is_empty() {
+        eprintln!("note: --allow-unauthenticated: no token (public repos only, 60/hr)");
+    }
 
     // 1. Repo set: explicit list (fetched for fork/private facts) or enumerate.
     let repos: Vec<RepoMeta> = if !cfg.source.repos.is_empty() {
