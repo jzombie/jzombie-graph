@@ -51,7 +51,7 @@ fn default_true() -> bool {
     true
 }
 fn default_max_branches() -> usize {
-    20
+    5
 }
 fn default_window_days() -> u32 {
     30

@@ -164,29 +164,30 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
     let portfolio: BTreeSet<String> = repos.iter().map(|r| r.full_name.clone()).collect();
     let aliases = cfg.alias_map();
 
-    // API budget (milestone 1 bound): per repo per branch, worst case —
-    // 4 manifests + 2 lockfiles + 1 gitmodules + 1 workflow list +
-    // WORKFLOW_FILES_CAP workflow files + 2 docs + 1 tree + member
-    // manifests (cap) + (default branch only) RS_FILES_CAP use-site files.
-    // Plus per repo: 1 list_branches + 1 ahead_by (+1 parent fetch for forks).
-    // Fail-open 404 probes retry inside the drive middleware (up to
-    // 1 + max_retries each), so the worst case multiplies missing-file
-    // probes by RETRY_MULT. Sequential today; parallel fan-out in 1.1.
+    // API budget (milestone 1 bound, tree-first): per branch, 1 tree call
+    // gates every existence probe — manifests, lockfiles, gitmodules, docs
+    // are only fetched when present in the tree, so 404 probes (and their
+    // x4 drive-retry multiplier) drop to ~zero except on races. Workflows
+    // list only when the tree shows a `.github/workflows/` prefix.
+    // Per branch worst case: 1 tree + manifests present (<=2 typical) +
+    // locks present (<=2) + gitmodules/docs present (<=3) + 1 workflow list +
+    // workflow files <=10 + member manifests <=10 + (default branch only)
+    // .rs files <=10. Typical: ~6-8/branch. Sequential today; fan-out in 1.1.
     const WORKFLOW_FILES_CAP: usize = 10;
     const MEMBER_MANIFEST_CAP: usize = 10;
     const RS_FILES_CAP: usize = 10;
-    const RETRY_MULT: usize = 4; // 1 + max_retries (drive ThrottlePolicy)
     {
         let n_repos = repos.len();
         let n_branches = cfg.collection.max_branches.max(1);
-        let per_branch_fixed = 4 + 2 + 1 + 1 + 2 + 1; // manifests+locks+gitmodules+wflist+docs+tree
-        let per_branch_max = per_branch_fixed + WORKFLOW_FILES_CAP + MEMBER_MANIFEST_CAP;
-        let per_repo_max = 2 + n_branches * per_branch_max + RS_FILES_CAP; // +ahead/parent, +default-branch rs
-        let est_max = n_repos * per_repo_max * RETRY_MULT;
+        let per_branch_worst = 1 + 2 + 2 + 3 + 1 + WORKFLOW_FILES_CAP + MEMBER_MANIFEST_CAP;
+        let per_repo_worst = 2 + n_branches * per_branch_worst + RS_FILES_CAP; // +ahead/parent, +default-branch rs
+        let est_worst = n_repos * per_repo_worst;
+        let per_branch_typ = 8;
+        let est_typ = n_repos * (2 + n_branches.min(3) * per_branch_typ + RS_FILES_CAP.min(5));
         eprintln!(
-            "budget: {n_repos} repos x up to {n_branches} branches: ~{est_max} API calls worst-case \
-             (fixed {per_branch_fixed}/branch + workflows<={WORKFLOW_FILES_CAP} + members<={MEMBER_MANIFEST_CAP} + rs<={RS_FILES_CAP} default-branch-only; \
-             x{RETRY_MULT} drive-retry on 404 probes; rate limit 5000/hr)"
+            "budget: {n_repos} repos x up to {n_branches} branches: ~{est_typ} API calls typical, ~{est_worst} worst-case \
+             (tree-first: 1 tree/branch gates all probes, no 404-retry mult; workflows<=10 + members<=10 + rs<=10 default-branch-only; \
+             rate limit 5000/hr)"
         );
     }
 
@@ -247,133 +248,160 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
                 recency: None, // commit-date recency lands with the trees API timestamp
             });
 
+            // Tree-first: one tree call gates every existence probe on this
+            // branch. Files are only fetched when present in the tree, so
+            // missing-file 404s (x4 drive-retry each) drop to ~zero.
+            let tree_set: Option<BTreeSet<String>> = if b.sha.is_empty() {
+                None // max_branches=0 path: no SHA, fall back to blind probes
+            } else {
+                match client.tree_paths(&repo.full_name, &b.sha).await {
+                    Ok(listing) => {
+                        if listing.truncated {
+                            digest.push(format!(
+                                "{}@{}: git tree truncated — workspace members/.rs list incomplete",
+                                repo.full_name, b.name
+                            ));
+                        }
+                        Some(listing.paths.into_iter().collect())
+                    }
+                    Err(_) => None, // tree failed: fall back to blind probes
+                }
+            };
+            let has = |p: &str| -> bool {
+                match &tree_set {
+                    Some(set) => set.contains(p),
+                    None => true, // no tree: probe (fail-open, may 404)
+                }
+            };
+
             // Manifests: Cargo.toml first, then other ecosystems.
             // declaring_members is MAX across branches (not sum): the same
             // workspace members re-declared on N branches are still N members,
             // not N x members. Branches union via declaring_branches, weight via max.
-            if let Ok(Some(text)) = client
-                .file_content(&repo.full_name, "Cargo.toml", &b.name)
-                .await
-            {
-                if let Ok(m) = collect::parse_cargo_manifest(&text) {
-                    for (k, v) in m.deps {
-                        manifest_union
-                            .deps
-                            .entry(k.clone())
-                            .and_modify(|d: &mut collect::ManifestDep| {
-                                d.declaring_members = d.declaring_members.max(v.declaring_members);
-                                d.optional = d.optional && v.optional;
-                            })
-                            .or_insert(v);
-                    }
-                    manifest_union.workspace_members.extend(m.workspace_members);
-                    manifest_union.workspace_members.sort();
-                    manifest_union.workspace_members.dedup();
-                }
-                // Workspace members walked via git trees, collapsed to repo node.
-                // Use-site scan runs on the default branch only (budget bound).
-                let is_default = b.name == repo.default_branch;
-                if !b.sha.is_empty()
-                    && let Ok(listing) = client.tree_paths(&repo.full_name, &b.sha).await
+            let cargo_text: Option<String> = if has("Cargo.toml") {
+                match client
+                    .file_content(&repo.full_name, "Cargo.toml", &b.name)
+                    .await
                 {
-                    if listing.truncated {
-                        digest.push(format!(
-                            "{}@{}: git tree truncated — workspace members/.rs list incomplete",
-                            repo.full_name, b.name
-                        ));
+                    Ok(Some(text)) => Some(text),
+                    _ => None,
+                }
+            } else {
+                None
+            };
+            let cargo_present = has("Cargo.toml");
+            if let Some(text) = cargo_text
+                && let Ok(m) = collect::parse_cargo_manifest(&text)
+            {
+                for (k, v) in m.deps {
+                    manifest_union
+                        .deps
+                        .entry(k.clone())
+                        .and_modify(|d: &mut collect::ManifestDep| {
+                            d.declaring_members = d.declaring_members.max(v.declaring_members);
+                            d.optional = d.optional && v.optional;
+                        })
+                        .or_insert(v);
+                }
+                manifest_union.workspace_members.extend(m.workspace_members);
+                manifest_union.workspace_members.sort();
+                manifest_union.workspace_members.dedup();
+            }
+            // Workspace members walked via git trees, collapsed to repo node.
+            // Use-site scan runs on the default branch only (budget bound).
+            let is_default = b.name == repo.default_branch;
+            if cargo_present && let Some(set) = &tree_set {
+                // Fetch member Cargo.tomls (cap MEMBER_MANIFEST_CAP to bound API cost).
+                let member_files: Vec<_> = set
+                    .iter()
+                    .filter(|p| p.ends_with("/Cargo.toml") && *p != "Cargo.toml")
+                    .take(MEMBER_MANIFEST_CAP)
+                    .cloned()
+                    .collect();
+                for mf in member_files {
+                    if let Ok(Some(mt)) = client.file_content(&repo.full_name, &mf, &b.name).await
+                        && let Ok(mm) = collect::parse_cargo_manifest(&mt)
+                    {
+                        for (k, v) in mm.deps {
+                            manifest_union
+                                .deps
+                                .entry(k.clone())
+                                .and_modify(|d: &mut collect::ManifestDep| {
+                                    d.declaring_members =
+                                        d.declaring_members.max(v.declaring_members);
+                                })
+                                .or_insert(v);
+                        }
                     }
-                    let paths = listing.paths;
-                    // Fetch member Cargo.tomls (cap MEMBER_MANIFEST_CAP to bound API cost).
-                    let member_files: Vec<_> = paths
+                }
+                // Rust use-site check: default branch only, .rs files capped.
+                // Other branches reuse the default-branch verdict (fail-open match
+                // when unscanned). Zero references nullifies (phantom dep).
+                if is_default {
+                    let total_rs = set.iter().filter(|p| p.ends_with(".rs")).count();
+                    let rs_files: Vec<_> = set
                         .iter()
-                        .filter(|p| p.ends_with("/Cargo.toml") && *p != "Cargo.toml")
-                        .take(MEMBER_MANIFEST_CAP)
+                        .filter(|p| p.ends_with(".rs"))
+                        .take(RS_FILES_CAP)
                         .cloned()
                         .collect();
-                    for mf in member_files {
-                        if let Ok(Some(mt)) =
-                            client.file_content(&repo.full_name, &mf, &b.name).await
-                            && let Ok(mm) = collect::parse_cargo_manifest(&mt)
-                        {
-                            for (k, v) in mm.deps {
-                                manifest_union
-                                    .deps
-                                    .entry(k.clone())
-                                    .and_modify(|d: &mut collect::ManifestDep| {
-                                        d.declaring_members =
-                                            d.declaring_members.max(v.declaring_members);
-                                    })
-                                    .or_insert(v);
-                            }
-                        }
-                    }
-                    // Rust use-site check: default branch only, .rs files capped.
-                    // Other branches reuse the default-branch verdict (fail-open match
-                    // when unscanned). Zero references nullifies (phantom dep).
-                    if is_default {
-                        let rs_files: Vec<_> = paths
-                            .iter()
-                            .filter(|p| p.ends_with(".rs"))
-                            .take(RS_FILES_CAP)
-                            .cloned()
-                            .collect();
-                        if paths.iter().any(|p| p.ends_with(".rs"))
-                            && rs_files.len() < paths.iter().filter(|p| p.ends_with(".rs")).count()
-                        {
-                            digest.push(format!(
-                                "{}@{}: .rs file list capped at {RS_FILES_CAP} — use-site verdict is partial",
+                    if total_rs > rs_files.len() {
+                        digest.push(format!(
+                                "{}@{}: .rs file list capped at {RS_FILES_CAP} of {total_rs} — use-site verdict is partial",
                                 repo.full_name, b.name
                             ));
-                        }
-                        if !rs_files.is_empty() {
-                            let mut contents: Vec<String> = vec![];
-                            for f in rs_files.iter() {
-                                if let Ok(Some(c)) =
-                                    client.file_content(&repo.full_name, f, &b.name).await
-                                {
-                                    contents.push(c);
-                                }
+                    }
+                    if !rs_files.is_empty() {
+                        let mut contents: Vec<String> = vec![];
+                        for f in rs_files.iter() {
+                            if let Ok(Some(c)) =
+                                client.file_content(&repo.full_name, f, &b.name).await
+                            {
+                                contents.push(c);
                             }
-                            for pkg in manifest_union.deps.keys().cloned().collect::<Vec<_>>() {
-                                let used = contents
-                                    .iter()
-                                    .any(|src| collect::rust_crate_used(&pkg, src));
-                                use_sites
-                                    .entry(pkg.clone())
-                                    .and_modify(|e| *e = *e || used)
-                                    .or_insert(used);
-                                if !used {
-                                    digest.push(format!(
+                        }
+                        for pkg in manifest_union.deps.keys().cloned().collect::<Vec<_>>() {
+                            let used = contents
+                                .iter()
+                                .any(|src| collect::rust_crate_used(&pkg, src));
+                            use_sites
+                                .entry(pkg.clone())
+                                .and_modify(|e| *e = *e || used)
+                                .or_insert(used);
+                            if !used {
+                                digest.push(format!(
                                         "{}@{}: phantom-nullified `{}` (zero use-sites in {RS_FILES_CAP} scanned files)",
                                         repo.full_name, b.name, pkg
                                     ));
-                                }
                             }
                         }
                     }
                 }
             }
-            if let Ok(Some(text)) = client
-                .file_content(&repo.full_name, "package.json", &b.name)
-                .await
+            if has("package.json")
+                && let Ok(Some(text)) = client
+                    .file_content(&repo.full_name, "package.json", &b.name)
+                    .await
                 && let Ok(m) = collect::parse_package_json(&text)
             {
                 for (k, v) in m.deps {
                     manifest_union.deps.entry(k).or_insert(v);
                 }
             }
-            if let Ok(Some(text)) = client
-                .file_content(&repo.full_name, "pyproject.toml", &b.name)
-                .await
+            if has("pyproject.toml")
+                && let Ok(Some(text)) = client
+                    .file_content(&repo.full_name, "pyproject.toml", &b.name)
+                    .await
                 && let Ok(m) = collect::parse_pyproject(&text)
             {
                 for (k, v) in m.deps {
                     manifest_union.deps.entry(k).or_insert(v);
                 }
             }
-            if let Ok(Some(text)) = client
-                .file_content(&repo.full_name, "go.mod", &b.name)
-                .await
+            if has("go.mod")
+                && let Ok(Some(text)) = client
+                    .file_content(&repo.full_name, "go.mod", &b.name)
+                    .await
                 && let Ok(m) = collect::parse_go_mod(&text)
             {
                 for (k, v) in m.deps {
@@ -382,7 +410,11 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
             }
 
             // Lockfile gate: presence confirms, absence-with-lockfile deletes.
+            // Tree-gated: only fetched when the lockfile is in the tree.
             for lock in ["Cargo.lock", "package-lock.json"] {
+                if !has(lock) {
+                    continue;
+                }
                 if let Ok(Some(text)) = client.file_content(&repo.full_name, lock, &b.name).await
                     && let Some(names) = collect::parse_lockfile_names(lock, &text)
                 {
@@ -393,9 +425,11 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
             }
 
             // Submodules: .gitmodules -> owner/repo pins (1.0 flat).
-            if let Ok(Some(text)) = client
-                .file_content(&repo.full_name, ".gitmodules", &b.name)
-                .await
+            // Tree-gated: skipped when absent from the tree.
+            if has(".gitmodules")
+                && let Ok(Some(text)) = client
+                    .file_content(&repo.full_name, ".gitmodules", &b.name)
+                    .await
             {
                 for (_, url) in collect::parse_gitmodules(&text) {
                     if let Some(target) = collect::github_repo_from_url(&url)
@@ -407,9 +441,15 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
             }
 
             // Workflows: list .github/workflows, scan `uses: owner/repo`.
-            if let Ok(files) = client
-                .list_dir(&repo.full_name, ".github/workflows", &b.name)
-                .await
+            // Tree-gated: skip the list call when no workflow prefix in tree.
+            let has_workflows = match &tree_set {
+                Some(set) => set.iter().any(|p| p.starts_with(".github/workflows/")),
+                None => true,
+            };
+            if has_workflows
+                && let Ok(files) = client
+                    .list_dir(&repo.full_name, ".github/workflows", &b.name)
+                    .await
             {
                 for f in files.iter().take(WORKFLOW_FILES_CAP) {
                     if let Ok(Some(text)) = client.file_content(&repo.full_name, f, &b.name).await {
@@ -424,8 +464,11 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
                 }
             }
 
-            // Docs: README.md + llms.txt links to siblings.
+            // Docs: README.md + llms.txt links to siblings. Tree-gated.
             for doc in ["README.md", "llms.txt"] {
+                if !has(doc) {
+                    continue;
+                }
                 if let Ok(Some(text)) = client.file_content(&repo.full_name, doc, &b.name).await {
                     for link in collect::scan_docs_links(&text) {
                         if portfolio.contains(&link) && link != repo.full_name {
