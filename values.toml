@@ -1,0 +1,70 @@
+# values.toml — live sweep config for jzombie's portfolio.
+# Committed: no secrets here (token comes from GITHUB_TOKEN env).
+# Regenerate the [aliases] table with: python3 /tmp/alias_scan.py
+# plus member crates (see README "Alias table").
+
+[source]
+user = "jzombie"
+include_forks = true
+
+[collection]
+window_days = 30
+
+[aliases]
+# package name -> portfolio repo id. Names diverge everywhere; this table is the fix.
+# Root manifests (Cargo.toml [package] / package.json / pyproject / go.mod):
+"abs-file-macro" = "jzombie/rust-abs-file-macro"
+"argtuner" = "jzombie/rust-argtuner"
+"cache-manager" = "jzombie/rust-cache-manager"
+"etf-matcher-vector-config-loader" = "jzombie/rust-etf-matcher-vector-config-loader"
+"line-ending" = "jzombie/rust-line-ending"
+"muxio" = "jzombie/rust-muxio"
+"open-fs" = "jzombie/temp-zombie-procreator"
+"ratatui-example-counter-app" = "jzombie/rust-ratatui-example-counter-app"
+"ratatui-example-json-editor-app" = "jzombie/rust-ratatui-example-json-editor-app"
+"request-skippable-animation-frame" = "jzombie/request-skippable-animation-frame"
+"reqwest-drive" = "jzombie/rust-reqwest-drive"
+"sec-fetcher" = "jzombie/rust-sec-fetcher"
+"simd-r-drive" = "jzombie/rust-simd-r-drive"
+"stdin-nonblocking" = "jzombie/rust-stdin-nonblocking"
+"string-auto-indent" = "jzombie/rust-string-auto-indent"
+"string-replace-all" = "jzombie/rust-string-replace-all"
+"term-icon" = "jzombie/term-icon-lab"
+"term-wm" = "jzombie/term-wm"
+"term-wm-vt100" = "jzombie/term-wm-vt100"
+"ticker-sniffer" = "jzombie/rust-ticker-sniffer"
+"triplets" = "jzombie/rust-triplets"
+"ts-lorem-ipsum-word-frequencies" = "jzombie/ts-lorem-ipsum-word-frequencies"
+"windows-headless" = "jzombie/windows-headless"
+"zenosmosis-website" = "jzombie/zenosmosis-website"
+# Workspace member crates (root is [workspace], packages live in subdirs):
+"docs-gen" = "jzombie/rust-oxdock"
+"oxdock-build" = "jzombie/rust-oxdock"
+"oxdock-cli" = "jzombie/rust-oxdock"
+"oxdock-core" = "jzombie/rust-oxdock"
+"oxdock-doc-tests" = "jzombie/rust-oxdock"
+"oxdock-embed" = "jzombie/rust-oxdock"
+"oxdock-fixture" = "jzombie/rust-oxdock"
+"oxdock-func-macro" = "jzombie/rust-oxdock"
+"oxdock-logic-tests" = "jzombie/rust-oxdock"
+"llkv-aggregate" = "jzombie/rust-llkv"
+"llkv-column-map" = "jzombie/rust-llkv"
+"llkv-compute" = "jzombie/rust-llkv"
+"llkv-csv" = "jzombie/rust-llkv"
+"llkv-executor" = "jzombie/rust-llkv"
+"llkv-expr" = "jzombie/rust-llkv"
+"llkv-join" = "jzombie/rust-llkv"
+"llkv-plan" = "jzombie/rust-llkv"
+"llkv-result" = "jzombie/rust-llkv"
+"llkv-runtime" = "jzombie/rust-llkv"
+"llkv-scan" = "jzombie/rust-llkv"
+"llkv-slt-tester" = "jzombie/rust-llkv"
+"llkv-sql" = "jzombie/rust-llkv"
+"llkv-sql-pong-demo" = "jzombie/rust-llkv"
+"embed-bytes" = "jzombie/rust-embed-bytes"
+"embed-resources" = "jzombie/rust-embed-bytes"
+"cargo-pkg-info-struct-builder" = "jzombie/rust-cargo-pkg-info-struct-builder"
+"cargo-pkg-info-test-app" = "jzombie/rust-cargo-pkg-info-struct-builder"
+
+[collection.extra_aliases]
+# Per-sweep overrides (win on conflict with [aliases]).

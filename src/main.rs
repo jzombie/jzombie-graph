@@ -165,7 +165,8 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
     // Per repo worst case: 1 branch-SHA + 1 tree + manifests present (<=2
     // typical) + locks present (<=2) + gitmodules/docs present (<=3) +
     // 1 workflow list + workflow files <=10 + member manifests <=10 +
-    // .rs files <=10 + ahead_by (+1 parent fetch for forks).
+    // .rs files <=10 + ahead_by (+1 parent fetch for forks missing it —
+    // the enumerate endpoint returns parent:null, resolved above).
     // Typical: ~12-15/repo. Sequential today; fan-out in 1.1.
     const WORKFLOW_FILES_CAP: usize = 10;
     const MEMBER_MANIFEST_CAP: usize = 10;
@@ -185,6 +186,18 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
 
     // 2. Per-repo collection, sequential (drive middleware concurrency-limits
     // each request; tokio fan-out across repos lands in 1.1).
+    // Fork parents: the enumerate endpoint returns `parent: null` for forks,
+    // so resolve it here (+1 call/fork) — without it `ahead_by` short-returns
+    // None for every fork and the divergence rule never fires.
+    let mut repos = repos;
+    for repo in repos
+        .iter_mut()
+        .filter(|r| r.fork && r.parent_full_name.is_none())
+    {
+        if let Ok(full) = client.get_repo(&repo.full_name).await {
+            repo.parent_full_name = full.parent_full_name;
+        }
+    }
     let mut nodes: Vec<Node> = vec![];
     let mut all_edges: Vec<Edge> = vec![];
     // Briefing digest lines: every phantom nullification + lockfile gate drop.
@@ -324,7 +337,11 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
                         }
                     }
                 }
-                // Rust use-site check: .rs files capped, partial verdict noted.
+                // Rust use-site check: .rs files capped. Partial coverage is
+                // fail-open (keep the edge): a capped scan that finds zero
+                // refs proves nothing, so unscanned verdicts stay absent
+                // (build_manifest_edges treats absent as match). Only a FULL
+                // scan with zero refs nullifies (phantom dep).
                 {
                     let total_rs = set.iter().filter(|p| p.ends_with(".rs")).count();
                     let rs_files: Vec<_> = set
@@ -333,9 +350,10 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
                         .take(RS_FILES_CAP)
                         .cloned()
                         .collect();
-                    if total_rs > rs_files.len() {
+                    let partial = total_rs > rs_files.len();
+                    if partial {
                         digest.push(format!(
-                                "{}@{}: .rs file list capped at {RS_FILES_CAP} of {total_rs} — use-site verdict is partial",
+                                "{}@{}: .rs file list capped at {RS_FILES_CAP} of {total_rs} — use-site verdict is partial (fail-open, edges kept)",
                                 repo.full_name, b_name
                             ));
                     }
@@ -352,16 +370,23 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
                             let used = contents
                                 .iter()
                                 .any(|src| collect::rust_crate_used(&pkg, src));
-                            use_sites
-                                .entry(pkg.clone())
-                                .and_modify(|e| *e = *e || used)
-                                .or_insert(used);
-                            if !used {
+                            if used {
+                                use_sites
+                                    .entry(pkg.clone())
+                                    .and_modify(|e| *e = *e || used)
+                                    .or_insert(used);
+                            } else if !partial {
+                                use_sites
+                                    .entry(pkg.clone())
+                                    .and_modify(|e| *e = *e || used)
+                                    .or_insert(used);
                                 digest.push(format!(
-                                        "{}@{}: phantom-nullified `{}` (zero use-sites in {RS_FILES_CAP} scanned files)",
+                                        "{}@{}: phantom-nullified `{}` (zero use-sites in {RS_FILES_CAP} scanned files, full coverage)",
                                         repo.full_name, b_name, pkg
                                     ));
                             }
+                            // partial + unused = fail-open: no entry (match),
+                            // no phantom line — the cap note above covers it.
                         }
                     }
                 }
@@ -551,7 +576,7 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
     );
 
     if !digest.is_empty() {
-        eprintln!("-- briefing digest ({} nullifications) --", digest.len());
+        eprintln!("-- briefing digest ({} notes) --", digest.len());
         for line in digest.iter().take(50) {
             eprintln!("  {line}");
         }

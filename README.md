@@ -82,9 +82,9 @@ diff <(jq -S . yesterday.json) <(jq -S . graph.json)
   `registry` (reverse-deps), lockfile **gate** (confirms, never scores),
   `workflow` / `docs` / `xrefs` (associations, shown not scored).
 - Use-site check: Rust via `syn` AST (`use` items incl. `pub use`; unparseable = match),
-  regex fallback elsewhere. Default branch only, `.rs` files capped (budget bound);
-  other branches reuse the default-branch verdict. Zero use-sites nullifies; every
-  nullification is logged in the briefing digest (stderr).
+  regex fallback elsewhere. Default branch only, `.rs` files capped (budget bound).
+  Partial coverage is fail-open (edges kept); only a full scan with zero refs
+  nullifies. Every nullification and cap note is logged in the briefing digest (stderr).
 - Privacy: private repos compute as transit, stripped by default. Default output
   is the public subgraph (store-safe); `--include-private` emits the true graph
   for the briefing lane only (never commit). `visible` flag is computed; renderers
