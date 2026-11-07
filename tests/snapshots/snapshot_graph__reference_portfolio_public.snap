@@ -1,0 +1,91 @@
+---
+source: tests/snapshot_graph.rs
+expression: "&pub_g"
+---
+{
+  "schema_version": 1,
+  "generated_at": "1970-01-01T00:00:00Z",
+  "nodes": [
+    {
+      "id": "me/hub",
+      "owner": "me",
+      "name": "hub",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "me/simd-r-drive",
+      "owner": "me",
+      "name": "simd-r-drive",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "me/study-fork",
+      "owner": "me",
+      "name": "study-fork",
+      "fork": true,
+      "private": false,
+      "upstream": null,
+      "ahead_by": 0,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "me/term-wm-vt100",
+      "owner": "me",
+      "name": "term-wm-vt100",
+      "fork": true,
+      "private": false,
+      "upstream": null,
+      "ahead_by": 12,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "fork: diverged (ahead of upstream), has portfolio edge"
+    }
+  ],
+  "edges": [
+    {
+      "source": "me/hub",
+      "target": "me/simd-r-drive",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": null,
+      "weight": 2.0,
+      "version": "0.9.0"
+    },
+    {
+      "source": "me/hub",
+      "target": "me/term-wm-vt100",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main",
+        "next"
+      ],
+      "recency": null,
+      "weight": 1.0,
+      "version": null
+    }
+  ]
+}

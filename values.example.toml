@@ -1,0 +1,21 @@
+# values.example.toml — copy to values.toml and edit.
+# Config-driven everything: repo source, edge kinds, branch scope, aliases.
+
+[source]
+# Exactly one of: explicit list OR user/org enumeration.
+repos = ["me/hub", "me/my-lib"]
+# user = "jzombie"
+# org = "my-org"
+include_forks = true
+
+[collection]
+max_branches = 20
+window_days = 30
+
+[aliases]
+# package name -> portfolio repo id. Names diverge everywhere; this table is the fix.
+# "simd-r-drive" = "me/simd-r-drive"
+# "term-wm" = "me/term-wm-vt100"
+
+[collection.extra_aliases]
+# Per-sweep overrides (win on conflict with [aliases]).
