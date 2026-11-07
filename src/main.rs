@@ -47,10 +47,6 @@ struct Cli {
     #[arg(long)]
     output: Option<PathBuf>,
 
-    /// Max branches per repo to union edges across (0 = default branch only).
-    #[arg(long)]
-    max_branches: Option<usize>,
-
     /// Include private repos in output (briefing lane only). Default output
     /// is the public subgraph: private nodes/edges stripped at write time,
     /// never committed to the public repo.
@@ -86,9 +82,6 @@ async fn main() -> Result<()> {
         cfg.source.repos = repos;
         cfg.source.user = None;
         cfg.source.org = None;
-    }
-    if let Some(mb) = cli.max_branches {
-        cfg.collection.max_branches = mb;
     }
     cfg.validate()?;
 
@@ -164,29 +157,28 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
     let portfolio: BTreeSet<String> = repos.iter().map(|r| r.full_name.clone()).collect();
     let aliases = cfg.alias_map();
 
-    // API budget (milestone 1 bound, tree-first): per branch, 1 tree call
-    // gates every existence probe — manifests, lockfiles, gitmodules, docs
-    // are only fetched when present in the tree, so 404 probes (and their
-    // x4 drive-retry multiplier) drop to ~zero except on races. Workflows
-    // list only when the tree shows a `.github/workflows/` prefix.
-    // Per branch worst case: 1 tree + manifests present (<=2 typical) +
-    // locks present (<=2) + gitmodules/docs present (<=3) + 1 workflow list +
-    // workflow files <=10 + member manifests <=10 + (default branch only)
-    // .rs files <=10. Typical: ~6-8/branch. Sequential today; fan-out in 1.1.
+    // API budget (default-branch-only, tree-first): 1 tree call gates every
+    // existence probe — manifests, lockfiles, gitmodules, docs are only
+    // fetched when present in the tree, so 404 probes (and their x4
+    // drive-retry multiplier) drop to ~zero except on races. Workflows list
+    // only when the tree shows a `.github/workflows/` prefix.
+    // Per repo worst case: 1 branch-SHA + 1 tree + manifests present (<=2
+    // typical) + locks present (<=2) + gitmodules/docs present (<=3) +
+    // 1 workflow list + workflow files <=10 + member manifests <=10 +
+    // .rs files <=10 + ahead_by (+1 parent fetch for forks).
+    // Typical: ~12-15/repo. Sequential today; fan-out in 1.1.
     const WORKFLOW_FILES_CAP: usize = 10;
     const MEMBER_MANIFEST_CAP: usize = 10;
     const RS_FILES_CAP: usize = 10;
     {
         let n_repos = repos.len();
-        let n_branches = cfg.collection.max_branches.max(1);
-        let per_branch_worst = 1 + 2 + 2 + 3 + 1 + WORKFLOW_FILES_CAP + MEMBER_MANIFEST_CAP;
-        let per_repo_worst = 2 + n_branches * per_branch_worst + RS_FILES_CAP; // +ahead/parent, +default-branch rs
+        let per_repo_worst =
+            2 + 1 + 1 + 2 + 2 + 3 + 1 + WORKFLOW_FILES_CAP + MEMBER_MANIFEST_CAP + RS_FILES_CAP;
         let est_worst = n_repos * per_repo_worst;
-        let per_branch_typ = 8;
-        let est_typ = n_repos * (2 + n_branches.min(3) * per_branch_typ + RS_FILES_CAP.min(5));
+        let est_typ = n_repos * 14;
         eprintln!(
-            "budget: {n_repos} repos x up to {n_branches} branches: ~{est_typ} API calls typical, ~{est_worst} worst-case \
-             (tree-first: 1 tree/branch gates all probes, no 404-retry mult; workflows<=10 + members<=10 + rs<=10 default-branch-only; \
+            "budget: {n_repos} repos (default branch only): ~{est_typ} API calls typical, ~{est_worst} worst-case \
+             (tree-first: 1 tree/repo gates all probes, no 404-retry mult; workflows<=10 + members<=10 + rs<=10; \
              rate limit 5000/hr)"
         );
     }
@@ -198,7 +190,14 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
     // Briefing digest lines: every phantom nullification + lockfile gate drop.
     let mut digest: Vec<String> = vec![];
 
-    for repo in &repos {
+    for (i, repo) in repos.iter().enumerate() {
+        eprintln!(
+            "[{}/{}] {} @{} …",
+            i + 1,
+            repos.len(),
+            repo.full_name,
+            repo.default_branch
+        );
         let ahead_by = match client.ahead_by(repo).await {
             Ok(v) => {
                 if repo.fork && v.is_none() {
@@ -211,26 +210,18 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
             }
             Err(_) => None,
         };
-        let max_b = cfg.collection.max_branches;
-        let branches = if max_b == 0 {
-            vec![jzombie_graph::github::Branch {
-                name: repo.default_branch.clone(),
-                sha: String::new(),
-            }]
-        } else {
-            client
-                .list_branches(&repo.full_name, max_b)
-                .await
-                .unwrap_or_else(|_| {
-                    vec![jzombie_graph::github::Branch {
-                        name: repo.default_branch.clone(),
-                        sha: String::new(),
-                    }]
-                })
-        };
-        let branch_names: Vec<String> = branches.iter().map(|b| b.name.clone()).collect();
+        // Default-branch-only collection: one branch scanned, period.
+        // Unmerged branch deps are proposals, not structure; a repo that
+        // develops on `next` while `main` lags needs a per-repo override,
+        // not a sweep. `declaring_branches` still records the single branch.
+        let b_name = repo.default_branch.clone();
+        let b_sha: String = client
+            .branch_sha(&repo.full_name, &b_name)
+            .await
+            .unwrap_or_default();
+        let branch_names: Vec<String> = vec![b_name.clone()];
 
-        // Union manifests across branches; each edge carries all declaring branches.
+        // Manifests/etc. from the default branch; each edge carries it.
         let mut manifest_union = collect::ManifestSet::default();
         let mut lock_union: BTreeSet<String> = BTreeSet::new();
         let mut saw_lockfile = false;
@@ -240,26 +231,24 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
         let mut docs_targets: BTreeSet<String> = BTreeSet::new();
         // package -> referenced? (None = unscanned -> match)
         let mut use_sites: HashMap<String, bool> = HashMap::new();
-        let mut branch_recency: Vec<collect::BranchDecl> = vec![];
+        let branch_recency: Vec<collect::BranchDecl> = vec![collect::BranchDecl {
+            branch: b_name.clone(),
+            recency: None,
+        }];
 
-        for b in &branches {
-            branch_recency.push(collect::BranchDecl {
-                branch: b.name.clone(),
-                recency: None, // commit-date recency lands with the trees API timestamp
-            });
-
-            // Tree-first: one tree call gates every existence probe on this
-            // branch. Files are only fetched when present in the tree, so
+        {
+            // Tree-first: one tree call gates every existence probe.
+            // Files are only fetched when present in the tree, so
             // missing-file 404s (x4 drive-retry each) drop to ~zero.
-            let tree_set: Option<BTreeSet<String>> = if b.sha.is_empty() {
-                None // max_branches=0 path: no SHA, fall back to blind probes
+            let tree_set: Option<BTreeSet<String>> = if b_sha.is_empty() {
+                None // SHA unresolved: fall back to blind probes
             } else {
-                match client.tree_paths(&repo.full_name, &b.sha).await {
+                match client.tree_paths(&repo.full_name, &b_sha).await {
                     Ok(listing) => {
                         if listing.truncated {
                             digest.push(format!(
                                 "{}@{}: git tree truncated — workspace members/.rs list incomplete",
-                                repo.full_name, b.name
+                                repo.full_name, b_name
                             ));
                         }
                         Some(listing.paths.into_iter().collect())
@@ -280,7 +269,7 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
             // not N x members. Branches union via declaring_branches, weight via max.
             let cargo_text: Option<String> = if has("Cargo.toml") {
                 match client
-                    .file_content(&repo.full_name, "Cargo.toml", &b.name)
+                    .file_content(&repo.full_name, "Cargo.toml", &b_name)
                     .await
                 {
                     Ok(Some(text)) => Some(text),
@@ -308,8 +297,9 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
                 manifest_union.workspace_members.dedup();
             }
             // Workspace members walked via git trees, collapsed to repo node.
-            // Use-site scan runs on the default branch only (budget bound).
-            let is_default = b.name == repo.default_branch;
+            // Single branch scanned, so the use-site verdict is complete
+            // (capped at RS_FILES_CAP with a digest note when partial).
+            // Zero references nullifies (phantom dep).
             if cargo_present && let Some(set) = &tree_set {
                 // Fetch member Cargo.tomls (cap MEMBER_MANIFEST_CAP to bound API cost).
                 let member_files: Vec<_> = set
@@ -319,7 +309,7 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
                     .cloned()
                     .collect();
                 for mf in member_files {
-                    if let Ok(Some(mt)) = client.file_content(&repo.full_name, &mf, &b.name).await
+                    if let Ok(Some(mt)) = client.file_content(&repo.full_name, &mf, &b_name).await
                         && let Ok(mm) = collect::parse_cargo_manifest(&mt)
                     {
                         for (k, v) in mm.deps {
@@ -334,10 +324,8 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
                         }
                     }
                 }
-                // Rust use-site check: default branch only, .rs files capped.
-                // Other branches reuse the default-branch verdict (fail-open match
-                // when unscanned). Zero references nullifies (phantom dep).
-                if is_default {
+                // Rust use-site check: .rs files capped, partial verdict noted.
+                {
                     let total_rs = set.iter().filter(|p| p.ends_with(".rs")).count();
                     let rs_files: Vec<_> = set
                         .iter()
@@ -348,14 +336,14 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
                     if total_rs > rs_files.len() {
                         digest.push(format!(
                                 "{}@{}: .rs file list capped at {RS_FILES_CAP} of {total_rs} — use-site verdict is partial",
-                                repo.full_name, b.name
+                                repo.full_name, b_name
                             ));
                     }
                     if !rs_files.is_empty() {
                         let mut contents: Vec<String> = vec![];
                         for f in rs_files.iter() {
                             if let Ok(Some(c)) =
-                                client.file_content(&repo.full_name, f, &b.name).await
+                                client.file_content(&repo.full_name, f, &b_name).await
                             {
                                 contents.push(c);
                             }
@@ -371,7 +359,7 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
                             if !used {
                                 digest.push(format!(
                                         "{}@{}: phantom-nullified `{}` (zero use-sites in {RS_FILES_CAP} scanned files)",
-                                        repo.full_name, b.name, pkg
+                                        repo.full_name, b_name, pkg
                                     ));
                             }
                         }
@@ -380,7 +368,7 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
             }
             if has("package.json")
                 && let Ok(Some(text)) = client
-                    .file_content(&repo.full_name, "package.json", &b.name)
+                    .file_content(&repo.full_name, "package.json", &b_name)
                     .await
                 && let Ok(m) = collect::parse_package_json(&text)
             {
@@ -390,7 +378,7 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
             }
             if has("pyproject.toml")
                 && let Ok(Some(text)) = client
-                    .file_content(&repo.full_name, "pyproject.toml", &b.name)
+                    .file_content(&repo.full_name, "pyproject.toml", &b_name)
                     .await
                 && let Ok(m) = collect::parse_pyproject(&text)
             {
@@ -400,7 +388,7 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
             }
             if has("go.mod")
                 && let Ok(Some(text)) = client
-                    .file_content(&repo.full_name, "go.mod", &b.name)
+                    .file_content(&repo.full_name, "go.mod", &b_name)
                     .await
                 && let Ok(m) = collect::parse_go_mod(&text)
             {
@@ -415,7 +403,7 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
                 if !has(lock) {
                     continue;
                 }
-                if let Ok(Some(text)) = client.file_content(&repo.full_name, lock, &b.name).await
+                if let Ok(Some(text)) = client.file_content(&repo.full_name, lock, &b_name).await
                     && let Some(names) = collect::parse_lockfile_names(lock, &text)
                 {
                     saw_lockfile = true;
@@ -428,7 +416,7 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
             // Tree-gated: skipped when absent from the tree.
             if has(".gitmodules")
                 && let Ok(Some(text)) = client
-                    .file_content(&repo.full_name, ".gitmodules", &b.name)
+                    .file_content(&repo.full_name, ".gitmodules", &b_name)
                     .await
             {
                 for (_, url) in collect::parse_gitmodules(&text) {
@@ -448,11 +436,11 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
             };
             if has_workflows
                 && let Ok(files) = client
-                    .list_dir(&repo.full_name, ".github/workflows", &b.name)
+                    .list_dir(&repo.full_name, ".github/workflows", &b_name)
                     .await
             {
                 for f in files.iter().take(WORKFLOW_FILES_CAP) {
-                    if let Ok(Some(text)) = client.file_content(&repo.full_name, f, &b.name).await {
+                    if let Ok(Some(text)) = client.file_content(&repo.full_name, f, &b_name).await {
                         for u in collect::scan_workflow_uses(&text) {
                             // `uses: owner/repo` — strip action subpaths (`me/reusable/.github/...`).
                             let base = u.split('/').take(2).collect::<Vec<_>>().join("/");
@@ -469,7 +457,7 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
                 if !has(doc) {
                     continue;
                 }
-                if let Ok(Some(text)) = client.file_content(&repo.full_name, doc, &b.name).await {
+                if let Ok(Some(text)) = client.file_content(&repo.full_name, doc, &b_name).await {
                     for link in collect::scan_docs_links(&text) {
                         if portfolio.contains(&link) && link != repo.full_name {
                             docs_targets.insert(link);
@@ -479,7 +467,7 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
             }
         }
 
-        // Manifest edges (one per target, branches unioned).
+        // Manifest edges (one per target, default branch).
         let lock_gate: Option<BTreeSet<String>> =
             if saw_lockfile { Some(lock_union) } else { None };
         let mut edges = collect::build_manifest_edges(
@@ -530,7 +518,14 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
             });
         }
         // Registry (reverse-deps) + xrefs land in milestone 1.1 — same shape.
+        let n_new = all_edges.len();
         all_edges.extend(edges);
+        eprintln!(
+            "    -> {} new edges ({} total), {} manifest deps",
+            all_edges.len() - n_new,
+            all_edges.len(),
+            manifest_union.deps.len()
+        );
 
         nodes.push(Node {
             id: repo.full_name.clone(),
@@ -548,6 +543,12 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
 
     graph::apply_visibility(&mut nodes, &all_edges);
     let g = Graph::new(nodes, all_edges);
+    eprintln!(
+        "done: {} repos, {} nodes, {} edges",
+        repos.len(),
+        g.nodes.len(),
+        g.edges.len()
+    );
 
     if !digest.is_empty() {
         eprintln!("-- briefing digest ({} nullifications) --", digest.len());

@@ -273,6 +273,15 @@ impl GitHubClient {
         Ok(out)
     }
 
+    /// Resolve one branch name to its head SHA. Used for the default branch
+    /// only (collection is default-branch-only): the SHA feeds the single
+    /// tree call that gates every existence probe. Fail-open to empty.
+    pub async fn branch_sha(&self, full_name: &str, branch: &str) -> Result<String> {
+        let url = format!("{}/repos/{full_name}/branches/{branch}", self.api_base);
+        let b: ApiBranch = self.get_json(&url).await?;
+        Ok(b.commit.sha)
+    }
+
     pub async fn list_branches(&self, full_name: &str, max: usize) -> Result<Vec<Branch>> {
         let url = format!("{}/repos/{full_name}/branches?per_page=100", self.api_base);
         let mut branches: Vec<ApiBranch> = self.get_json(&url).await?;

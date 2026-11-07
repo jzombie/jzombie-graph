@@ -1,5 +1,5 @@
 # values.example.toml — copy to values.toml and edit.
-# Config-driven everything: repo source, edge kinds, branch scope, aliases.
+# Config-driven everything: repo source, edge kinds, aliases.
 
 [source]
 # Exactly one of: explicit list OR user/org enumeration.
@@ -9,7 +9,6 @@ repos = ["me/hub", "me/my-lib"]
 include_forks = true
 
 [collection]
-max_branches = 20
 window_days = 30
 
 [aliases]

@@ -39,8 +39,7 @@ cargo run -- --config values.toml --format table
 ```
 
 Key knobs: `source.repos` (explicit list) XOR `source.user`/`source.org` (enumerate);
-`collection.max_branches` (union edges across branches); `aliases` (package name
--> `owner/repo` — names diverge everywhere, this table is the fix);
+`aliases` (package name -> `owner/repo` — names diverge everywhere, this table is the fix);
 `collection.extra_aliases` (same, per-sweep overrides).
 
 Two input modes: `--repos a,b,c` (explicit) or `--user`/`--org` (enumerate-all, forks included).
@@ -74,7 +73,9 @@ diff <(jq -S . yesterday.json) <(jq -S . graph.json)
   exclude forks; two rules re-admit: **divergence** (`ahead_by > 0`) and
   **load-bearing** (fan-in from portfolio repos). Tier 3 isolation (≥1 portfolio
   edge or omit) does the rest of the filtering.
-- All branches (up to `max_branches`), unioned; each edge carries declaring branches + recency.
+- Default branch only, always. Unmerged branch deps are proposals, not structure;
+  each edge carries the single declaring branch. (A repo developing on `next`
+  while `main` lags needs a per-repo override, not a sweep.)
 - Manifests: `Cargo.toml` first (deps + build-deps, dev-deps excluded), then
   package.json / pyproject / go.mod. Workspace members collapsed to the repo node.
 - Edge kinds: `manifest` (weight = members × scope × use-site), `submodule` (1.0 flat),

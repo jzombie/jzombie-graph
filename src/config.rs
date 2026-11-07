@@ -34,10 +34,6 @@ pub struct Source {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Collection {
-    /// Max branches per repo to union edges across (0 = default branch only).
-    /// Spec wants all branches; cap exists to bound API cost.
-    #[serde(default = "default_max_branches")]
-    pub max_branches: usize,
     /// Window days for recency/xrefs/traffic-adjacent queries.
     #[serde(default = "default_window_days")]
     pub window_days: u32,
@@ -49,9 +45,6 @@ pub struct Collection {
 
 fn default_true() -> bool {
     true
-}
-fn default_max_branches() -> usize {
-    5
 }
 fn default_window_days() -> u32 {
     30
@@ -71,7 +64,6 @@ impl Default for Source {
 impl Default for Collection {
     fn default() -> Self {
         Self {
-            max_branches: default_max_branches(),
             window_days: default_window_days(),
             extra_aliases: HashMap::new(),
         }
