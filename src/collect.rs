@@ -326,6 +326,11 @@ pub fn scan_docs_links(text: &str) -> Vec<String> {
 
 // ---- use-site check (Rust via syn; regex fallback elsewhere) ----
 
+fn ident_re() -> &'static Regex {
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| Regex::new(r"[A-Za-z_][A-Za-z0-9_]*").unwrap())
+}
+
 /// Rust use-site check: true when any `use` item (incl. `pub use`)
 /// references the crate, or any path segment matches. Unparseable file =
 /// match (safe direction: keep the edge). Every nullification is logged
@@ -345,8 +350,7 @@ pub fn rust_crate_used(crate_name: &str, rs_source: &str) -> bool {
     }
     // Also catch fully-qualified paths (`foo::bar`) outside `use` items:
     // cheap token scan over the whole file as backup within the AST path.
-    let ident_re = Regex::new(r"[A-Za-z_][A-Za-z0-9_]*").unwrap();
-    for m in ident_re.find_iter(rs_source) {
+    for m in ident_re().find_iter(rs_source) {
         if m.as_str().replace('-', "_") == target {
             return true;
         }

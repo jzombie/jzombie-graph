@@ -71,15 +71,24 @@ diff <(jq -S . yesterday.json) <(jq -S . graph.json)
   `registry` (reverse-deps), lockfile **gate** (confirms, never scores),
   `workflow` / `docs` / `xrefs` (associations, shown not scored).
 - Use-site check: Rust via `syn` AST (`use` items incl. `pub use`; unparseable = match),
-  regex fallback elsewhere. Zero use-sites nullifies; every nullification is logged
-  in the briefing digest (stderr).
-- Privacy: private repos compute as transit, stripped before render. `visible` flag
-  is computed; renderers filter blindly.
+  regex fallback elsewhere. Default branch only, `.rs` files capped (budget bound);
+  other branches reuse the default-branch verdict. Zero use-sites nullifies; every
+  nullification is logged in the briefing digest (stderr).
+- Privacy: private repos compute as transit, stripped by default. Default output
+  is the public subgraph (store-safe); `--include-private` emits the true graph
+  for the briefing lane only (never commit). `visible` flag is computed; renderers
+  filter blindly.
+- Budget: the binary prints a worst-case API call estimate before fetching
+  (rate limit 5000/hr). Caps: workflows/member-manifests/`.rs` files each ≤10,
+  use-sites on the default branch only. HTTP goes through `rust-reqwest-drive`
+  (`DriveThrottleBackoff`: throttle + retries + backoff); 404 probes retry
+  inside the middleware, accounted in the estimate.
 
 ## Privacy
 
-Scoring sees the true graph; all surfaces show the public subgraph (both endpoints public).
-No nodes, stubs, links, counts, or deltas for private repos.
+Scoring sees the true graph; default output shows the public subgraph (both endpoints public).
+No nodes, stubs, links, counts, or deltas for private repos. `--include-private`
+overrides for local briefing only — never commit that output.
 
 ## Metrics storage (milestone 2 — after first edge-JSON ships)
 

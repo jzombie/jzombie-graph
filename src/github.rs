@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use reqwest::header::{ACCEPT, AUTHORIZATION, HeaderMap, HeaderValue, USER_AGENT};
+use reqwest_drive::{ClientBuilder, ClientWithMiddleware, DriveThrottleBackoff, ThrottlePolicy};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -19,6 +20,13 @@ pub struct RepoMeta {
 pub struct Branch {
     pub name: String,
     pub sha: String,
+}
+
+/// Recursive tree listing plus the API `truncated` flag.
+#[derive(Debug, Clone)]
+pub struct TreeListing {
+    pub paths: Vec<String>,
+    pub truncated: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -66,7 +74,7 @@ struct ApiCompare {
 
 #[derive(Debug, Clone)]
 pub struct GitHubClient {
-    http: reqwest::Client,
+    http: ClientWithMiddleware,
     token: String,
     api_base: String,
 }
@@ -92,11 +100,21 @@ impl GitHubClient {
                 .context("token is not a valid header value")?,
         );
         headers.insert(USER_AGENT, HeaderValue::from_static("jzombie-graph/0.1"));
-        let http = reqwest::Client::builder()
+        let inner = reqwest::Client::builder()
             .default_headers(headers)
             .timeout(Duration::from_secs(30))
             .build()
             .context("building HTTP client")?;
+        // Reuse `rust-reqwest-drive` for retries, backoff, and concurrency
+        // limiting (spec: no new client logic). Throttle-only mode — no cache
+        // file; the store/privacy rule keeps all cache state out of this repo.
+        let throttle = DriveThrottleBackoff::without_cache(ThrottlePolicy {
+            base_delay_ms: 200,
+            adaptive_jitter_ms: 100,
+            max_concurrent: 5,
+            max_retries: 3,
+        });
+        let http = ClientBuilder::new(inner).with(throttle).build();
         Ok(Self {
             http,
             token: token.clone(),
@@ -104,35 +122,21 @@ impl GitHubClient {
         })
     }
 
-    /// GET with retries + exponential backoff on 429/5xx (the failure modes
-    /// the spec assigns to Rust, not to DSL/bash).
+    /// GET via the drive middleware (retries + exponential backoff on
+    /// failures, concurrency-limited). Note: the middleware retries any
+    /// non-2xx including 404s, so fail-open 404 probes (missing manifests)
+    /// cost `1 + max_retries` calls worst-case — accounted in the budget
+    /// estimate printed before fetching. A 404 that survives retries is
+    /// returned here as an error; `file_content`/`list_dir` map it to None/empty.
     async fn get_json<T: serde::de::DeserializeOwned>(&self, url: &str) -> Result<T> {
-        let mut delay = Duration::from_millis(500);
-        let mut last_err = None;
-        for attempt in 0..5 {
-            let resp = self.http.get(url).send().await;
-            match resp {
-                Ok(r) => {
-                    let status = r.status();
-                    if status.is_success() {
-                        return r
-                            .json::<T>()
-                            .await
-                            .with_context(|| format!("decoding {url}"));
-                    }
-                    if status.as_u16() == 429 || status.is_server_error() {
-                        last_err =
-                            Some(anyhow::anyhow!("{url}: HTTP {status} (attempt {attempt})"));
-                    } else {
-                        anyhow::bail!("{url}: HTTP {status}");
-                    }
-                }
-                Err(e) => last_err = Some(anyhow::anyhow!("{url}: {e} (attempt {attempt})")),
-            }
-            tokio::time::sleep(delay).await;
-            delay *= 2;
+        let resp = self.http.get(url).send().await?;
+        let status = resp.status();
+        if !status.is_success() {
+            anyhow::bail!("{url}: HTTP {status}");
         }
-        Err(last_err.unwrap_or_else(|| anyhow::anyhow!("{url}: request failed")))
+        resp.json::<T>()
+            .await
+            .with_context(|| format!("decoding {url}"))
     }
 
     /// Enumerate everything owned by the user/org, forks included.
@@ -196,12 +200,13 @@ impl GitHubClient {
 
     /// Recursive git tree (paths only). Used for workspace members
     /// (`crates/` subdirs collapse to the repo node) and use-site file discovery.
-    pub async fn tree_paths(&self, full_name: &str, sha: &str) -> Result<Vec<String>> {
+    /// Returns paths plus the API `truncated` flag — callers log truncation
+    /// to the briefing digest (silent truncation hid workspace members).
+    pub async fn tree_paths(&self, full_name: &str, sha: &str) -> Result<TreeListing> {
         #[derive(Deserialize)]
         struct Tree {
             tree: Vec<TreeEntry>,
             #[serde(default)]
-            #[allow(dead_code)]
             truncated: bool,
         }
         #[derive(Deserialize)]
@@ -215,7 +220,10 @@ impl GitHubClient {
             self.api_base
         );
         let t: Tree = self.get_json(&url).await?;
-        Ok(t.tree.into_iter().map(|e| e.path).collect())
+        Ok(TreeListing {
+            paths: t.tree.into_iter().map(|e| e.path).collect(),
+            truncated: t.truncated,
+        })
     }
 
     /// Directory listing via contents API (workflows dir, etc.).
@@ -237,13 +245,12 @@ impl GitHubClient {
         if let Some(arr) = v.as_array() {
             for item in arr {
                 if item.get("type").and_then(|t| t.as_str()) == Some("file")
-                    && let (Some(name), Some(path)) = (
+                    && let (Some(_name), Some(path)) = (
                         item.get("name").and_then(|n| n.as_str()),
                         item.get("path").and_then(|p| p.as_str()),
                     )
                 {
                     out.push(path.to_string());
-                    let _ = name;
                 }
             }
         }
@@ -263,8 +270,9 @@ impl GitHubClient {
             .collect())
     }
 
-    /// Fetch a file at a branch via the contents API. Returns None on 404.
-    /// (404 surfaces as an error from `get_json`; so this uses a direct call.)
+    /// Fetch a file at a branch via the contents API. Returns None on 404
+    /// (missing manifest/lockfile/doc — the normal fail-open case).
+    /// Other errors propagate; callers treat them per-file, never fatal.
     pub async fn file_content(
         &self,
         full_name: &str,
@@ -286,8 +294,10 @@ impl GitHubClient {
         match (body.encoding.as_deref(), body.content) {
             (Some("base64"), Some(b)) => {
                 let cleaned: String = b.chars().filter(|c| !c.is_whitespace()).collect();
-                // Base64 without a dedicated crate: minimal inline decoder.
-                let bytes = base64_decode(&cleaned)?;
+                use base64::{Engine as _, engine::general_purpose::STANDARD as B64};
+                let bytes = B64
+                    .decode(&cleaned)
+                    .with_context(|| format!("base64 decoding {path}"))?;
                 String::from_utf8(bytes)
                     .map(Some)
                     .context("file is not UTF-8")
@@ -298,7 +308,10 @@ impl GitHubClient {
     }
 
     /// Commits ahead of upstream (`compare` API) — fork divergence rule (a).
-    /// Returns None when not a fork or comparison is unavailable.
+    /// Base is the *parent default branch*, head is `owner:default_branch`.
+    /// Returns None when not a fork or comparison is unavailable (fail-open:
+    /// private/deleted upstream). Callers log the fail-open to the digest
+    /// so diverged forks don't silently read as `ahead_by: null`.
     pub async fn ahead_by(&self, repo: &RepoMeta) -> Result<Option<u32>> {
         let Some(parent) = repo.parent_full_name.as_deref() else {
             return Ok(None);
@@ -306,9 +319,15 @@ impl GitHubClient {
         if !repo.fork {
             return Ok(None);
         }
+        // Parent default branch is required for a correct basehead;
+        // the earlier URL omitted it (base was the repo, not a branch).
+        let parent_default = match self.get_repo(parent).await {
+            Ok(p) => p.default_branch,
+            Err(_) => return Ok(None),
+        };
         let url = format!(
             "{}/repos/{}/compare/{}...{}:{}",
-            self.api_base, parent, parent, repo.owner, repo.default_branch
+            self.api_base, parent, parent_default, repo.owner, repo.default_branch
         );
         // Compare failures (private upstream, deleted parent) are fail-open: None.
         match self.get_json::<ApiCompare>(&url).await {
@@ -323,45 +342,14 @@ impl GitHubClient {
     }
 }
 
-fn base64_decode(s: &str) -> Result<Vec<u8>> {
-    fn val(c: u8) -> Result<u8> {
-        match c {
-            b'A'..=b'Z' => Ok(c - b'A'),
-            b'a'..=b'z' => Ok(c - b'a' + 26),
-            b'0'..=b'9' => Ok(c - b'0' + 52),
-            b'+' => Ok(62),
-            b'/' => Ok(63),
-            b'=' => Ok(64), // padding
-            _ => anyhow::bail!("invalid base64 char"),
-        }
-    }
-    let bytes = s.as_bytes();
-    anyhow::ensure!(bytes.len().is_multiple_of(4), "bad base64 length");
-    let mut out = Vec::with_capacity(bytes.len() / 4 * 3);
-    for chunk in bytes.chunks(4) {
-        let mut n = [0u8; 4];
-        for (i, &c) in chunk.iter().enumerate() {
-            n[i] = val(c)?;
-        }
-        out.push((n[0] << 2) | (n[1] >> 4));
-        if n[2] != 64 {
-            out.push(((n[1] & 15) << 4) | (n[2] >> 2));
-        }
-        if n[3] != 64 {
-            out.push(((n[2] & 3) << 6) | n[3]);
-        }
-    }
-    Ok(out)
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use base64::{Engine as _, engine::general_purpose::STANDARD as B64};
 
     #[test]
-    fn base64_roundtrip_vectors() {
-        assert_eq!(base64_decode("aGVsbG8=").unwrap(), b"hello");
-        assert_eq!(base64_decode("TQ==").unwrap(), b"M");
-        assert!(base64_decode("!!!").is_err());
+    fn base64_vectors() {
+        assert_eq!(B64.decode("aGVsbG8=").unwrap(), b"hello");
+        assert_eq!(B64.decode("TQ==").unwrap(), b"M");
+        assert!(B64.decode("!!!").is_err());
     }
 }

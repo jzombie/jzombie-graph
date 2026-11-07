@@ -51,6 +51,12 @@ struct Cli {
     #[arg(long)]
     max_branches: Option<usize>,
 
+    /// Include private repos in output (briefing lane only). Default output
+    /// is the public subgraph: private nodes/edges stripped at write time,
+    /// never committed to the public repo.
+    #[arg(long, default_value_t = false)]
+    include_private: bool,
+
     /// GitHub token (or GITHUB_TOKEN env). Only needed for enumeration/live fetch.
     #[arg(long, env = "GITHUB_TOKEN", default_value = "")]
     token: String,
@@ -88,10 +94,15 @@ async fn main() -> Result<()> {
         collect_live(&cfg, &cli.token).await?
     };
 
+    // Default output is the public subgraph (store-safe): private repos
+    // compute as transit nodes, stripped before render — no nodes, stubs,
+    // links, counts, or deltas. The true graph is briefing-lane only.
+    let rendered = select_output(graph, cli.include_private);
+
     let text = match cli.format {
-        Format::Json => output::render_json(&graph)?,
-        Format::Table => output::render_table(&graph),
-        Format::Dot => output::render_dot(&graph),
+        Format::Json => output::render_json(&rendered)?,
+        Format::Table => output::render_table(&rendered),
+        Format::Dot => output::render_dot(&rendered),
     };
     if let Some(path) = cli.output {
         std::fs::write(&path, &text).with_context(|| format!("writing {}", path.display()))?;
@@ -99,6 +110,17 @@ async fn main() -> Result<()> {
         print!("{text}");
     }
     Ok(())
+}
+
+/// Output selection: public subgraph by default (store-safe, committable);
+/// true graph only with explicit opt-in (briefing lane, never commit).
+fn select_output(graph: Graph, include_private: bool) -> Graph {
+    if include_private {
+        eprintln!("note: --include-private: true-graph output (briefing lane only, never commit)");
+        graph
+    } else {
+        graph::public_subgraph(&graph)
+    }
 }
 
 async fn collect_live(cfg: &Config, token: &str) -> Result<Graph> {
@@ -129,15 +151,52 @@ async fn collect_live(cfg: &Config, token: &str) -> Result<Graph> {
     let portfolio: BTreeSet<String> = repos.iter().map(|r| r.full_name.clone()).collect();
     let aliases = cfg.alias_map();
 
-    // 2. Per-repo collection (sequential for now; parallel fetches are the
-    // reason this is Rust — tokio fan-out lands when rate limits are mapped).
+    // API budget (milestone 1 bound): per repo per branch, worst case —
+    // 4 manifests + 2 lockfiles + 1 gitmodules + 1 workflow list +
+    // WORKFLOW_FILES_CAP workflow files + 2 docs + 1 tree + member
+    // manifests (cap) + (default branch only) RS_FILES_CAP use-site files.
+    // Plus per repo: 1 list_branches + 1 ahead_by (+1 parent fetch for forks).
+    // Fail-open 404 probes retry inside the drive middleware (up to
+    // 1 + max_retries each), so the worst case multiplies missing-file
+    // probes by RETRY_MULT. Sequential today; parallel fan-out in 1.1.
+    const WORKFLOW_FILES_CAP: usize = 10;
+    const MEMBER_MANIFEST_CAP: usize = 10;
+    const RS_FILES_CAP: usize = 10;
+    const RETRY_MULT: usize = 4; // 1 + max_retries (drive ThrottlePolicy)
+    {
+        let n_repos = repos.len();
+        let n_branches = cfg.collection.max_branches.max(1);
+        let per_branch_fixed = 4 + 2 + 1 + 1 + 2 + 1; // manifests+locks+gitmodules+wflist+docs+tree
+        let per_branch_max = per_branch_fixed + WORKFLOW_FILES_CAP + MEMBER_MANIFEST_CAP;
+        let per_repo_max = 2 + n_branches * per_branch_max + RS_FILES_CAP; // +ahead/parent, +default-branch rs
+        let est_max = n_repos * per_repo_max * RETRY_MULT;
+        eprintln!(
+            "budget: {n_repos} repos x up to {n_branches} branches: ~{est_max} API calls worst-case \
+             (fixed {per_branch_fixed}/branch + workflows<={WORKFLOW_FILES_CAP} + members<={MEMBER_MANIFEST_CAP} + rs<={RS_FILES_CAP} default-branch-only; \
+             x{RETRY_MULT} drive-retry on 404 probes; rate limit 5000/hr)"
+        );
+    }
+
+    // 2. Per-repo collection, sequential (drive middleware concurrency-limits
+    // each request; tokio fan-out across repos lands in 1.1).
     let mut nodes: Vec<Node> = vec![];
     let mut all_edges: Vec<Edge> = vec![];
     // Briefing digest lines: every phantom nullification + lockfile gate drop.
     let mut digest: Vec<String> = vec![];
 
     for repo in &repos {
-        let ahead_by = client.ahead_by(repo).await.unwrap_or(None);
+        let ahead_by = match client.ahead_by(repo).await {
+            Ok(v) => {
+                if repo.fork && v.is_none() {
+                    digest.push(format!(
+                        "{}: ahead_by unavailable (private/deleted upstream?) — fail-open to hidden unless load-bearing",
+                        repo.full_name
+                    ));
+                }
+                v
+            }
+            Err(_) => None,
+        };
         let max_b = cfg.collection.max_branches;
         let branches = if max_b == 0 {
             vec![jzombie_graph::github::Branch {
@@ -176,6 +235,9 @@ async fn collect_live(cfg: &Config, token: &str) -> Result<Graph> {
             });
 
             // Manifests: Cargo.toml first, then other ecosystems.
+            // declaring_members is MAX across branches (not sum): the same
+            // workspace members re-declared on N branches are still N members,
+            // not N x members. Branches union via declaring_branches, weight via max.
             if let Ok(Some(text)) = client
                 .file_content(&repo.full_name, "Cargo.toml", &b.name)
                 .await
@@ -185,26 +247,34 @@ async fn collect_live(cfg: &Config, token: &str) -> Result<Graph> {
                         manifest_union
                             .deps
                             .entry(k.clone())
-                            .and_modify(|d| {
-                                d.declaring_members += v.declaring_members.saturating_sub(1);
+                            .and_modify(|d: &mut collect::ManifestDep| {
+                                d.declaring_members = d.declaring_members.max(v.declaring_members);
+                                d.optional = d.optional && v.optional;
                             })
                             .or_insert(v);
                     }
                     manifest_union.workspace_members.extend(m.workspace_members);
+                    manifest_union.workspace_members.sort();
+                    manifest_union.workspace_members.dedup();
                 }
                 // Workspace members walked via git trees, collapsed to repo node.
+                // Use-site scan runs on the default branch only (budget bound).
+                let is_default = b.name == repo.default_branch;
                 if !b.sha.is_empty()
-                    && let Ok(paths) = client.tree_paths(&repo.full_name, &b.sha).await
+                    && let Ok(listing) = client.tree_paths(&repo.full_name, &b.sha).await
                 {
-                    for member in manifest_union.workspace_members.clone() {
-                        let prefix = member.trim_end_matches("/*").to_string() + "/Cargo.toml";
-                        let _ = prefix;
+                    if listing.truncated {
+                        digest.push(format!(
+                            "{}@{}: git tree truncated — workspace members/.rs list incomplete",
+                            repo.full_name, b.name
+                        ));
                     }
-                    // Fetch member Cargo.tomls (cap 20 to bound API cost).
+                    let paths = listing.paths;
+                    // Fetch member Cargo.tomls (cap MEMBER_MANIFEST_CAP to bound API cost).
                     let member_files: Vec<_> = paths
                         .iter()
                         .filter(|p| p.ends_with("/Cargo.toml") && *p != "Cargo.toml")
-                        .take(20)
+                        .take(MEMBER_MANIFEST_CAP)
                         .cloned()
                         .collect();
                     for mf in member_files {
@@ -216,44 +286,55 @@ async fn collect_live(cfg: &Config, token: &str) -> Result<Graph> {
                                 manifest_union
                                     .deps
                                     .entry(k.clone())
-                                    .and_modify(|d| {
-                                        d.declaring_members += 1;
+                                    .and_modify(|d: &mut collect::ManifestDep| {
+                                        d.declaring_members =
+                                            d.declaring_members.max(v.declaring_members);
                                     })
                                     .or_insert(v);
                             }
                         }
                     }
-                    // Rust use-site check: scan .rs files (cap 50) via syn.
-                    let rs_files: Vec<_> = paths
-                        .iter()
-                        .filter(|p| p.ends_with(".rs"))
-                        .take(50)
-                        .cloned()
-                        .collect();
-                    if !rs_files.is_empty() {
-                        let mut contents: Vec<String> = vec![];
-                        for f in rs_files.iter().take(50) {
-                            if let Ok(Some(c)) =
-                                client.file_content(&repo.full_name, f, &b.name).await
-                            {
-                                contents.push(c);
-                            }
+                    // Rust use-site check: default branch only, .rs files capped.
+                    // Other branches reuse the default-branch verdict (fail-open match
+                    // when unscanned). Zero references nullifies (phantom dep).
+                    if is_default {
+                        let rs_files: Vec<_> = paths
+                            .iter()
+                            .filter(|p| p.ends_with(".rs"))
+                            .take(RS_FILES_CAP)
+                            .cloned()
+                            .collect();
+                        if paths.iter().any(|p| p.ends_with(".rs"))
+                            && rs_files.len() < paths.iter().filter(|p| p.ends_with(".rs")).count()
+                        {
+                            digest.push(format!(
+                                "{}@{}: .rs file list capped at {RS_FILES_CAP} — use-site verdict is partial",
+                                repo.full_name, b.name
+                            ));
                         }
-                        for pkg in manifest_union.deps.keys().cloned().collect::<Vec<_>>() {
-                            // Crate name for `use` matching: alias target's
-                            // repo name is the common case; fall back to package.
-                            let used = contents
-                                .iter()
-                                .any(|src| collect::rust_crate_used(&pkg, src));
-                            use_sites
-                                .entry(pkg.clone())
-                                .and_modify(|e| *e = *e || used)
-                                .or_insert(used);
-                            if !used {
-                                digest.push(format!(
-                                    "{}@{}: phantom-nullified `{}` (zero use-sites)",
-                                    repo.full_name, b.name, pkg
-                                ));
+                        if !rs_files.is_empty() {
+                            let mut contents: Vec<String> = vec![];
+                            for f in rs_files.iter() {
+                                if let Ok(Some(c)) =
+                                    client.file_content(&repo.full_name, f, &b.name).await
+                                {
+                                    contents.push(c);
+                                }
+                            }
+                            for pkg in manifest_union.deps.keys().cloned().collect::<Vec<_>>() {
+                                let used = contents
+                                    .iter()
+                                    .any(|src| collect::rust_crate_used(&pkg, src));
+                                use_sites
+                                    .entry(pkg.clone())
+                                    .and_modify(|e| *e = *e || used)
+                                    .or_insert(used);
+                                if !used {
+                                    digest.push(format!(
+                                        "{}@{}: phantom-nullified `{}` (zero use-sites in {RS_FILES_CAP} scanned files)",
+                                        repo.full_name, b.name, pkg
+                                    ));
+                                }
                             }
                         }
                     }
@@ -317,7 +398,7 @@ async fn collect_live(cfg: &Config, token: &str) -> Result<Graph> {
                 .list_dir(&repo.full_name, ".github/workflows", &b.name)
                 .await
             {
-                for f in files.iter().take(20) {
+                for f in files.iter().take(WORKFLOW_FILES_CAP) {
                     if let Ok(Some(text)) = client.file_content(&repo.full_name, f, &b.name).await {
                         for u in collect::scan_workflow_uses(&text) {
                             // `uses: owner/repo` — strip action subpaths (`me/reusable/.github/...`).
@@ -419,4 +500,61 @@ async fn collect_live(cfg: &Config, token: &str) -> Result<Graph> {
         }
     }
     Ok(g)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_graph_with_private() -> Graph {
+        let mut nodes = vec![
+            Node {
+                id: "me/pub".into(),
+                owner: "me".into(),
+                name: "pub".into(),
+                fork: false,
+                private: false,
+                upstream: None,
+                ahead_by: None,
+                branches: vec!["main".into()],
+                visible: true,
+                visible_reason: None,
+            },
+            Node {
+                id: "me/secret".into(),
+                owner: "me".into(),
+                name: "secret".into(),
+                fork: false,
+                private: true,
+                upstream: None,
+                ahead_by: None,
+                branches: vec!["main".into()],
+                visible: false,
+                visible_reason: None,
+            },
+        ];
+        let edges = vec![Edge {
+            source: "me/pub".into(),
+            target: "me/secret".into(),
+            kind: EdgeKind::Manifest,
+            declaring_branches: vec!["main".into()],
+            recency: None,
+            weight: 1.0,
+            version: None,
+            note: None,
+        }];
+        graph::apply_visibility(&mut nodes, &edges);
+        Graph::new(nodes, edges)
+    }
+
+    #[test]
+    fn default_output_strips_private_opt_in_keeps() {
+        let g = test_graph_with_private();
+        assert_eq!(g.nodes.len(), 2);
+        let pub_out = select_output(g.clone(), false);
+        assert!(pub_out.nodes.iter().all(|n| !n.private));
+        assert!(pub_out.edges.is_empty());
+        let priv_out = select_output(g, true);
+        assert_eq!(priv_out.nodes.len(), 2);
+    }
 }
