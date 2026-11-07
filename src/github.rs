@@ -87,7 +87,7 @@ impl GitHubClient {
     pub fn with_base(token: String, api_base: String) -> Result<Self> {
         anyhow::ensure!(
             !token.is_empty(),
-            "GitHub token is empty (set GITHUB_TOKEN or JZOMBIE_GRAPH_TOKEN, or pass --allow-unauthenticated explicitly)"
+            "GitHub token is empty (set JZOMBIE_GRAPH_TOKEN or pass --allow-unauthenticated explicitly)"
         );
         Self::with_base_optional(token, api_base, false)
     }
@@ -101,7 +101,7 @@ impl GitHubClient {
     ) -> Result<Self> {
         anyhow::ensure!(
             !token.is_empty() || allow_unauthenticated,
-            "GitHub token is empty (set GITHUB_TOKEN or JZOMBIE_GRAPH_TOKEN, or pass --allow-unauthenticated explicitly)"
+            "GitHub token is empty (set JZOMBIE_GRAPH_TOKEN or pass --allow-unauthenticated explicitly)"
         );
         let mut headers = HeaderMap::new();
         headers.insert(

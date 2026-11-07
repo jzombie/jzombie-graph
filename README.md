@@ -7,18 +7,8 @@ Own repo (personal scope, `jzombie/jzombie-graph`). `publish = false` — intern
 ## 60-second demo
 
 ```bash
-export GITHUB_TOKEN=ghp_...   # local dev
+export JZOMBIE_GRAPH_TOKEN=ghp_...
 cargo run -- --user jzombie --format table
-```
-
-Token resolution: `--token` flag, then `GITHUB_TOKEN`, then `JZOMBIE_GRAPH_TOKEN`.
-`JZOMBIE_GRAPH_TOKEN` exists because GitHub rejects secret names starting with `GITHUB_` —
-so the Actions secret, the env var, and the fallback are one string, no mapping:
-
-```yaml
-# .github/workflows/sweep.yml (already wired this way)
-env:
-  JZOMBIE_GRAPH_TOKEN: ${{ secrets.JZOMBIE_GRAPH_TOKEN }}
 ```
 
 ```

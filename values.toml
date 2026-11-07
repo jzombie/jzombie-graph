@@ -1,5 +1,5 @@
 # values.toml — live sweep config for jzombie's portfolio.
-# Committed: no secrets here (token comes from GITHUB_TOKEN env).
+# Committed: no secrets here (token comes from JZOMBIE_GRAPH_TOKEN env).
 # Regenerate the [aliases] table with: python3 /tmp/alias_scan.py
 # plus member crates (see README "Alias table").
 
