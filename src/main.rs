@@ -53,8 +53,12 @@ struct Cli {
     #[arg(long, default_value_t = false)]
     include_private: bool,
 
-    /// GitHub token (or GITHUB_TOKEN env). Required by default; empty only
-    /// with explicit `--allow-unauthenticated` (public-only, 60/hr).
+    /// GitHub token. Resolution order: `--token` flag, then GITHUB_TOKEN env,
+    /// then JZOMBIE_GRAPH_TOKEN env (the Actions-secret-safe name — secrets
+    /// starting with GITHUB_ are rejected by GitHub, so the secret, the env
+    /// var, and this fallback are all the same string: no cross-referencing).
+    /// Required by default; empty only with explicit `--allow-unauthenticated`
+    /// (public-only, 60/hr).
     #[arg(long, env = "GITHUB_TOKEN", default_value = "")]
     token: String,
 
@@ -85,12 +89,20 @@ async fn main() -> Result<()> {
     }
     cfg.validate()?;
 
+    // Token fallback: GITHUB_TOKEN is clap-bound above; JZOMBIE_GRAPH_TOKEN is
+    // the Actions-safe twin (same string as the secret name — no mapping layer).
+    let token = if cli.token.is_empty() {
+        std::env::var("JZOMBIE_GRAPH_TOKEN").unwrap_or_default()
+    } else {
+        cli.token.clone()
+    };
+
     let graph = if std::env::var("JZOMBIE_GRAPH_OFFLINE").is_ok() {
         anyhow::bail!(
             "offline mode: no cached repos; pass --repos with a local stub or unset JZOMBIE_GRAPH_OFFLINE for live fetch"
         )
     } else {
-        collect_live(&cfg, &cli.token, cli.allow_unauthenticated).await?
+        collect_live(&cfg, &token, cli.allow_unauthenticated).await?
     };
 
     // Default output is the public subgraph (store-safe): private repos
