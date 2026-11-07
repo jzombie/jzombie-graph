@@ -2,7 +2,6 @@ use anyhow::{Context, Result};
 use clap::{Parser, ValueEnum};
 use jzombie_graph::{
     collect,
-    config::Config,
     github::{GitHubClient, RepoMeta},
     graph::{self, Edge, EdgeKind, Graph, Node},
     output,
@@ -23,19 +22,15 @@ enum Format {
     about = "Visibility-flagged portfolio graph collector"
 )]
 struct Cli {
-    /// Config file (values.toml). All behavior is config-driven.
-    #[arg(long)]
-    config: Option<PathBuf>,
-
-    /// GitHub user to enumerate (overrides config).
+    /// GitHub user to enumerate.
     #[arg(long, conflicts_with = "org")]
     user: Option<String>,
 
-    /// GitHub org to enumerate (overrides config).
+    /// GitHub org to enumerate.
     #[arg(long)]
     org: Option<String>,
 
-    /// Explicit repo list `owner/repo,...` (overrides config; skips enumeration).
+    /// Explicit repo list `owner/repo,...` (skips enumeration).
     #[arg(long, value_delimiter = ',')]
     repos: Option<Vec<String>>,
 
@@ -68,30 +63,26 @@ struct Cli {
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
-    let mut cfg = Config::load(cli.config.as_deref())?;
-    if let Some(u) = cli.user.clone() {
-        cfg.source.user = Some(u);
-        cfg.source.org = None;
-        cfg.source.repos.clear();
-    }
-    if let Some(o) = cli.org.clone() {
-        cfg.source.org = Some(o);
-        cfg.source.user = None;
-        cfg.source.repos.clear();
-    }
-    if let Some(repos) = cli.repos.clone() {
-        cfg.source.repos = repos;
-        cfg.source.user = None;
-        cfg.source.org = None;
-    }
-    cfg.validate()?;
+    let has_list = cli.repos.as_ref().is_some_and(|r| !r.is_empty());
+    let has_enum = cli.user.is_some() || cli.org.is_some();
+    anyhow::ensure!(
+        has_list ^ has_enum,
+        "pass exactly one of --repos OR --user/--org"
+    );
 
     let graph = if std::env::var("JZOMBIE_GRAPH_OFFLINE").is_ok() {
         anyhow::bail!(
             "offline mode: no cached repos; pass --repos with a local stub or unset JZOMBIE_GRAPH_OFFLINE for live fetch"
         )
     } else {
-        collect_live(&cfg, &cli.token, cli.allow_unauthenticated).await?
+        collect_live(
+            cli.user.clone(),
+            cli.org.clone(),
+            cli.repos.clone().unwrap_or_default(),
+            &cli.token,
+            cli.allow_unauthenticated,
+        )
+        .await?
     };
 
     // Default output is the public subgraph (store-safe): private repos
@@ -123,7 +114,92 @@ fn select_output(graph: Graph, include_private: bool) -> Graph {
     }
 }
 
-async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) -> Result<Graph> {
+/// Provider map, derived live: package name -> `owner/repo` that provides it.
+///
+/// Reads every portfolio repo's root manifests (Cargo `[package]`,
+/// package.json, pyproject, go.mod) plus workspace member Cargo.tomls found
+/// via the git tree. Multimap: package -> every providing repo, each list
+/// sorted and deduped (deterministic). Collisions are NOT resolved here —
+/// the edge pass reports them per-consumer and asserts no edge rather than
+/// a wrong one. Truncated trees warn (member list may be partial). No caps —
+/// completeness matters here, unlike the budget-bound structure pass.
+async fn collect_providers(
+    client: &GitHubClient,
+    repos: &[RepoMeta],
+) -> HashMap<String, Vec<String>> {
+    use std::collections::{BTreeMap, BTreeSet};
+    let mut providers: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    let mut sorted: Vec<&RepoMeta> = repos.iter().collect();
+    sorted.sort_by(|a, b| a.full_name.cmp(&b.full_name));
+    let n = sorted.len();
+    for (i, repo) in sorted.iter().enumerate() {
+        eprintln!("[providers {}/{}] {}", i + 1, n, repo.full_name);
+        let sha = client
+            .branch_sha(&repo.full_name, &repo.default_branch)
+            .await
+            .unwrap_or_default();
+        // (path, kind) manifest candidates for name extraction.
+        let mut candidates: Vec<(String, &'static collect::ManifestKind)> = vec![];
+        if sha.is_empty() {
+            // SHA unresolved: blind probes on registry roots, no members.
+            for kind in collect::MANIFEST_KINDS {
+                candidates.push((kind.file.to_string(), kind));
+            }
+        } else {
+            match client.tree_paths(&repo.full_name, &sha).await {
+                Ok(listing) => {
+                    if listing.truncated {
+                        eprintln!(
+                            "warning: {} tree truncated — provider list may be partial",
+                            repo.full_name
+                        );
+                    }
+                    for p in &listing.paths {
+                        if let Some(kind) = collect::manifest_kind_for_root(p) {
+                            candidates.push((p.clone(), kind));
+                        } else if let Some(kind) = collect::manifest_kind_for_member(p) {
+                            candidates.push((p.clone(), kind));
+                        }
+                    }
+                }
+                Err(_) => {
+                    for kind in collect::MANIFEST_KINDS {
+                        candidates.push((kind.file.to_string(), kind));
+                    }
+                }
+            }
+        }
+        candidates.sort_by(|a, b| a.0.cmp(&b.0));
+        candidates.dedup_by(|a, b| a.0 == b.0);
+        for (path, kind) in candidates {
+            let text = match client
+                .file_content(&repo.full_name, &path, &repo.default_branch)
+                .await
+            {
+                Ok(Some(t)) => t,
+                _ => continue,
+            };
+            if let Some(pkg) = (kind.package_name)(&text) {
+                providers
+                    .entry(pkg)
+                    .or_default()
+                    .insert(repo.full_name.clone());
+            }
+        }
+    }
+    providers
+        .into_iter()
+        .map(|(k, v)| (k, v.into_iter().collect()))
+        .collect()
+}
+
+async fn collect_live(
+    user: Option<String>,
+    org: Option<String>,
+    explicit_repos: Vec<String>,
+    token: &str,
+    allow_unauthenticated: bool,
+) -> Result<Graph> {
     let client = GitHubClient::with_base_optional(
         token.to_string(),
         "https://api.github.com".into(),
@@ -134,9 +210,10 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
     }
 
     // 1. Repo set: explicit list (fetched for fork/private facts) or enumerate.
-    let repos: Vec<RepoMeta> = if !cfg.source.repos.is_empty() {
+    // Forks included: filtering is the visibility pass's job, not collection's.
+    let repos: Vec<RepoMeta> = if !explicit_repos.is_empty() {
         let mut out = vec![];
-        for full in &cfg.source.repos {
+        for full in &explicit_repos {
             out.push(
                 client
                     .get_repo(full)
@@ -147,41 +224,39 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
         out
     } else {
         client
-            .enumerate_repos(
-                cfg.source.user.as_deref(),
-                cfg.source.org.as_deref(),
-                cfg.source.include_forks,
-            )
+            .enumerate_repos(user.as_deref(), org.as_deref(), true)
             .await?
     };
 
     let portfolio: BTreeSet<String> = repos.iter().map(|r| r.full_name.clone()).collect();
-    let aliases = cfg.alias_map();
+    // Provider map, derived live every run: each portfolio repo's own
+    // manifests declare the package names it provides. Nothing checked in,
+    // nothing regenerated by hand — rename a package and the next sweep
+    // picks it up. Private repos included (transit; never rendered).
+    let aliases = collect_providers(&client, &repos).await;
+    if aliases.is_empty() {
+        eprintln!("warning: no packages discovered in portfolio manifests — no manifest edges.");
+    }
 
-    // API budget (default-branch-only, tree-first): 1 tree call gates every
-    // existence probe — manifests, lockfiles, gitmodules, docs are only
-    // fetched when present in the tree, so 404 probes (and their x4
-    // drive-retry multiplier) drop to ~zero except on races. Workflows list
-    // only when the tree shows a `.github/workflows/` prefix.
-    // Per repo worst case: 1 branch-SHA + 1 tree + manifests present (<=2
-    // typical) + locks present (<=2) + gitmodules/docs present (<=3) +
-    // 1 workflow list + workflow files <=10 + member manifests <=10 +
-    // .rs files <=10 + ahead_by (+1 parent fetch for forks missing it —
-    // the enumerate endpoint returns parent:null, resolved above).
-    // Typical: ~12-15/repo. Sequential today; fan-out in 1.1.
+    // API budget (default-branch-only, tree-first, two passes): providers pass
+    // (1 SHA + 1 tree + root manifests + member Cargo.tomls, uncapped) then the
+    // structure pass (1 tree gates every probe; workflows<=10 + members<=10 +
+    // rs<=10; +1 parent fetch for forks missing it — the enumerate endpoint
+    // returns parent:null). Typical ~22/repo; sequential today, fan-out in 1.1.
     const WORKFLOW_FILES_CAP: usize = 10;
     const MEMBER_MANIFEST_CAP: usize = 10;
     const RS_FILES_CAP: usize = 10;
     {
         let n_repos = repos.len();
-        let per_repo_worst =
-            2 + 1 + 1 + 2 + 2 + 3 + 1 + WORKFLOW_FILES_CAP + MEMBER_MANIFEST_CAP + RS_FILES_CAP;
+        // Providers pass: 1 SHA + 1 tree + ~4 roots + members (uncapped, ~10 typical).
+        // Structure pass: as before (tree-gated, caps above).
+        let per_repo_worst = (2 + 1 + 4 + 40)
+            + (2 + 1 + 1 + 2 + 2 + 3 + 1 + WORKFLOW_FILES_CAP + MEMBER_MANIFEST_CAP + RS_FILES_CAP);
         let est_worst = n_repos * per_repo_worst;
-        let est_typ = n_repos * 14;
+        let est_typ = n_repos * 24;
         eprintln!(
             "budget: {n_repos} repos (default branch only): ~{est_typ} API calls typical, ~{est_worst} worst-case \
-             (tree-first: 1 tree/repo gates all probes, no 404-retry mult; workflows<=10 + members<=10 + rs<=10; \
-             rate limit 5000/hr)"
+             (two passes: live provider map + tree-gated structure; no 404-retry mult; rate limit 5000/hr)"
         );
     }
 
@@ -277,54 +352,54 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
                 }
             };
 
-            // Manifests: Cargo.toml first, then other ecosystems.
-            // declaring_members is MAX across branches (not sum): the same
-            // workspace members re-declared on N branches are still N members,
-            // not N x members. Branches union via declaring_branches, weight via max.
-            let cargo_text: Option<String> = if has("Cargo.toml") {
-                match client
-                    .file_content(&repo.full_name, "Cargo.toml", &b_name)
+            // Manifests, registry-driven: one loop over MANIFEST_KINDS.
+            // declaring_members is MAX on union (not sum). Walked kinds
+            // (Cargo) additionally merge workspace members (below) and run
+            // the use-site scan. No per-ecosystem branches.
+            let mut walked_present = false;
+            for kind in collect::MANIFEST_KINDS {
+                if !has(kind.file) {
+                    continue;
+                }
+                if kind.walk_members {
+                    walked_present = true;
+                }
+                let text: Option<String> = client
+                    .file_content(&repo.full_name, kind.file, &b_name)
                     .await
+                    .unwrap_or_default();
+                if let Some(text) = text
+                    && let Ok(m) = (kind.parse)(&text)
                 {
-                    Ok(Some(text)) => Some(text),
-                    _ => None,
+                    for (k, v) in m.deps {
+                        manifest_union
+                            .deps
+                            .entry(k.clone())
+                            .and_modify(|d: &mut collect::ManifestDep| {
+                                d.declaring_members = d.declaring_members.max(v.declaring_members);
+                                d.optional = d.optional && v.optional;
+                            })
+                            .or_insert(v);
+                    }
+                    manifest_union.workspace_members.extend(m.workspace_members);
+                    manifest_union.workspace_members.sort();
+                    manifest_union.workspace_members.dedup();
                 }
-            } else {
-                None
-            };
-            let cargo_present = has("Cargo.toml");
-            if let Some(text) = cargo_text
-                && let Ok(m) = collect::parse_cargo_manifest(&text)
-            {
-                for (k, v) in m.deps {
-                    manifest_union
-                        .deps
-                        .entry(k.clone())
-                        .and_modify(|d: &mut collect::ManifestDep| {
-                            d.declaring_members = d.declaring_members.max(v.declaring_members);
-                            d.optional = d.optional && v.optional;
-                        })
-                        .or_insert(v);
-                }
-                manifest_union.workspace_members.extend(m.workspace_members);
-                manifest_union.workspace_members.sort();
-                manifest_union.workspace_members.dedup();
             }
             // Workspace members walked via git trees, collapsed to repo node.
             // Single branch scanned, so the use-site verdict is complete
             // (capped at RS_FILES_CAP with a digest note when partial).
             // Zero references nullifies (phantom dep).
-            if cargo_present && let Some(set) = &tree_set {
-                // Fetch member Cargo.tomls (cap MEMBER_MANIFEST_CAP to bound API cost).
-                let member_files: Vec<_> = set
+            if walked_present && let Some(set) = &tree_set {
+                // Fetch member manifests (cap MEMBER_MANIFEST_CAP to bound API cost).
+                let member_files: Vec<(&String, &'static collect::ManifestKind)> = set
                     .iter()
-                    .filter(|p| p.ends_with("/Cargo.toml") && *p != "Cargo.toml")
+                    .filter_map(|p| collect::manifest_kind_for_member(p).map(|k| (p, k)))
                     .take(MEMBER_MANIFEST_CAP)
-                    .cloned()
                     .collect();
-                for mf in member_files {
-                    if let Ok(Some(mt)) = client.file_content(&repo.full_name, &mf, &b_name).await
-                        && let Ok(mm) = collect::parse_cargo_manifest(&mt)
+                for (mf, kind) in member_files {
+                    if let Ok(Some(mt)) = client.file_content(&repo.full_name, mf, &b_name).await
+                        && let Ok(mm) = (kind.parse)(&mt)
                     {
                         for (k, v) in mm.deps {
                             manifest_union
@@ -392,37 +467,6 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
                     }
                 }
             }
-            if has("package.json")
-                && let Ok(Some(text)) = client
-                    .file_content(&repo.full_name, "package.json", &b_name)
-                    .await
-                && let Ok(m) = collect::parse_package_json(&text)
-            {
-                for (k, v) in m.deps {
-                    manifest_union.deps.entry(k).or_insert(v);
-                }
-            }
-            if has("pyproject.toml")
-                && let Ok(Some(text)) = client
-                    .file_content(&repo.full_name, "pyproject.toml", &b_name)
-                    .await
-                && let Ok(m) = collect::parse_pyproject(&text)
-            {
-                for (k, v) in m.deps {
-                    manifest_union.deps.entry(k).or_insert(v);
-                }
-            }
-            if has("go.mod")
-                && let Ok(Some(text)) = client
-                    .file_content(&repo.full_name, "go.mod", &b_name)
-                    .await
-                && let Ok(m) = collect::parse_go_mod(&text)
-            {
-                for (k, v) in m.deps {
-                    manifest_union.deps.entry(k).or_insert(v);
-                }
-            }
-
             // Lockfile gate: presence confirms, absence-with-lockfile deletes.
             // Tree-gated: only fetched when the lockfile is in the tree.
             for lock in ["Cargo.lock", "package-lock.json"] {
@@ -496,6 +540,7 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
         // Manifest edges (one per target, default branch).
         let lock_gate: Option<BTreeSet<String>> =
             if saw_lockfile { Some(lock_union) } else { None };
+        let mut ambiguities: Vec<(String, Vec<String>)> = vec![];
         let mut edges = collect::build_manifest_edges(
             &repo.full_name,
             &branch_recency,
@@ -505,7 +550,15 @@ async fn collect_live(cfg: &Config, token: &str, allow_unauthenticated: bool) ->
             lock_gate.as_ref(),
             &use_sites,
             &lock_versions,
+            &mut ambiguities,
         );
+        for (pkg, candidates) in ambiguities {
+            digest.push(format!(
+                "{}: ambiguous dep `{pkg}` provided by {} — no edge (not asserting a wrong one)",
+                repo.full_name,
+                candidates.join(", ")
+            ));
+        }
         // Submodule / workflow / docs associations (weight 0, displayed only).
         for t in submodule_targets {
             edges.push(Edge {

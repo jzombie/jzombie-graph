@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo run --release -- --config values.toml --format json --output graph.json
+      - run: cargo run --release -- --user jzombie --format json --output graph.json
       - uses: actions/upload-artifact@v4
         with:
           name: graph-${{ github.run_id }}

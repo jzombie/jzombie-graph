@@ -117,6 +117,100 @@ fn normalize_pkg(name: &str) -> String {
     name.trim().to_lowercase().replace('_', "-")
 }
 
+/// Registry/package names for alias-table generation (machine-generated,
+/// never hand-edited). Each returns the normalized name, if the manifest
+/// declares one. Workspace-only roots declare none (members carry names).
+pub fn cargo_package_name(text: &str) -> Option<String> {
+    let v: toml::Value = toml::from_str(text).ok()?;
+    v.get("package")?.get("name")?.as_str().map(normalize_pkg)
+}
+
+/// package.json `name` (npm scope prefix preserved: `@scope/pkg`).
+pub fn package_json_name(text: &str) -> Option<String> {
+    let v: serde_json::Value = serde_json::from_str(text).ok()?;
+    v.get("name")?.as_str().map(normalize_pkg)
+}
+
+/// pyproject `[project] name`, else `[tool.poetry] name`.
+pub fn pyproject_name(text: &str) -> Option<String> {
+    let v: toml::Value = toml::from_str(text).ok()?;
+    v.get("project")
+        .and_then(|p| p.get("name"))
+        .or_else(|| v.get("tool")?.get("poetry")?.get("name"))
+        .and_then(|n| n.as_str())
+        .map(normalize_pkg)
+}
+
+/// go.mod `module` line, short (last path segment) form for alias mapping.
+pub fn go_mod_name(text: &str) -> Option<String> {
+    for line in text.lines() {
+        let t = line.trim();
+        if let Some(rest) = t.strip_prefix("module ") {
+            let module = rest.split_whitespace().next().unwrap_or("");
+            if !module.is_empty() {
+                return Some(module.rsplit('/').next().unwrap_or(module).to_lowercase());
+            }
+        }
+    }
+    None
+}
+
+/// Registry of manifest kinds. Adding an ecosystem = one row here.
+/// Both passes (provider discovery, structure collection) read this table —
+/// no per-ecosystem filename branches anywhere else.
+pub struct ManifestKind {
+    /// Root filename (`Cargo.toml`, `package.json`, ...).
+    pub file: &'static str,
+    /// Full manifest -> dep set (structure pass).
+    pub parse: fn(&str) -> anyhow::Result<ManifestSet>,
+    /// Manifest -> provided package name (provider pass).
+    pub package_name: fn(&str) -> Option<String>,
+    /// Whether member manifests of this kind are walked (Cargo workspaces).
+    pub walk_members: bool,
+}
+
+pub static MANIFEST_KINDS: &[ManifestKind] = &[
+    ManifestKind {
+        file: "Cargo.toml",
+        parse: parse_cargo_manifest,
+        package_name: cargo_package_name,
+        walk_members: true,
+    },
+    ManifestKind {
+        file: "package.json",
+        parse: parse_package_json,
+        package_name: package_json_name,
+        walk_members: false,
+    },
+    ManifestKind {
+        file: "pyproject.toml",
+        parse: parse_pyproject,
+        package_name: pyproject_name,
+        walk_members: false,
+    },
+    ManifestKind {
+        file: "go.mod",
+        parse: parse_go_mod,
+        package_name: go_mod_name,
+        walk_members: false,
+    },
+];
+
+/// Root manifest? Exact filename hit in the registry.
+pub fn manifest_kind_for_root(path: &str) -> Option<&'static ManifestKind> {
+    MANIFEST_KINDS.iter().find(|k| k.file == path)
+}
+
+/// Member manifest of a walked kind (`<dir>/Cargo.toml`, never the root)?
+pub fn manifest_kind_for_member(path: &str) -> Option<&'static ManifestKind> {
+    MANIFEST_KINDS.iter().find(|k| {
+        k.walk_members
+            && path
+                .strip_suffix(k.file)
+                .is_some_and(|pre| pre.ends_with('/'))
+    })
+}
+
 /// package.json: `dependencies` full weight; peer/optional -> 0.5 scope.
 pub fn parse_package_json(text: &str) -> anyhow::Result<ManifestSet> {
     let v: serde_json::Value = serde_json::from_str(text)?;
@@ -389,31 +483,48 @@ pub struct BranchDecl {
     pub recency: Option<chrono::DateTime<chrono::Utc>>,
 }
 
-/// Build manifest edges for one repo: alias-map package -> portfolio repo,
-/// apply scope (optional 0.5), use-site Boolean, lockfile gate.
+/// Build manifest edges for one repo: providers map package -> portfolio
+/// repos, apply scope (optional 0.5), use-site Boolean, lockfile gate.
 ///
 /// - `lockfile: None` -> no lockfile, manifest suffices.
 /// - `lockfile: Some(set)` -> package present confirms; absent deletes edge.
 /// - `use_sites: package -> referenced?` (None = no sources scanned -> match).
+/// - Ambiguous packages (2+ providers): no edge — asserting one would be a
+///   coin flip. Recorded in `ambiguities` (package -> candidate repos) for
+///   the caller's digest; never silently dropped.
 #[allow(clippy::too_many_arguments)]
 pub fn build_manifest_edges(
     source_repo: &str,
     branches: &[BranchDecl],
     manifest: &ManifestSet,
-    alias_map: &HashMap<String, String>,
+    providers: &HashMap<String, Vec<String>>,
     portfolio: &BTreeSet<String>,
     lockfile: Option<&BTreeSet<String>>,
     use_sites: &HashMap<String, bool>,
     lock_versions: &HashMap<String, String>,
+    ambiguities: &mut Vec<(String, Vec<String>)>,
 ) -> Vec<Edge> {
     let mut out = vec![];
     for dep in manifest.deps.values() {
-        let Some(target) = alias_map.get(&normalize_pkg(&dep.package)) else {
-            continue;
+        let pkg = normalize_pkg(&dep.package);
+        let Some(targets) = providers.get(&pkg) else {
+            continue; // external package, not a portfolio edge
         };
-        if !portfolio.contains(target) {
+        // Providers are portfolio repos by construction; belt-and-suspenders.
+        let targets: Vec<&String> = targets.iter().filter(|t| portfolio.contains(*t)).collect();
+        if targets.is_empty() {
             continue;
         }
+        if targets.len() > 1 {
+            let mut names: Vec<String> = targets.iter().map(|t| (*t).clone()).collect();
+            names.sort();
+            names.dedup();
+            if !ambiguities.iter().any(|(p, _)| *p == pkg) {
+                ambiguities.push((pkg, names));
+            }
+            continue; // ambiguous: no edge rather than a wrong edge
+        }
+        let target = targets[0];
         if source_repo == target {
             continue; // self-dep (workspace root alias) is not a portfolio edge
         }
@@ -581,9 +692,9 @@ serde = "1"
                 declaring_members: 1,
             },
         );
-        let aliases: HashMap<String, String> = [
-            ("foo".into(), "me/lib".into()),
-            ("phantom".into(), "me/other".into()),
+        let providers: HashMap<String, Vec<String>> = [
+            ("foo".into(), vec!["me/lib".into()]),
+            ("phantom".into(), vec!["me/other".into()]),
         ]
         .into_iter()
         .collect();
@@ -597,31 +708,94 @@ serde = "1"
         let use_sites: HashMap<String, bool> = [("foo".into(), true), ("phantom".into(), false)]
             .into_iter()
             .collect();
+        let mut ambiguities = vec![];
         let edges = build_manifest_edges(
             "me/app",
             &branches,
             &manifest,
-            &aliases,
+            &providers,
             &portfolio,
             None,
             &use_sites,
             &HashMap::new(),
+            &mut ambiguities,
         );
         assert_eq!(edges.len(), 1);
         assert_eq!(edges[0].weight, 3.0 * 0.5);
+        assert!(ambiguities.is_empty());
         // Absent-with-lockfile deletes the edge.
         let locked: BTreeSet<String> = ["bar".into()].into_iter().collect();
         let edges2 = build_manifest_edges(
             "me/app",
             &branches,
             &manifest,
-            &aliases,
+            &providers,
             &portfolio,
             Some(&locked),
             &HashMap::new(),
             &HashMap::new(),
+            &mut ambiguities,
         );
         assert!(edges2.is_empty());
+    }
+
+    #[test]
+    fn ambiguous_package_yields_no_edge_but_records() {
+        let mut manifest = ManifestSet::default();
+        manifest.deps.insert(
+            "dup".into(),
+            ManifestDep {
+                package: "dup".into(),
+                optional: false,
+                declaring_members: 1,
+            },
+        );
+        let providers: HashMap<String, Vec<String>> =
+            [("dup".into(), vec!["me/a".into(), "me/b".into()])]
+                .into_iter()
+                .collect();
+        let portfolio: BTreeSet<String> = ["me/app".into(), "me/a".into(), "me/b".into()]
+            .into_iter()
+            .collect();
+        let branches = vec![BranchDecl {
+            branch: "main".into(),
+            recency: None,
+        }];
+        let mut ambiguities = vec![];
+        let edges = build_manifest_edges(
+            "me/app",
+            &branches,
+            &manifest,
+            &providers,
+            &portfolio,
+            None,
+            &HashMap::new(),
+            &HashMap::new(),
+            &mut ambiguities,
+        );
+        assert!(edges.is_empty(), "ambiguous: no edge, never a wrong one");
+        assert_eq!(
+            ambiguities,
+            vec![("dup".into(), vec!["me/a".into(), "me/b".into()])]
+        );
+    }
+
+    #[test]
+    fn registry_package_names() {
+        let cargo = "[package]\nname = \"reqwest-drive\"\nversion = \"0.1.0\"\n";
+        assert_eq!(cargo_package_name(cargo).as_deref(), Some("reqwest-drive"));
+        let ws = "[workspace]\nmembers = [\"crates/a\"]\n";
+        assert_eq!(cargo_package_name(ws), None);
+        let npm = r#"{"name": "@scope/pkg", "version": "1.0.0"}"#;
+        assert_eq!(package_json_name(npm).as_deref(), Some("@scope/pkg"));
+        let py = "[project]\nname = \"my-pkg\"\nversion = \"1\"\n";
+        assert_eq!(pyproject_name(py).as_deref(), Some("my-pkg"));
+        let poetry = "[tool.poetry]\nname = \"poetry-pkg\"\n";
+        assert_eq!(pyproject_name(poetry).as_deref(), Some("poetry-pkg"));
+        let go = "module github.com/me/my-mod\n\ngo 1.21\n";
+        assert_eq!(go_mod_name(go).as_deref(), Some("my-mod"));
+        let go_single = "module my-tool\n";
+        assert_eq!(go_mod_name(go_single).as_deref(), Some("my-tool"));
     }
 
     #[test]

@@ -29,20 +29,19 @@ cargo run -- --user jzombie --format dot > portfolio.dot && dot -Tsvg portfolio.
 cargo run -- --user jzombie --format json > graph.json
 ```
 
-## Config (`values.toml`)
-
-Everything is config-driven. Copy the example and edit:
+## Usage (no config file — flags only)
 
 ```bash
-cp values.example.toml values.toml
-cargo run -- --config values.toml --format table
+cargo run -- --user jzombie --format table
 ```
 
-Key knobs: `source.repos` (explicit list) XOR `source.user`/`source.org` (enumerate);
-`aliases` (package name -> `owner/repo` — names diverge everywhere, this table is the fix);
-`collection.extra_aliases` (same, per-sweep overrides).
-
 Two input modes: `--repos a,b,c` (explicit) or `--user`/`--org` (enumerate-all, forks included).
+
+Package-to-repo resolution is derived live every run: the provider pass reads
+each portfolio repo's root manifests (Cargo `[package]`, package.json,
+pyproject, go.mod) plus workspace member Cargo.tomls, and matches manifest
+deps against that. Rename a package and the next sweep picks it up — there is
+no alias file to remember to update.
 
 ## Token scopes (least privilege)
 
