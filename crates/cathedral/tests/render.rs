@@ -130,6 +130,46 @@ fn docs_edges_draw_faint_reference_trace() {
 }
 
 #[test]
+fn docs_satellite_with_prose_but_no_language_stays_out() {
+    // Description + topics but no code: still a bucket, stays out even if
+    // someone writes it a nice readme blurb later.
+    let asset = Node {
+        language: None,
+        ..node("me/blobs", false, false)
+    };
+    let mut nodes = vec![
+        node("me/a", false, false),
+        node("me/b", false, false),
+        asset,
+    ];
+    let edges = vec![
+        edge("me/a", "me/b", EdgeKind::Manifest),
+        edge("me/a", "me/blobs", EdgeKind::Docs),
+    ];
+    graph::apply_visibility(&mut nodes, &edges);
+    graph::apply_layers(&mut nodes, &edges);
+    let md = render_cathedral(&Graph::new(nodes, edges));
+    assert!(!md.contains("blobs"), "prose-only bucket stays out");
+}
+
+#[test]
+fn docs_satellite_with_language_is_kept() {
+    let tool = Node {
+        language: Some("Shell".into()),
+        ..node("me/tool", false, false)
+    };
+    let mut nodes = vec![node("me/a", false, false), node("me/b", false, false), tool];
+    let edges = vec![
+        edge("me/a", "me/b", EdgeKind::Manifest),
+        edge("me/a", "me/tool", EdgeKind::Docs),
+    ];
+    graph::apply_visibility(&mut nodes, &edges);
+    graph::apply_layers(&mut nodes, &edges);
+    let md = render_cathedral(&Graph::new(nodes, edges));
+    assert!(md.contains("tool"), "code satellite kept");
+}
+
+#[test]
 fn workflow_edges_attach_nothing() {
     let mut nodes = vec![node("me/a", false, false), node("me/tool", false, false)];
     let edges = vec![edge("me/a", "me/tool", EdgeKind::Workflow)];

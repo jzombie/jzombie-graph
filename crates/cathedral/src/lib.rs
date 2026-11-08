@@ -177,8 +177,9 @@ fn select_cluster(graph: &Graph) -> Option<Cluster> {
     // Docs satellites: fresh eligible nodes with a direct docs edge to the
     // dependence core (runtime coupling, e.g. portable QEMU builds the VM
     // host consumes but doesn't declare as a cargo dep). The satellite must
-    // look like a project (description, language, or topics) — asset
-    // buckets with none of those stay out. Workflow stays out as tooling.
+    // contain code (detected `language`) — prose alone (description/topics)
+    // never qualifies, so an asset bucket stays out even if it gains a
+    // readme blurb later. Workflow stays out as tooling.
     for e in &graph.edges {
         if e.kind != EdgeKind::Docs {
             continue;
@@ -195,14 +196,12 @@ fn select_cluster(graph: &Graph) -> Option<Cluster> {
             None
         };
         if let Some(id) = other {
-            let looks_like_project = graph.nodes.iter().find(|n| n.id == id).is_some_and(|n| {
-                n.description
-                    .as_deref()
-                    .is_some_and(|d| !d.trim().is_empty())
-                    || n.language.is_some()
-                    || !n.topics.is_empty()
-            });
-            if looks_like_project {
+            let is_code = graph
+                .nodes
+                .iter()
+                .find(|n| n.id == id)
+                .is_some_and(|n| n.language.is_some());
+            if is_code {
                 core.insert(id.to_string());
             }
         }
