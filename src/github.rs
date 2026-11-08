@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use chrono::{DateTime, Utc};
 use reqwest::header::{ACCEPT, AUTHORIZATION, HeaderMap, HeaderValue, USER_AGENT};
 use reqwest_drive::{ClientBuilder, ClientWithMiddleware, DriveThrottleBackoff, ThrottlePolicy};
 use serde::{Deserialize, Serialize};
@@ -14,6 +15,9 @@ pub struct RepoMeta {
     pub private: bool,
     pub default_branch: String,
     pub parent_full_name: Option<String>,
+    /// Last push to the repo (API `pushed_at`). Display fact only, never scored.
+    /// Free in the enumerate/get responses — zero extra calls.
+    pub pushed_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,6 +42,7 @@ struct ApiRepo {
     private: bool,
     default_branch: Option<String>,
     parent: Option<ApiParent>,
+    pushed_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -189,6 +194,7 @@ impl GitHubClient {
                     private: r.private,
                     default_branch: r.default_branch.unwrap_or_else(|| "main".into()),
                     parent_full_name: r.parent.map(|p| p.full_name),
+                    pushed_at: r.pushed_at,
                 });
             }
             if n < 100 {
@@ -211,6 +217,7 @@ impl GitHubClient {
             private: r.private,
             default_branch: r.default_branch.unwrap_or_else(|| "main".into()),
             parent_full_name: r.parent.map(|p| p.full_name),
+            pushed_at: r.pushed_at,
         })
     }
 

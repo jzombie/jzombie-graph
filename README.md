@@ -8,15 +8,27 @@ Own repo (personal scope, `jzombie/jzombie-graph`). `publish = false` — intern
 
 ```bash
 export JZOMBIE_GRAPH_TOKEN=ghp_...
-cargo run -- --user jzombie --format table
+cargo run -- --user jzombie --format dump
 ```
 
 ```
-jzombie-graph: 42 nodes (18 visible), 57 edges [schema v1]
---- nodes (weight-desc) ---
-...
---- heaviest edges (top 20) ---
-...
+jzombie-graph dump: 42 nodes (18 visible), 57 edges [schema v3] generated_at=...
+--- nodes (42, fan-in desc) ---
+[node 1/42] jzombie/some-lib
+  owner: jzombie name: some-lib
+  fork: false private: false upstream: - ahead_by: -
+  branches: [main]
+  visible: true (tier3: >=1 portfolio edge)
+  pushed_at: 2026-10-30T12:00:00+00:00
+  fan-in: 3 fan-out: 1
+  in:
+    ...
+  out:
+    ...
+--- edges (57, all) ---
+[edge 1/57] jzombie/a -> jzombie/some-lib [manifest]
+  declaring_branches: [main]
+  ...
 ```
 
 Other formats:
@@ -32,7 +44,7 @@ cargo run -- --user jzombie --format json > graph.json
 ## Usage (no config file — flags only)
 
 ```bash
-cargo run -- --user jzombie --format table
+cargo run -- --user jzombie --format dump
 ```
 
 Two input modes: `--repos a,b,c` (explicit) or `--user`/`--org` (enumerate-all, forks included).
@@ -85,6 +97,10 @@ diff <(jq -S . yesterday.json) <(jq -S . graph.json)
   never inflated by declaration count.
 - Node score = fan-in: the count of incoming dependence edges (how many portfolio
   repos depend on it). That count is the "most depended-upon" ranking.
+- Freshness: every node carries `pushed_at` (API-native, free in the list
+  response). Display fact only, never scored — heartbeat/staleness signal.
+- `--format dump` is the debug lane: every node + every edge, all fields,
+  vertical, nothing truncated. JSON stays the machine lane.
 - Use-site check: Rust via `syn` AST (`use` items incl. `pub use`; unparseable = match),
   regex fallback elsewhere. Default branch only, `.rs` files capped (budget bound).
   Partial coverage is fail-open (edges kept); only a full scan with zero refs

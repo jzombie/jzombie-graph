@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Stable schema version. Bump only with a documented migration.
-pub const SCHEMA_VERSION: u32 = 2;
+pub const SCHEMA_VERSION: u32 = 3;
 
 /// Mechanically collected edge kinds. Dependence kinds count toward fan-in;
 /// association kinds display only (see plan: workflow/docs/xrefs).
@@ -43,6 +43,9 @@ pub struct Node {
     pub upstream: Option<String>,
     /// Commits ahead of upstream (`compare` API). Rule (a): divergence re-admits forks.
     pub ahead_by: Option<u32>,
+    /// Last push to the repo (API `pushed_at`). Display fact only, never scored.
+    /// Free in the enumerate/get responses — staleness/heartbeat signal.
+    pub pushed_at: Option<DateTime<Utc>>,
     /// Branches observed during collection.
     pub branches: Vec<String>,
     /// Computed visibility: renderers filter blindly on this, never re-decide.
@@ -222,6 +225,7 @@ mod tests {
             private,
             upstream: None,
             ahead_by,
+            pushed_at: None,
             branches: vec!["main".into()],
             visible: false,
             visible_reason: None,

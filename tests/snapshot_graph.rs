@@ -17,6 +17,7 @@ fn node(id: &str, fork: bool, private: bool, ahead_by: Option<u32>) -> Node {
         private,
         upstream: None,
         ahead_by,
+        pushed_at: None,
         branches: vec!["main".into()],
         visible: false,
         visible_reason: None,

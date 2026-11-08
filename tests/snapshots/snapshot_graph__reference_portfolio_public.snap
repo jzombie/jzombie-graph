@@ -1,10 +1,10 @@
 ---
 source: tests/snapshot_graph.rs
-assertion_line: 129
+assertion_line: 130
 expression: "&pub_g"
 ---
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "generated_at": "1970-01-01T00:00:00Z",
   "nodes": [
     {
@@ -15,6 +15,7 @@ expression: "&pub_g"
       "private": false,
       "upstream": null,
       "ahead_by": null,
+      "pushed_at": null,
       "branches": [
         "main"
       ],
@@ -29,6 +30,7 @@ expression: "&pub_g"
       "private": false,
       "upstream": null,
       "ahead_by": null,
+      "pushed_at": null,
       "branches": [
         "main"
       ],
@@ -43,6 +45,7 @@ expression: "&pub_g"
       "private": false,
       "upstream": null,
       "ahead_by": 0,
+      "pushed_at": null,
       "branches": [
         "main"
       ],
@@ -57,6 +60,7 @@ expression: "&pub_g"
       "private": false,
       "upstream": null,
       "ahead_by": 12,
+      "pushed_at": null,
       "branches": [
         "main"
       ],

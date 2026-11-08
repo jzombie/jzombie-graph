@@ -12,7 +12,9 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Copy, ValueEnum)]
 enum Format {
     Json,
-    Table,
+    /// Full vertical dump: every node + every edge with all fields. Debug lane.
+    #[value(alias = "table")]
+    Dump,
     Dot,
 }
 
@@ -34,7 +36,7 @@ struct Cli {
     #[arg(long, value_delimiter = ',')]
     repos: Option<Vec<String>>,
 
-    /// Output format: json (default) | table (human summary) | dot (dev eyeballing).
+    /// Output format: json (default) | dump (full debug) | dot (dev eyeballing).
     #[arg(long, value_enum, default_value = "json")]
     format: Format,
 
@@ -92,7 +94,7 @@ async fn main() -> Result<()> {
 
     let text = match cli.format {
         Format::Json => output::render_json(&rendered)?,
-        Format::Table => output::render_table(&rendered),
+        Format::Dump => output::render_dump(&rendered),
         Format::Dot => output::render_dot(&rendered),
     };
     if let Some(path) = cli.output {
@@ -598,6 +600,7 @@ async fn collect_live(
             private: repo.private,
             upstream: repo.parent_full_name.clone(),
             ahead_by,
+            pushed_at: repo.pushed_at,
             branches: branch_names,
             visible: false, // computed below
             visible_reason: None,
@@ -636,6 +639,7 @@ mod tests {
                 private: false,
                 upstream: None,
                 ahead_by: None,
+                pushed_at: None,
                 branches: vec!["main".into()],
                 visible: true,
                 visible_reason: None,
@@ -648,6 +652,7 @@ mod tests {
                 private: true,
                 upstream: None,
                 ahead_by: None,
+                pushed_at: None,
                 branches: vec!["main".into()],
                 visible: false,
                 visible_reason: None,
