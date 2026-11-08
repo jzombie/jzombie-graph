@@ -3,7 +3,7 @@
 //! Reads the collector's schema via `Graph::from_json` (schema-checked) and
 //! renders jzombie's portfolio as a 2D projection of the dependence graph:
 //! nodes that share edges pull together, unconnected nodes push apart.
-//! No buses, no stubs, no intermediate glyphs — one dotted trace per real
+//! No buses, no stubs, no intermediate glyphs — one braille trace per real
 //! dependence edge (`manifest`/`submodule`/`registry`), so a trace always
 //! means a real edge. Every node label is a link; tags are zero-width so
 //! geometry computed on visible text stays aligned.
@@ -37,7 +37,7 @@ pub fn render_cathedral(graph: &Graph) -> String {
     s.push_str("jzombie's portfolio as a 2D projection — proximity is edge strength.\n\n");
     let _ = writeln!(
         s,
-        "Generated from `graph.json` (schema v{}). One dot-trace per real dependence edge; every label links to GitHub.\n",
+        "Generated from `graph.json` (schema v{}). One braille trace per real dependence edge; every label links to GitHub.\n",
         graph.schema_version,
     );
     let Some(draw) = select_cluster(graph) else {
@@ -215,7 +215,6 @@ fn render_pre(graph: &Graph, cluster: &Cluster) -> String {
             .cmp(&fan_in.get(*a).copied().unwrap_or(0))
             .then_with(|| a.cmp(b))
     });
-    let mut grid: Vec<Vec<char>> = vec![vec![' '; WIDTH]; HEIGHT];
     let mut boxes: Vec<(usize, usize, usize, usize)> = Vec::new(); // x0,y,w,h=1
     for id in &order {
         let label = labels.get(id.as_str()).map(String::as_str).unwrap_or(id);
@@ -242,7 +241,12 @@ fn render_pre(graph: &Graph, cluster: &Cluster) -> String {
         boxes.push((xu, yu, w, 1));
         placed.insert(id.as_str(), (xu, yu, w));
     }
-    // One dotted trace per real edge, drawn first so nodes overwrite crossings.
+    // Braille dot-grid for traces: 2×4 dots per character cell, so
+    // edges get ~8× the resolution of the old `·` cells in the same block.
+    // One trace per real edge; nodes mask the dots beneath them.
+    let dw = WIDTH * 2;
+    let dh = HEIGHT * 4;
+    let mut dots: Vec<Vec<bool>> = vec![vec![false; dw]; dh];
     for (a, b) in &cluster.edges {
         let Some(&(ax, ay, aw)) = placed.get(a.as_str()) else {
             continue;
@@ -250,16 +254,53 @@ fn render_pre(graph: &Graph, cluster: &Cluster) -> String {
         let Some(&(bx, by, bw)) = placed.get(b.as_str()) else {
             continue;
         };
-        let (x0, y0) = (ax as isize + aw as isize / 2, ay as isize);
-        let (x1, y1) = (bx as isize + bw as isize / 2, by as isize);
+        let (x0, y0) = (ax as isize * 2 + aw as isize, ay as isize * 4 + 2);
+        let (x1, y1) = (bx as isize * 2 + bw as isize, by as isize * 4 + 2);
         for (x, y) in bresenham(x0, y0, x1, y1) {
-            if x < 0 || y < 0 || x >= WIDTH as isize || y >= HEIGHT as isize {
+            if x < 0 || y < 0 || x >= dw as isize || y >= dh as isize {
                 continue;
             }
-            let (xu, yu) = (x as usize, y as usize);
-            if grid[yu][xu] == ' ' {
-                grid[yu][xu] = '·';
+            dots[y as usize][x as usize] = true;
+        }
+    }
+    // Mask dots hidden under node boxes.
+    for (bx, by, bw, _) in &boxes {
+        for dy in (by * 4)..((by + 1) * 4).min(dh) {
+            for dx in (bx * 2)..((bx + bw) * 2).min(dw) {
+                dots[dy][dx] = false;
             }
+        }
+    }
+    let mut grid: Vec<Vec<char>> = vec![vec![' '; WIDTH]; HEIGHT];
+    for cy in 0..HEIGHT {
+        for cx in 0..WIDTH {
+            let mut bits = 0u8;
+            // Braille bit order: ⠁⠂⡀ ⠈⠐⢀ ⡈⢈ (see `braille_of`).
+            if dots[cy * 4][cx * 2] {
+                bits |= 0x01;
+            }
+            if dots[cy * 4 + 1][cx * 2] {
+                bits |= 0x02;
+            }
+            if dots[cy * 4 + 2][cx * 2] {
+                bits |= 0x04;
+            }
+            if dots[cy * 4][cx * 2 + 1] {
+                bits |= 0x08;
+            }
+            if dots[cy * 4 + 1][cx * 2 + 1] {
+                bits |= 0x10;
+            }
+            if dots[cy * 4 + 2][cx * 2 + 1] {
+                bits |= 0x20;
+            }
+            if dots[cy * 4 + 3][cx * 2] {
+                bits |= 0x40;
+            }
+            if dots[cy * 4 + 3][cx * 2 + 1] {
+                bits |= 0x80;
+            }
+            grid[cy][cx] = braille_of(bits);
         }
     }
     // Nodes on top; record link spans on visible text.
@@ -400,6 +441,14 @@ fn bresenham(x0: isize, y0: isize, x1: isize, y1: isize) -> Vec<(isize, isize)> 
         }
     }
     out
+}
+
+/// Empty cell stays a space (trims cleanly); any dots become U+2800 + bits.
+fn braille_of(bits: u8) -> char {
+    if bits == 0 {
+        return ' ';
+    }
+    char::from_u32(0x2800 + bits as u32).unwrap_or('·')
 }
 
 /// Splice `<a>` links into one grid row at the recorded visible spans.

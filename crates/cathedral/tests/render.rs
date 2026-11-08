@@ -68,7 +68,7 @@ fn fixture() -> Graph {
 }
 
 #[test]
-fn cluster_draws_linked_nodes_with_dot_traces() {
+fn cluster_draws_linked_nodes_with_braille_traces() {
     let md = render_cathedral(&fixture());
     assert!(md.contains("zenOSmosis"), "correct branding");
     assert!(!md.contains("Zenosmosis"), "old casing gone");
@@ -80,7 +80,10 @@ fn cluster_draws_linked_nodes_with_dot_traces() {
     );
     assert!(md.contains(">mid</a>"), "mid linked");
     assert!(md.contains(">lib</a>"), "lib linked");
-    assert!(md.contains('·'), "per-edge traces drawn");
+    assert!(
+        md.chars().any(|c| ('\u{2800}'..='\u{28FF}').contains(&c)),
+        "braille traces drawn"
+    );
 }
 
 #[test]
