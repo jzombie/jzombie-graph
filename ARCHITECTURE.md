@@ -32,4 +32,4 @@ Generated from `graph.json` (schema v5). One dot-trace per real dependence edge;
                [<a href="https://github.com/jzombie/rust-llkv">llkv</a>]
 
 </pre>
-Proximity reflects dependence strength: nodes sharing an edge attract, unconnected nodes repel. Forks appear only when diverged or renamed; repos untouched for over a year are omitted.
+Proximity reflects dependence strength: nodes sharing an edge attract, unconnected nodes repel. Forks appear only when diverged or renamed; repos untouched for over a year are omitted unless something current depends on them.

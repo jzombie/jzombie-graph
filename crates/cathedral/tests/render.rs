@@ -176,7 +176,22 @@ fn renamed_fork_is_kept() {
 }
 
 #[test]
-fn stale_repos_are_omitted() {
+fn stale_dependent_is_omitted() {
+    // old depends on app (stale user, not a dependency): stays out.
+    let mut nodes = vec![node("me/app", false, false), node("me/old", false, false)];
+    nodes[1].pushed_at = Some(Utc.with_ymd_and_hms(2020, 1, 1, 0, 0, 0).single().unwrap());
+    let edges = vec![edge("me/old", "me/app", EdgeKind::Manifest)];
+    graph::apply_visibility(&mut nodes, &edges);
+    graph::apply_layers(&mut nodes, &edges);
+    let mut g = Graph::new(nodes, edges);
+    g.generated_at = Utc.with_ymd_and_hms(2026, 11, 8, 0, 0, 0).single().unwrap();
+    let md = render_cathedral(&g);
+    assert!(!md.contains("old"), "stale dependent omitted");
+}
+
+#[test]
+fn stale_dependency_is_kept() {
+    // app depends on old (stale library): pulled back in.
     let mut nodes = vec![node("me/app", false, false), node("me/old", false, false)];
     nodes[1].pushed_at = Some(Utc.with_ymd_and_hms(2020, 1, 1, 0, 0, 0).single().unwrap());
     let edges = vec![edge("me/app", "me/old", EdgeKind::Manifest)];
@@ -185,7 +200,31 @@ fn stale_repos_are_omitted() {
     let mut g = Graph::new(nodes, edges);
     g.generated_at = Utc.with_ymd_and_hms(2026, 11, 8, 0, 0, 0).single().unwrap();
     let md = render_cathedral(&g);
-    assert!(!md.contains("old"), "stale repo omitted");
+    assert!(md.contains("old"), "stale dependency kept");
+}
+
+#[test]
+fn stale_dependency_chain_is_kept_recursively() {
+    // app -> mid (stale) -> old (stale): both pulled back in.
+    let mut nodes = vec![
+        node("me/app", false, false),
+        node("me/mid", false, false),
+        node("me/old", false, false),
+    ];
+    let stale_at = Utc.with_ymd_and_hms(2020, 1, 1, 0, 0, 0).single().unwrap();
+    nodes[1].pushed_at = Some(stale_at);
+    nodes[2].pushed_at = Some(stale_at);
+    let edges = vec![
+        edge("me/app", "me/mid", EdgeKind::Manifest),
+        edge("me/mid", "me/old", EdgeKind::Manifest),
+    ];
+    graph::apply_visibility(&mut nodes, &edges);
+    graph::apply_layers(&mut nodes, &edges);
+    let mut g = Graph::new(nodes, edges);
+    g.generated_at = Utc.with_ymd_and_hms(2026, 11, 8, 0, 0, 0).single().unwrap();
+    let md = render_cathedral(&g);
+    assert!(md.contains("mid"), "stale direct dependency kept");
+    assert!(md.contains("old"), "stale transitive dependency kept");
 }
 
 #[test]

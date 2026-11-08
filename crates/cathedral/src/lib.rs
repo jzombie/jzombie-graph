@@ -13,7 +13,9 @@
 //! - forks render only when they are own work: `ahead_by > 0` (any commit)
 //!   or renamed from the parent (`name` differs from the upstream repo name);
 //! - stale nodes (`pushed_at` more than 365 days before `generated_at`)
-//!   are omitted as not part of current work;
+//!   are omitted unless something current depends on them (transitive
+//!   dependence pulls a stale dependency back in; a stale dependent that
+//!   nothing uses stays out);
 //! - only the largest connected component over dependence edges is drawn,
 //!   so detached scraps never appear as footnote lists.
 
@@ -46,7 +48,7 @@ pub fn render_cathedral(graph: &Graph) -> String {
     s.push_str(
         "Proximity reflects dependence strength: nodes sharing an edge attract, \
 unconnected nodes repel. Forks appear only when diverged or renamed; \
-repos untouched for over a year are omitted.\n",
+repos untouched for over a year are omitted unless something current depends on them.\n",
     );
     s
 }
@@ -62,8 +64,10 @@ struct Cluster {
 }
 
 fn select_cluster(graph: &Graph) -> Option<Cluster> {
-    // Mechanical portfolio filter.
-    let mut candidates: BTreeSet<&str> = BTreeSet::new();
+    // Mechanical portfolio filter. Staleness has one exception: a stale
+    // node stays if it is a (transitive) dependence of current work.
+    let mut eligible: BTreeSet<&str> = BTreeSet::new();
+    let mut fresh: BTreeSet<&str> = BTreeSet::new();
     for n in &graph.nodes {
         if n.private {
             continue;
@@ -71,10 +75,36 @@ fn select_cluster(graph: &Graph) -> Option<Cluster> {
         if n.fork && !is_own_work(n) {
             continue;
         }
-        if is_stale(graph, n) {
+        eligible.insert(n.id.as_str());
+        if !is_stale(graph, n) {
+            fresh.insert(n.id.as_str());
+        }
+    }
+    // Dependence edges among eligible nodes (stale or not) drive the closure.
+    let mut dep_edges: Vec<(&str, &str)> = Vec::new();
+    for e in &graph.edges {
+        if e.kind != EdgeKind::Manifest
+            && e.kind != EdgeKind::Submodule
+            && e.kind != EdgeKind::Registry
+        {
             continue;
         }
-        candidates.insert(n.id.as_str());
+        if eligible.contains(e.source.as_str()) && eligible.contains(e.target.as_str()) {
+            dep_edges.push((e.source.as_str(), e.target.as_str()));
+        }
+    }
+    // Pull stale dependencies back in: from every kept node, follow
+    // source -> target (dependent -> dependency) transitively.
+    let mut candidates: BTreeSet<&str> = fresh.clone();
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for (src, tgt) in &dep_edges {
+            if candidates.contains(src) && !candidates.contains(tgt) {
+                candidates.insert(tgt);
+                changed = true;
+            }
+        }
     }
     // Dependence adjacency among candidates.
     let mut adj: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
