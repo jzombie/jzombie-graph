@@ -322,9 +322,12 @@ async fn collect_live(
         let mut docs_targets: BTreeSet<String> = BTreeSet::new();
         // package -> referenced? (None = unscanned -> match)
         let mut use_sites: HashMap<String, bool> = HashMap::new();
+        // Default-branch-only: edge recency is the source repo's own
+        // freshness signal (`pushed_at`, free in enumerate/get). No extra
+        // commit-date fetch; single branch means max() is identity.
         let branch_recency: Vec<collect::BranchDecl> = vec![collect::BranchDecl {
             branch: b_name.clone(),
-            recency: None,
+            recency: repo.pushed_at,
         }];
 
         {
@@ -458,16 +461,19 @@ async fn collect_live(
             }
             // Lockfile gate: presence confirms, absence-with-lockfile deletes.
             // Tree-gated: only fetched when the lockfile is in the tree.
+            // Versions feed Edge.version (briefing fact, never scored).
             for lock in ["Cargo.lock", "package-lock.json"] {
                 if !has(lock) {
                     continue;
                 }
                 if let Ok(Some(text)) = client.file_content(&repo.full_name, lock, &b_name).await
-                    && let Some(names) = collect::parse_lockfile_names(lock, &text)
+                    && let Some((names, versions)) = collect::parse_lockfile_names(lock, &text)
                 {
                     saw_lockfile = true;
                     lock_union.extend(names);
-                    let _ = &mut lock_versions; // versions recorded per-edge later
+                    for (k, v) in versions {
+                        lock_versions.entry(k).or_insert(v);
+                    }
                 }
             }
 

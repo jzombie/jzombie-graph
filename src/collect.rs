@@ -516,40 +516,69 @@ pub fn build_manifest_edges(
     out
 }
 
-/// Parse a lockfile's package-name set (gate input). Supports Cargo.lock
-/// (`name = "..."`) and package-lock (`"node_modules/<name>"` keys +
-/// `"packages"` map). Unknown formats -> None (manifest suffices).
-pub fn parse_lockfile_names(filename: &str, text: &str) -> Option<BTreeSet<String>> {
+/// Parse a lockfile's package set + versions (gate + briefing fact).
+/// Supports Cargo.lock (`name` + `version` pairs) and package-lock
+/// (`"node_modules/<name>"` keys + `"packages"` map with `version` fields).
+/// Unknown formats -> None (manifest suffices). Names are normalized;
+/// versions are raw strings as resolved.
+pub fn parse_lockfile_names(
+    filename: &str,
+    text: &str,
+) -> Option<(BTreeSet<String>, HashMap<String, String>)> {
     if filename.ends_with("Cargo.lock") {
         let mut set = BTreeSet::new();
+        let mut versions: HashMap<String, String> = HashMap::new();
+        let mut pending: Option<String> = None;
         for line in text.lines() {
             let t = line.trim();
             if let Some(rest) = t.strip_prefix("name = ") {
                 let name = rest.trim().trim_matches('"').to_string();
                 if !name.is_empty() {
-                    set.insert(normalize_pkg(&name));
+                    let norm = normalize_pkg(&name);
+                    set.insert(norm.clone());
+                    pending = Some(norm);
+                } else {
+                    pending = None;
+                }
+            } else if let Some(rest) = t.strip_prefix("version = ")
+                && let Some(name) = pending.take()
+            {
+                let ver = rest.trim().trim_matches('"').to_string();
+                if !ver.is_empty() {
+                    versions.entry(name).or_insert(ver);
                 }
             }
         }
-        return Some(set);
+        return Some((set, versions));
     }
     if filename.ends_with("package-lock.json") {
         let v: serde_json::Value = serde_json::from_str(text).ok()?;
         let mut set = BTreeSet::new();
+        let mut versions: HashMap<String, String> = HashMap::new();
         if let Some(deps) = v.get("dependencies").and_then(|d| d.as_object()) {
-            set.extend(deps.keys().map(|k| normalize_pkg(k)));
+            for (k, dep) in deps {
+                let norm = normalize_pkg(k);
+                set.insert(norm.clone());
+                if let Some(ver) = dep.get("version").and_then(|x| x.as_str()) {
+                    versions.entry(norm).or_insert_with(|| ver.to_string());
+                }
+            }
         }
         if let Some(pkgs) = v.get("packages").and_then(|p| p.as_object()) {
-            for key in pkgs.keys() {
+            for (key, pkg) in pkgs {
                 if let Some(name) = key.strip_prefix("node_modules/")
                     && !name.contains("node_modules/")
                     && !name.is_empty()
                 {
-                    set.insert(normalize_pkg(name));
+                    let norm = normalize_pkg(name);
+                    set.insert(norm.clone());
+                    if let Some(ver) = pkg.get("version").and_then(|x| x.as_str()) {
+                        versions.entry(norm).or_insert_with(|| ver.to_string());
+                    }
                 }
             }
         }
-        return Some(set);
+        return Some((set, versions));
     }
     None
 }
@@ -770,10 +799,12 @@ serde = "1"
     #[test]
     fn lockfile_parsers() {
         let cargo = "[[package]]\nname = \"serde\"\nversion = \"1.0.0\"\n";
-        let set = parse_lockfile_names("Cargo.lock", cargo).unwrap();
+        let (set, versions) = parse_lockfile_names("Cargo.lock", cargo).unwrap();
         assert!(set.contains("serde"));
-        let pl = r#"{"dependencies": {"left-pad": {"version": "1.0.0"}}}"#;
-        let set2 = parse_lockfile_names("package-lock.json", pl).unwrap();
+        assert_eq!(versions.get("serde").map(String::as_str), Some("1.0.0"));
+        let pl = r#"{"dependencies": {"left-pad": {"version": "2.0.0"}}}"#;
+        let (set2, versions2) = parse_lockfile_names("package-lock.json", pl).unwrap();
         assert!(set2.contains("left-pad"));
+        assert_eq!(versions2.get("left-pad").map(String::as_str), Some("2.0.0"));
     }
 }
