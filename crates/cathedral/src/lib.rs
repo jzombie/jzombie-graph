@@ -104,51 +104,7 @@ pub fn render_cathedral(graph: &Graph) -> String {
     }
 
     let labels = abbreviations(graph, &|id| origin(id));
-    s.push_str("\n## Elevation\n\n");
-    s.push_str(
-        "One arch over the load-bearing core: crown, spire, fanning courses, convergence, bedrock. ",
-    );
-    s.push_str("Every stone is a link; labels abbreviate. Tallies count the full graph.\n\n");
     s.push_str(&elevation(graph, &rows, &depends, &labels));
-    s.push_str(&index(&labels, &placed));
-
-    // Everything load-bearing but off-cone, and everything detached:
-    // named with links, not drawn.
-    let mut off: Vec<&str> = core
-        .iter()
-        .filter(|id| !placed.contains(id.as_str()))
-        .map(String::as_str)
-        .collect();
-    off.sort_by_key(|id| short(id).to_string());
-    if !off.is_empty() {
-        s.push_str("\nAlso bearing, outside this elevation: ");
-        for (i, id) in off.iter().enumerate() {
-            if i > 0 {
-                s.push_str(" · ");
-            }
-            let lab = labels.get(id).map(String::as_str).unwrap_or(id);
-            let _ = write!(s, "[{lab}]({url})", url = url_of(id));
-        }
-        s.push_str(".\n");
-    }
-    let mut detached: Vec<&str> = graph
-        .nodes
-        .iter()
-        .filter(|n| !n.fork && n.layer != Layer::Isolated && !core.contains(n.id.as_str()))
-        .map(|n| n.id.as_str())
-        .collect();
-    detached.sort();
-    if !detached.is_empty() {
-        s.push_str("\nDetached from the load-bearing core: ");
-        for (i, id) in detached.iter().enumerate() {
-            if i > 0 {
-                s.push_str(" · ");
-            }
-            let lab = labels.get(id).map(String::as_str).unwrap_or(short(id));
-            let _ = write!(s, "[{lab}]({url})", url = url_of(id));
-        }
-        s.push_str(".\n");
-    }
     s
 }
 
@@ -215,12 +171,20 @@ fn elevation(
     let canvas_w = row_w.iter().copied().max().unwrap_or(0);
 
     // Rows at 0, 3, 6, ...: box row, stub row, bus row.
-    let mut canvas: Vec<Vec<char>> = vec![vec![' '; canvas_w]; rows.len() * 3 - 1];
+    // Box rows: row 0 at canvas 0, then a one-line diagonal fan, then
+    // two-line stub+bus gaps. r(li) = 0, 2, 5, 8, ...
+    let row_at = |li: usize| -> usize { if li == 0 { 0 } else { li * 3 - 1 } };
+    let canvas_h = if rows.is_empty() {
+        0
+    } else {
+        row_at(rows.len() - 1) + 1
+    };
+    let mut canvas: Vec<Vec<char>> = vec![vec![' '; canvas_w]; canvas_h];
     // (row, x) -> url for link spans, keyed by visible span.
     let mut links: BTreeMap<(usize, usize, usize), String> = BTreeMap::new();
     let mut center: BTreeMap<&str, usize> = BTreeMap::new();
     for (li, row) in rows.iter().enumerate() {
-        let r = li * 3;
+        let r = row_at(li);
         let offset = (canvas_w - row_w[li]) / 2;
         let mut x = offset;
         for (i, id) in row.iter().enumerate() {
@@ -238,11 +202,36 @@ fn elevation(
         }
     }
     let at_row = |id: &str| -> Option<usize> { rows.iter().position(|r| r.contains(&id)) };
-    // Cross-row bearings between adjacent rows.
+    // Apex fan: one diagonal line straight from the spire to its course.
+    if rows.len() > 1 {
+        if let Some(apex) = rows[0].first() {
+            if let Some(&ax) = center.get(apex) {
+                for tgt in &rows[1] {
+                    if let Some(&tx) = center.get(tgt) {
+                        put(
+                            &mut canvas[row_at(0) + 1],
+                            tx,
+                            if tx < ax {
+                                '/'
+                            } else if tx > ax {
+                                '\\'
+                            } else {
+                                '|'
+                            },
+                        );
+                    }
+                }
+            }
+        }
+    }
+    // Cross-row bearings between adjacent rows (bus below the fan).
     for (src, tgts) in depends {
         let Some(si) = at_row(src) else {
             continue;
         };
+        if si == 0 {
+            continue; // apex bearings ride the fan line
+        }
         for tgt in tgts {
             let Some(ti) = at_row(tgt) else {
                 continue;
@@ -253,23 +242,23 @@ fn elevation(
             let (Some(&sx), Some(&tx)) = (center.get(src), center.get(tgt)) else {
                 continue;
             };
-            put(&mut canvas[si * 3 + 1], sx, '|');
-            put(&mut canvas[si * 3 + 1], tx, '|');
+            put(&mut canvas[row_at(si) + 1], sx, '|');
+            put(&mut canvas[row_at(si) + 1], tx, '|');
             if sx == tx {
-                put(&mut canvas[si * 3 + 2], sx, '|');
+                put(&mut canvas[row_at(si) + 2], sx, '|');
             } else {
                 let (lo, hi) = (sx.min(tx), sx.max(tx));
                 for x in lo..=hi {
-                    put(&mut canvas[si * 3 + 2], x, '-');
+                    put(&mut canvas[row_at(si) + 2], x, '-');
                 }
-                put(&mut canvas[si * 3 + 2], sx, '+');
-                put(&mut canvas[si * 3 + 2], tx, '+');
+                put(&mut canvas[row_at(si) + 2], sx, '+');
+                put(&mut canvas[row_at(si) + 2], tx, '+');
             }
         }
     }
     // Same-row bearings between adjacent boxes.
     for (li, row) in rows.iter().enumerate() {
-        let r = li * 3;
+        let r = row_at(li);
         let offset = (canvas_w - row_w[li]) / 2;
         let mut starts: Vec<usize> = Vec::new();
         let mut x = offset;
@@ -307,29 +296,34 @@ fn elevation(
         d.push_str(&apply_links(text.trim_end(), r, &links));
         d.push('\n');
     }
-    // Convergence into the bedrock banner.
-    let (first, last) = (0usize, canvas_w.saturating_sub(1));
+    // Convergence into the bedrock banner, guide-style: slanted
+    // shoulders running in to two drops.
     let mut conv: Vec<char> = vec![' '; canvas_w.max(1)];
-    if canvas_w > 1 {
-        put(&mut conv, first, '\\');
-        put(&mut conv, last, '/');
-        for x in (first + 1)..last {
-            if x != canvas_w / 2 - 2 && x != canvas_w / 2 + 2 {
-                put(&mut conv, x, '-');
-            }
+    if canvas_w > 12 {
+        let (lc, rc) = (canvas_w / 3, 2 * canvas_w / 3);
+        put(&mut conv, 0, '\\');
+        for x in 1..lc {
+            put(&mut conv, x, '-');
         }
-        put(&mut conv, canvas_w / 2 - 2, '+');
-        put(&mut conv, canvas_w / 2 + 2, '+');
+        put(&mut conv, lc, '+');
+        put(&mut conv, rc, '+');
+        for x in (rc + 1)..canvas_w.saturating_sub(1) {
+            put(&mut conv, x, '-');
+        }
+        put(&mut conv, canvas_w - 1, '/');
+        let mut drops: Vec<char> = vec![' '; canvas_w.max(1)];
+        put(&mut drops, lc, 'v');
+        put(&mut drops, rc, 'v');
+        d.push_str(&conv.iter().collect::<String>().trim_end().to_string());
+        d.push('\n');
+        d.push_str(&drops.iter().collect::<String>().trim_end().to_string());
+        d.push('\n');
+    } else if canvas_w > 1 {
+        let mut drops: Vec<char> = vec![' '; canvas_w.max(1)];
+        put(&mut drops, canvas_w / 2, 'v');
+        d.push_str(&drops.iter().collect::<String>().trim_end().to_string());
+        d.push('\n');
     }
-    d.push_str(&conv.iter().collect::<String>().trim_end().to_string());
-    d.push('\n');
-    let mut drops: Vec<char> = vec![' '; canvas_w.max(1)];
-    if canvas_w > 1 {
-        put(&mut drops, canvas_w / 2 - 2, 'v');
-        put(&mut drops, canvas_w / 2 + 2, 'v');
-    }
-    d.push_str(&drops.iter().collect::<String>().trim_end().to_string());
-    d.push('\n');
     // Bedrock banner names every foundation stone in the drawn cone.
     let mut names: Vec<String> = rows
         .iter()
@@ -473,26 +467,6 @@ fn main_component(graph: &Graph, depends: &BTreeMap<&str, Vec<&str>>) -> BTreeSe
         }
     }
     best
-}
-
-/// Clickable index: every drawn label mapped to its repo. The `<pre>`
-/// above is the graphic; this is the links.
-fn index(labels: &BTreeMap<&str, String>, drawn: &BTreeSet<&str>) -> String {
-    let mut rows: Vec<(&str, &str)> = drawn
-        .iter()
-        .map(|id| (labels.get(*id).map(String::as_str).unwrap_or(*id), *id))
-        .collect();
-    rows.sort();
-    rows.dedup();
-    let mut s = String::from("\nIndex: ");
-    for (i, (lab, id)) in rows.iter().enumerate() {
-        if i > 0 {
-            s.push_str(" · ");
-        }
-        let _ = write!(s, "[{lab}]({url})", url = url_of(id));
-    }
-    s.push_str("\n");
-    s
 }
 
 /// GitHub URL for a portfolio id.

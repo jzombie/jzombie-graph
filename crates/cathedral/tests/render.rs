@@ -1,5 +1,5 @@
-//! Fixture tests: the arch draws the apex cone, forks never appear,
-//! labels abbreviate, every drawn label links.
+//! Fixture tests: the doc is one clickable arch — crown, spire,
+//! courses, convergence, bedrock banner. No lists, no tables.
 
 use cathedral::render_cathedral;
 use jzombie_graph::graph::{self, EdgeKind, Graph, Layer, Node};
@@ -49,18 +49,19 @@ fn edge(source: &str, target: &str, kind: EdgeKind) -> jzombie_graph::graph::Edg
 }
 
 fn fixture() -> Graph {
-    // app -> mid -> lib, plus app -> lib docs (association, not drawn).
-    // lib is foundation, mid middleware, app application.
+    // lib <- mid <- app (apex by fan-out), plus a detached island.
     let mut nodes = vec![
         node("me/lib", false, false),
         node("me/mid", false, false),
         node("me/app", false, false),
-        node("me/loner", false, false),
+        node("me/island-a", false, false),
+        node("me/island-b", false, false),
     ];
     let edges = vec![
         edge("me/mid", "me/lib", EdgeKind::Manifest),
         edge("me/app", "me/mid", EdgeKind::Manifest),
         edge("me/app", "me/lib", EdgeKind::Docs),
+        edge("me/island-a", "me/island-b", EdgeKind::Manifest),
     ];
     graph::apply_visibility(&mut nodes, &edges);
     graph::apply_layers(&mut nodes, &edges);
@@ -68,42 +69,18 @@ fn fixture() -> Graph {
 }
 
 #[test]
-fn elevation_is_an_arch_with_clickable_stones() {
+fn doc_is_only_the_arch() {
     let md = render_cathedral(&fixture());
-    let elev = md
-        .split("## Elevation")
-        .nth(1)
-        .unwrap()
-        .split("\nIndex:")
-        .next()
-        .unwrap();
-    assert!(elev.contains("<pre>"), "whitespace-preserved block");
-    assert!(elev.contains("▲"), "crown");
-    assert!(elev.contains("FOUNDATION:"), "bedrock banner");
-    assert!(
-        elev.contains("[app]") || elev.contains(">app</a>"),
-        "apex spire drawn"
-    );
-    assert!(
-        elev.contains("[mid]") || elev.contains(">mid</a>"),
-        "course drawn"
-    );
-    assert!(
-        elev.contains("[lib]") || elev.contains(">lib</a>"),
-        "bedrock drawn"
-    );
-    assert!(elev.contains('|'), "bearings drawn");
-    // Stones are links inside the drawing.
-    assert!(
-        elev.contains("<a href=\"https://github.com/me/lib\">lib</a>"),
-        "nodes clickable in the art"
-    );
-    // And the index below maps every drawn label.
-    let index = md.split("\nIndex:").nth(1).unwrap();
-    assert!(
-        index.contains("[lib](https://github.com/me/lib)"),
-        "index links every label"
-    );
+    assert!(md.contains("<pre>"), "whitespace-preserved block");
+    assert!(md.contains("▲"), "crown");
+    assert!(md.contains("FOUNDATION:"), "bedrock banner");
+    assert!(md.contains(">app</a>"), "apex spire drawn and linked");
+    assert!(md.contains(">mid</a>"), "course drawn and linked");
+    assert!(md.contains(">lib</a>"), "bedrock drawn and linked");
+    assert!(!md.contains("## "), "no sections — the arch is the doc");
+    assert!(!md.contains("- ["), "no markdown lists");
+    assert!(!md.contains(" | "), "no tables");
+    assert!(!md.contains("```"), "no code fences");
 }
 
 #[test]
@@ -125,7 +102,7 @@ fn forks_appear_nowhere() {
 }
 
 #[test]
-fn labels_abbreviate_rust_prefix() {
+fn labels_abbreviate() {
     let mut nodes = vec![
         node("me/rust-widget", false, false),
         node("me/lib", false, false),
@@ -136,44 +113,19 @@ fn labels_abbreviate_rust_prefix() {
     let md = render_cathedral(&Graph::new(nodes, edges));
     assert!(md.contains(">widget</a>"), "abbreviated label linked");
     assert!(!md.contains("rust-widget</a>"), "no long labels");
-    assert!(
-        md.contains("[widget](https://github.com/me/rust-widget)"),
-        "index uses the short label"
-    );
 }
 
 #[test]
-fn detached_pairs_are_named_not_drawn() {
-    // island-a -> island-b: connected, but detached from the main core.
-    let mut nodes = vec![
-        node("me/lib", false, false),
-        node("me/mid", false, false),
-        node("me/app", false, false),
-        node("me/island-a", false, false),
-        node("me/island-b", false, false),
-    ];
-    let edges = vec![
-        edge("me/mid", "me/lib", EdgeKind::Manifest),
-        edge("me/app", "me/mid", EdgeKind::Manifest),
-        edge("me/island-a", "me/island-b", EdgeKind::Manifest),
-    ];
-    graph::apply_visibility(&mut nodes, &edges);
-    graph::apply_layers(&mut nodes, &edges);
-    let md = render_cathedral(&Graph::new(nodes, edges));
-    let elev = md.split("## Elevation").nth(1).unwrap();
-    let fence = elev
+fn detached_never_drawn() {
+    let md = render_cathedral(&fixture());
+    let art = md
         .split("<pre>")
         .nth(1)
         .unwrap()
         .split("</pre>")
         .next()
         .unwrap();
-    assert!(!fence.contains("island"), "islands not drawn");
-    assert!(
-        md.contains("Detached from the load-bearing core"),
-        "detached named"
-    );
-    assert!(md.contains("island-a"), "island reachable from the index");
+    assert!(!art.contains("island"), "islands not drawn");
 }
 
 #[test]
