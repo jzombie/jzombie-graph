@@ -1,6 +1,6 @@
 {
   "schema_version": 5,
-  "generated_at": "2026-11-08T03:42:47.276099Z",
+  "generated_at": "2026-11-08T07:14:54.121562Z",
   "nodes": [
     {
       "id": "jzombie/Calculator",
@@ -195,9 +195,9 @@
       "branches": [
         "main"
       ],
-      "layer": "foundation",
-      "visible": true,
-      "visible_reason": "fork: load-bearing fan-in, has portfolio edge"
+      "layer": "isolated",
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/bm25",
@@ -221,9 +221,9 @@
       "branches": [
         "main"
       ],
-      "layer": "foundation",
-      "visible": true,
-      "visible_reason": "fork: load-bearing fan-in, has portfolio edge"
+      "layer": "isolated",
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/cargo-samply",
@@ -907,9 +907,9 @@
       "branches": [
         "master"
       ],
-      "layer": "foundation",
-      "visible": true,
-      "visible_reason": "fork: load-bearing fan-in, has portfolio edge"
+      "layer": "isolated",
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/live-assets",
@@ -1078,7 +1078,7 @@
       "branches": [
         "master"
       ],
-      "layer": "application",
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -1325,9 +1325,9 @@
       "branches": [
         "main"
       ],
-      "layer": "foundation",
-      "visible": true,
-      "visible_reason": "fork: load-bearing fan-in, has portfolio edge"
+      "layer": "isolated",
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/react-mosaic",
@@ -1691,7 +1691,7 @@
       "branches": [
         "main"
       ],
-      "layer": "middleware",
+      "layer": "foundation",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -1750,9 +1750,9 @@
       "branches": [
         "master"
       ],
-      "layer": "application",
-      "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge"
+      "layer": "isolated",
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/rust-ratatui-example-json-editor-app",
@@ -1773,9 +1773,9 @@
       "branches": [
         "main"
       ],
-      "layer": "application",
-      "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge"
+      "layer": "isolated",
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/rust-reqwest-drive",
@@ -2278,7 +2278,7 @@
       "branches": [
         "main"
       ],
-      "layer": "application",
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -2352,9 +2352,9 @@
       "branches": [
         "dev--draft"
       ],
-      "layer": "application",
-      "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge"
+      "layer": "isolated",
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/term-wm",
@@ -2518,7 +2518,7 @@
       "branches": [
         "main"
       ],
-      "layer": "application",
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -2579,7 +2579,7 @@
       "private": false,
       "upstream": null,
       "ahead_by": null,
-      "pushed_at": "2026-11-02T10:37:07Z",
+      "pushed_at": "2026-11-08T06:31:20Z",
       "description": "Turn a Microsoft ISO into an SSH-ready Windows 11 VM in one command. Unattended installation.",
       "topics": [
         "command-line-utilities",
@@ -2597,7 +2597,7 @@
       "forks_count": 0,
       "open_issues": 3,
       "license": "Apache-2.0",
-      "size_kb": 5584,
+      "size_kb": 5590,
       "has_readme": true,
       "has_license_file": true,
       "branches": [
@@ -2688,26 +2688,6 @@
       "version": null
     },
     {
-      "source": "jzombie/node-avatar-builder",
-      "target": "jzombie/ratatui",
-      "kind": "manifest",
-      "declaring_branches": [
-        "master"
-      ],
-      "recency": "2021-03-24T15:15:43Z",
-      "version": "2.2.0"
-    },
-    {
-      "source": "jzombie/rust-argtuner",
-      "target": "jzombie/ratatui",
-      "kind": "manifest",
-      "declaring_branches": [
-        "main"
-      ],
-      "recency": "2026-11-08T02:13:25Z",
-      "version": "0.30.2"
-    },
-    {
       "source": "jzombie/rust-argtuner",
       "target": "jzombie/rust-line-ending",
       "kind": "manifest",
@@ -2749,16 +2729,6 @@
     },
     {
       "source": "jzombie/rust-llkv",
-      "target": "jzombie/ratatui",
-      "kind": "manifest",
-      "declaring_branches": [
-        "main"
-      ],
-      "recency": "2026-03-02T11:45:35Z",
-      "version": "0.1.41"
-    },
-    {
-      "source": "jzombie/rust-llkv",
       "target": "jzombie/rust-simd-r-drive",
       "kind": "manifest",
       "declaring_branches": [
@@ -2769,16 +2739,6 @@
     },
     {
       "source": "jzombie/rust-muxio",
-      "target": "jzombie/bitcode",
-      "kind": "manifest",
-      "declaring_branches": [
-        "main"
-      ],
-      "recency": "2026-11-01T00:17:34Z",
-      "version": "0.6.9"
-    },
-    {
-      "source": "jzombie/rust-muxio",
       "target": "jzombie/deepwiki-to-mdbook",
       "kind": "workflow",
       "declaring_branches": [
@@ -2786,26 +2746,6 @@
       ],
       "recency": null,
       "version": null
-    },
-    {
-      "source": "jzombie/rust-muxio",
-      "target": "jzombie/ratatui",
-      "kind": "manifest",
-      "declaring_branches": [
-        "main"
-      ],
-      "recency": "2026-11-01T00:17:34Z",
-      "version": "0.1.44"
-    },
-    {
-      "source": "jzombie/rust-oxdock",
-      "target": "jzombie/libtest-mimic",
-      "kind": "manifest",
-      "declaring_branches": [
-        "main"
-      ],
-      "recency": "2026-11-08T02:16:01Z",
-      "version": "0.8.2"
     },
     {
       "source": "jzombie/rust-oxdock",
@@ -2826,46 +2766,6 @@
       ],
       "recency": "2026-11-08T02:16:01Z",
       "version": "0.17.0-alpha"
-    },
-    {
-      "source": "jzombie/rust-ratatui-example-counter-app",
-      "target": "jzombie/ratatui",
-      "kind": "manifest",
-      "declaring_branches": [
-        "master"
-      ],
-      "recency": "2025-02-02T20:55:29Z",
-      "version": "0.29.0"
-    },
-    {
-      "source": "jzombie/rust-ratatui-example-json-editor-app",
-      "target": "jzombie/ratatui",
-      "kind": "manifest",
-      "declaring_branches": [
-        "main"
-      ],
-      "recency": "2025-02-02T20:58:52Z",
-      "version": "0.29.0"
-    },
-    {
-      "source": "jzombie/rust-reqwest-drive",
-      "target": "jzombie/bitcode",
-      "kind": "manifest",
-      "declaring_branches": [
-        "main"
-      ],
-      "recency": "2026-11-01T21:38:48Z",
-      "version": "0.6.9"
-    },
-    {
-      "source": "jzombie/rust-reqwest-drive",
-      "target": "jzombie/ratatui",
-      "kind": "manifest",
-      "declaring_branches": [
-        "main"
-      ],
-      "recency": "2026-11-01T21:38:48Z",
-      "version": "0.1.44"
     },
     {
       "source": "jzombie/rust-reqwest-drive",
@@ -2889,16 +2789,6 @@
     },
     {
       "source": "jzombie/rust-sec-fetcher",
-      "target": "jzombie/bitcode",
-      "kind": "manifest",
-      "declaring_branches": [
-        "main"
-      ],
-      "recency": "2026-09-18T17:02:27Z",
-      "version": "0.6.9"
-    },
-    {
-      "source": "jzombie/rust-sec-fetcher",
       "target": "jzombie/deepwiki-to-mdbook",
       "kind": "workflow",
       "declaring_branches": [
@@ -2906,16 +2796,6 @@
       ],
       "recency": null,
       "version": null
-    },
-    {
-      "source": "jzombie/rust-sec-fetcher",
-      "target": "jzombie/ratatui",
-      "kind": "manifest",
-      "declaring_branches": [
-        "main"
-      ],
-      "recency": "2026-09-18T17:02:27Z",
-      "version": "0.1.44"
     },
     {
       "source": "jzombie/rust-sec-fetcher",
@@ -2939,16 +2819,6 @@
     },
     {
       "source": "jzombie/rust-simd-r-drive",
-      "target": "jzombie/bitcode",
-      "kind": "manifest",
-      "declaring_branches": [
-        "main"
-      ],
-      "recency": "2026-11-02T10:14:00Z",
-      "version": "0.6.9"
-    },
-    {
-      "source": "jzombie/rust-simd-r-drive",
       "target": "jzombie/deepwiki-to-mdbook",
       "kind": "workflow",
       "declaring_branches": [
@@ -2956,16 +2826,6 @@
       ],
       "recency": null,
       "version": null
-    },
-    {
-      "source": "jzombie/rust-simd-r-drive",
-      "target": "jzombie/ratatui",
-      "kind": "manifest",
-      "declaring_branches": [
-        "main"
-      ],
-      "recency": "2026-11-02T10:14:00Z",
-      "version": "0.1.44"
     },
     {
       "source": "jzombie/rust-simd-r-drive",
@@ -2996,36 +2856,6 @@
       ],
       "recency": "2025-03-04T21:39:30Z",
       "version": "0.1.0-alpha6"
-    },
-    {
-      "source": "jzombie/rust-triplets",
-      "target": "jzombie/bitcode",
-      "kind": "manifest",
-      "declaring_branches": [
-        "main"
-      ],
-      "recency": "2026-11-02T08:45:11Z",
-      "version": "0.6.9"
-    },
-    {
-      "source": "jzombie/rust-triplets",
-      "target": "jzombie/bm25",
-      "kind": "manifest",
-      "declaring_branches": [
-        "main"
-      ],
-      "recency": "2026-11-02T08:45:11Z",
-      "version": "2.3.2"
-    },
-    {
-      "source": "jzombie/rust-triplets",
-      "target": "jzombie/ratatui",
-      "kind": "manifest",
-      "declaring_branches": [
-        "main"
-      ],
-      "recency": "2026-11-02T08:45:11Z",
-      "version": "0.1.44"
     },
     {
       "source": "jzombie/rust-triplets",
@@ -3088,36 +2918,6 @@
       "version": null
     },
     {
-      "source": "jzombie/str0m",
-      "target": "jzombie/ratatui",
-      "kind": "manifest",
-      "declaring_branches": [
-        "main"
-      ],
-      "recency": "2026-10-04T20:33:17Z",
-      "version": "0.1.44"
-    },
-    {
-      "source": "jzombie/term-icon-lab",
-      "target": "jzombie/ratatui",
-      "kind": "manifest",
-      "declaring_branches": [
-        "dev--draft"
-      ],
-      "recency": "2026-08-25T16:24:52Z",
-      "version": "0.30.2"
-    },
-    {
-      "source": "jzombie/term-wm",
-      "target": "jzombie/bitcode",
-      "kind": "manifest",
-      "declaring_branches": [
-        "main"
-      ],
-      "recency": "2026-11-01T02:08:06Z",
-      "version": "0.6.9"
-    },
-    {
       "source": "jzombie/term-wm",
       "target": "jzombie/live-assets",
       "kind": "docs",
@@ -3126,16 +2926,6 @@
       ],
       "recency": null,
       "version": null
-    },
-    {
-      "source": "jzombie/term-wm",
-      "target": "jzombie/ratatui",
-      "kind": "manifest",
-      "declaring_branches": [
-        "main"
-      ],
-      "recency": "2026-11-01T02:08:06Z",
-      "version": "0.30.2"
     },
     {
       "source": "jzombie/term-wm",
@@ -3178,16 +2968,6 @@
       "version": "0.16.2-patch4"
     },
     {
-      "source": "jzombie/umap-rs",
-      "target": "jzombie/ratatui",
-      "kind": "manifest",
-      "declaring_branches": [
-        "main"
-      ],
-      "recency": "2025-12-02T03:50:50Z",
-      "version": null
-    },
-    {
       "source": "jzombie/windows-headless",
       "target": "jzombie/lab-qemu-portable",
       "kind": "docs",
@@ -3199,22 +2979,12 @@
     },
     {
       "source": "jzombie/windows-headless",
-      "target": "jzombie/ratatui",
-      "kind": "manifest",
-      "declaring_branches": [
-        "main"
-      ],
-      "recency": "2026-11-02T10:37:07Z",
-      "version": "0.1.44"
-    },
-    {
-      "source": "jzombie/windows-headless",
       "target": "jzombie/rust-cache-manager",
       "kind": "manifest",
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-02T10:37:07Z",
+      "recency": "2026-11-08T06:31:20Z",
       "version": "0.6.0"
     }
   ]
