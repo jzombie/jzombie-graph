@@ -1,5 +1,6 @@
-//! Fixture tests: the doc is one clickable arch — crown, spire,
-//! courses, convergence, bedrock banner. No lists, no tables.
+//! Fixture tests: the whole core renders as one clickable arch —
+//! crown, courses, convergence, bedrock banner. No lists, no tables,
+//! no fences-as-text, no unwired names.
 
 use cathedral::render_cathedral;
 use jzombie_graph::graph::{self, EdgeKind, Graph, Layer, Node};
@@ -49,23 +50,31 @@ fn edge(source: &str, target: &str, kind: EdgeKind) -> jzombie_graph::graph::Edg
 }
 
 fn fixture() -> Graph {
-    // lib <- mid <- app (apex by fan-out), plus a detached island.
+    // lib <- mid <- {app, app2}: every origin node load-bearing.
     let mut nodes = vec![
         node("me/lib", false, false),
         node("me/mid", false, false),
         node("me/app", false, false),
-        node("me/island-a", false, false),
-        node("me/island-b", false, false),
+        node("me/app2", false, false),
     ];
     let edges = vec![
         edge("me/mid", "me/lib", EdgeKind::Manifest),
         edge("me/app", "me/mid", EdgeKind::Manifest),
+        edge("me/app2", "me/mid", EdgeKind::Manifest),
         edge("me/app", "me/lib", EdgeKind::Docs),
-        edge("me/island-a", "me/island-b", EdgeKind::Manifest),
     ];
     graph::apply_visibility(&mut nodes, &edges);
     graph::apply_layers(&mut nodes, &edges);
     Graph::new(nodes, edges)
+}
+
+fn arch(md: &str) -> &str {
+    md.split("<pre>")
+        .nth(1)
+        .unwrap()
+        .split("</pre>")
+        .next()
+        .unwrap()
 }
 
 #[test]
@@ -74,13 +83,17 @@ fn doc_is_only_the_arch() {
     assert!(md.contains("<pre>"), "whitespace-preserved block");
     assert!(md.contains("▲"), "crown");
     assert!(md.contains("FOUNDATION:"), "bedrock banner");
-    assert!(md.contains(">app</a>"), "apex spire drawn and linked");
+    assert!(md.contains(">app</a>"), "spire drawn and linked");
+    assert!(md.contains(">app2</a>"), "whole canopy drawn");
     assert!(md.contains(">mid</a>"), "course drawn and linked");
     assert!(md.contains(">lib</a>"), "bedrock drawn and linked");
-    assert!(!md.contains("## "), "no sections — the arch is the doc");
+    assert!(md.contains('|'), "bearings drawn");
+    assert!(!md.contains("## "), "no sections");
     assert!(!md.contains("- ["), "no markdown lists");
-    assert!(!md.contains(" | "), "no tables");
+    assert!(!md.contains("| ---") && !md.contains("--- |"), "no tables");
     assert!(!md.contains("```"), "no code fences");
+    assert!(!md.contains("Index:"), "no index lists");
+    assert!(!md.contains("Detached"), "no detached lists");
 }
 
 #[test]
@@ -113,25 +126,6 @@ fn labels_abbreviate() {
     let md = render_cathedral(&Graph::new(nodes, edges));
     assert!(md.contains(">widget</a>"), "abbreviated label linked");
     assert!(!md.contains("rust-widget</a>"), "no long labels");
-}
-
-#[test]
-fn detached_islands_get_side_chapels() {
-    let md = render_cathedral(&fixture());
-    let art = md
-        .split("<pre>")
-        .nth(1)
-        .unwrap()
-        .split("</pre>")
-        .next()
-        .unwrap();
-    assert!(art.contains("island-a"), "island root drawn");
-    assert!(art.contains("island-b"), "island bearer drawn");
-    assert!(
-        !md.contains("Detached from the load-bearing core"),
-        "no detached list — chapels instead"
-    );
-    assert!(!md.contains("## "), "still no sections");
 }
 
 #[test]

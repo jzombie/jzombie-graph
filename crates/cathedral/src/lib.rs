@@ -2,15 +2,14 @@
 //!
 //! Reads the collector's schema via `Graph::from_json` (schema-checked, so
 //! old files fail loudly instead of rendering stale shapes) and renders one
-//! thing: the load-bearing core as a symmetric arch — crown, spire, fanning
-//! courses, convergence, bedrock banner. Every stone is a link; labels are
-//! abbreviated, tooltips carry the full id.
+//! thing: the load-bearing core as a symmetric arch — crown, fanning
+//! courses, convergence, bedrock banner — plus side chapels for everything
+//! load-bearing outside the spire's cone. Every stone is a link; labels are
+//! abbreviated. Courses wrap to a fixed width so the drawing never scrolls.
 //!
 //! Forks are excluded by design: no fork node, edge, or name appears
 //! anywhere. Only dependence edges (`manifest`/`submodule`/`registry`)
-//! count toward structure. The drawn tree is the support cone of the top
-//! application by fan-out; bearings that would cross the drawing are
-//! named, not drawn.
+//! count toward structure.
 
 use jzombie_graph::graph::{Graph, Layer};
 use std::collections::{BTreeMap, BTreeSet};
@@ -41,22 +40,56 @@ pub fn render_cathedral(graph: &Graph) -> String {
         v.dedup();
     }
 
-    let mut s = String::new();
-    s.push_str("# Cathedral\n\n");
-    let _ = writeln!(
-        s,
-        "Generated from `graph.json` (schema v{}). Forks excluded by design.\n",
-        graph.schema_version,
-    );
+    // Main connected component: the load-bearing core. Largest wins;
+    // multi-node beats singleton, then size, then smallest member id.
+    let mut adj: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
+    for (src, tgts) in &depends {
+        for tgt in tgts {
+            adj.entry(src).or_default().insert(tgt);
+            adj.entry(tgt).or_default().insert(src);
+        }
+    }
+    for n in &graph.nodes {
+        if origin(n.id.as_str()) {
+            adj.entry(n.id.as_str()).or_default();
+        }
+    }
+    let mut seen: BTreeSet<&str> = BTreeSet::new();
+    let mut core: BTreeSet<String> = BTreeSet::new();
+    for start in adj.keys().copied().collect::<Vec<_>>() {
+        if !seen.insert(start) {
+            continue;
+        }
+        let mut comp: BTreeSet<String> = BTreeSet::new();
+        let mut stack = vec![start];
+        while let Some(cur) = stack.pop() {
+            if !comp.insert(cur.to_string()) {
+                continue;
+            }
+            if let Some(next) = adj.get(cur) {
+                for nb in next {
+                    if seen.insert(nb) {
+                        stack.push(nb);
+                    }
+                }
+            }
+        }
+        let better = (comp.len() > 1, comp.len()) > (core.len() > 1, core.len())
+            || ((comp.len() > 1, comp.len()) == (core.len() > 1, core.len())
+                && comp.iter().next() < core.iter().next());
+        if better {
+            core = comp;
+        }
+    }
+    let in_core = |id: &str| -> bool { core.contains(id) };
 
     // Apex: the core application with the most bearings on it.
-    let comps = components(graph, &depends);
-    let core = comps.first().cloned().unwrap_or_default();
-    let in_tree = |id: &str| -> bool { core.contains(id) };
     let mut apps: Vec<&str> = graph
         .nodes
         .iter()
-        .filter(|n| n.layer == Layer::Application && in_tree(n.id.as_str()))
+        .filter(|n| {
+            n.layer == Layer::Application && origin(n.id.as_str()) && in_core(n.id.as_str())
+        })
         .map(|n| n.id.as_str())
         .collect();
     apps.sort_by(|a, b| {
@@ -65,6 +98,8 @@ pub fn render_cathedral(graph: &Graph) -> String {
         fb.cmp(&fa).then_with(|| a.cmp(b))
     });
     let Some(apex) = apps.first().copied() else {
+        let mut s = String::new();
+        s.push_str("# Cathedral\n\n");
         s.push_str("(no load-bearing structure)\n");
         return s;
     };
@@ -75,12 +110,12 @@ pub fn render_cathedral(graph: &Graph) -> String {
     loop {
         let mut next: Vec<&str> = rows
             .last()
-            .map(|r| r.as_slice())
+            .map(Vec::as_slice)
             .unwrap_or(&[])
             .iter()
             .flat_map(|src| depends.get(*src).map(Vec::as_slice).unwrap_or(&[]))
             .copied()
-            .filter(|t| in_tree(t) && !placed.contains(t))
+            .filter(|t| in_core(t) && !placed.contains(t))
             .collect();
         next.sort_by(|a, b| {
             fan_in
@@ -99,11 +134,17 @@ pub fn render_cathedral(graph: &Graph) -> String {
         }
         rows.push(next);
     }
-    let mut rows = rows;
     for r in rows.iter_mut().skip(1) {
         order_row(r, &depends);
     }
 
+    let mut s = String::new();
+    s.push_str("# Cathedral\n\n");
+    let _ = writeln!(
+        s,
+        "Generated from `graph.json` (schema v{}). Forks excluded by design.\n",
+        graph.schema_version,
+    );
     let labels = abbreviations(graph, &|id| origin(id));
     s.push_str(&elevation(graph, &rows, &depends, &labels, &placed, &core));
     s
@@ -149,10 +190,10 @@ fn permute<T: Clone>(xs: &mut Vec<T>, i: usize, f: &mut impl FnMut(&[T])) {
     }
 }
 
-/// The arch: crown, spire, fanning courses with bus bearings,
-/// same-row bearings, convergence, bedrock banner — then side chapels
-/// for every load-bearing node outside the drawn cone. Node labels are
-/// links; geometry is computed on visible text so alignment holds.
+/// The arch: crown, courses (wrapped to WIDTH and centered), stub+bus
+/// bearings between courses, same-row bearings, convergence, bedrock
+/// banner. Node labels are links; geometry is computed on visible text
+/// so alignment holds.
 fn elevation(
     graph: &Graph,
     rows: &[Vec<&str>],
@@ -163,7 +204,13 @@ fn elevation(
 ) -> String {
     let lab =
         |id: &str| -> String { format!("[{}]", labels.get(id).map(String::as_str).unwrap_or(id)) };
-    // Box widths from visible text.
+
+    // Order each row's boxes to maximize drawn same-row bearings.
+    let mut rows: Vec<Vec<&str>> = rows.to_vec();
+    for r in rows.iter_mut().skip(1) {
+        order_row(r, depends);
+    }
+
     let widths: Vec<Vec<usize>> = rows
         .iter()
         .map(|r| r.iter().map(|id| lab(id).len()).collect())
@@ -172,12 +219,10 @@ fn elevation(
         .iter()
         .map(|w| w.iter().sum::<usize>() + 2 * w.len().saturating_sub(1))
         .collect();
-    let canvas_w = row_w.iter().copied().max().unwrap_or(0);
-
-    // Rows at 0, 3, 6, ...: box row, stub row, bus row.
-    // Box rows: row 0 at canvas 0, then a one-line diagonal fan, then
-    // two-line stub+bus gaps. r(li) = 0, 2, 5, 8, ...
+    // Box row, stub+bus gap, except row 0 which gets a one-line fan.
+    // r(li) = 0, 2, 5, 8, ...
     let row_at = |li: usize| -> usize { if li == 0 { 0 } else { li * 3 - 1 } };
+    let canvas_w = row_w.iter().copied().max().unwrap_or(0).max(3);
     let canvas_h = if rows.is_empty() {
         0
     } else {
@@ -205,7 +250,6 @@ fn elevation(
             x += l.len();
         }
     }
-    let at_row = |id: &str| -> Option<usize> { rows.iter().position(|r| r.contains(&id)) };
     // Apex fan: one diagonal line straight from the spire to its course.
     if rows.len() > 1 {
         if let Some(apex) = rows[0].first() {
@@ -228,35 +272,36 @@ fn elevation(
             }
         }
     }
-    // Cross-row bearings between adjacent rows (bus below the fan).
-    for (src, tgts) in depends {
-        let Some(si) = at_row(src) else {
+    // Stub + bus between consecutive rows (below the fan).
+    // Bus spans only the boxes that actually bear on the next row.
+    for (li, row) in rows.iter().enumerate() {
+        if li == 0 || li + 1 >= rows.len() {
             continue;
-        };
-        if si == 0 {
-            continue; // apex bearings ride the fan line
         }
-        for tgt in tgts {
-            let Some(ti) = at_row(tgt) else {
-                continue;
-            };
-            if ti != si + 1 {
-                continue;
-            }
-            let (Some(&sx), Some(&tx)) = (center.get(src), center.get(tgt)) else {
-                continue;
-            };
-            put(&mut canvas[row_at(si) + 1], sx, '|');
-            put(&mut canvas[row_at(si) + 1], tx, '|');
-            if sx == tx {
-                put(&mut canvas[row_at(si) + 2], sx, '|');
-            } else {
-                let (lo, hi) = (sx.min(tx), sx.max(tx));
-                for x in lo..=hi {
-                    put(&mut canvas[row_at(si) + 2], x, '-');
+        let mut involved: Vec<usize> = Vec::new();
+        for id in row {
+            if let Some(tgts) = depends.get(id) {
+                for tgt in tgts {
+                    if rows[li + 1].contains(tgt) {
+                        if let (Some(&sx), Some(&tx)) = (center.get(*id), center.get(*tgt)) {
+                            put(&mut canvas[row_at(li) + 1], sx, '|');
+                            put(&mut canvas[row_at(li) + 1], tx, '|');
+                            involved.push(sx);
+                            involved.push(tx);
+                        }
+                    }
                 }
-                put(&mut canvas[row_at(si) + 2], sx, '+');
-                put(&mut canvas[row_at(si) + 2], tx, '+');
+            }
+        }
+        if !involved.is_empty() {
+            involved.sort();
+            involved.dedup();
+            let (mn, mx) = (involved[0], involved[involved.len() - 1]);
+            for x in mn..=mx {
+                put(&mut canvas[row_at(li) + 2], x, '-');
+            }
+            for x in involved {
+                put(&mut canvas[row_at(li) + 2], x, '+');
             }
         }
     }
@@ -328,7 +373,7 @@ fn elevation(
         d.push_str(&drops.iter().collect::<String>().trim_end().to_string());
         d.push('\n');
     }
-    // Bedrock banner names every foundation stone in the drawn cone.
+    // Bedrock banner names every foundation stone in the drawing.
     let mut names: Vec<String> = rows
         .iter()
         .flat_map(|r| r.iter())
@@ -366,9 +411,10 @@ fn elevation(
     d
 }
 
-/// Side chapels: one small tree per load-bearing node outside the drawn
-/// cone — off-cone core stacks, detached islands, lone stones. Same
-/// branch glyphs as the register would use, inline links.
+/// Side chapels: one tree per load-bearing node outside the drawn cone —
+/// off-cone core stacks, detached islands, lone stones. Same glyphs as
+/// the arch, inline links.
+#[allow(clippy::too_many_arguments)]
 fn chapels(
     graph: &Graph,
     depends: &BTreeMap<&str, Vec<&str>>,
@@ -382,6 +428,7 @@ fn chapels(
         .iter()
         .filter(|n| {
             n.layer == Layer::Application
+                && !n.fork
                 && core.contains(n.id.as_str())
                 && !placed.contains(n.id.as_str())
         })
@@ -395,8 +442,8 @@ fn chapels(
             .cmp(&depends.get(a).map(Vec::len).unwrap_or(0))
             .then_with(|| a.cmp(b))
     });
-    // Detached islands (non-core components with edges) root at the
-    // members nothing else in the island bears on.
+    // Detached islands (non-core components with edges) and lone stones
+    // (no origin edges at all, but load-bearing by stored layer).
     let mut island_members: BTreeSet<&str> = BTreeSet::new();
     let mut lone: Vec<&str> = Vec::new();
     for n in &graph.nodes {
@@ -424,25 +471,18 @@ fn chapels(
     }
     island_roots.sort();
     lone.sort();
-
     if roots.is_empty() && island_roots.is_empty() && lone.is_empty() {
         return String::new();
     }
     let mut d = String::from("-- side chapels --\n");
     let mut seen: BTreeSet<&str> = BTreeSet::new();
-    for root in roots {
+    for root in roots.iter().chain(island_roots.iter()) {
         seen.insert(root);
         let lab = labels.get(root).map(String::as_str).unwrap_or(root);
         d.push_str(&format!("[{lab}]\n", lab = linked_inline(lab, root)));
         chapel_tree(&mut d, depends, labels, placed, root, "", &mut seen);
     }
-    for root in island_roots {
-        seen.insert(root);
-        let lab = labels.get(root).map(String::as_str).unwrap_or(root);
-        d.push_str(&format!("[{lab}]\n", lab = linked_inline(lab, root)));
-        chapel_tree(&mut d, depends, labels, placed, root, "", &mut seen);
-    }
-    for id in lone {
+    for id in &lone {
         let lab = labels.get(id).map(String::as_str).unwrap_or(id);
         d.push_str(&format!("[{lab}]\n", lab = linked_inline(lab, id)));
     }
@@ -474,15 +514,7 @@ fn chapel_tree<'a>(
             ("├── ", "│   ")
         };
         let lab = labels.get(kid).map(String::as_str).unwrap_or(kid);
-        if placed.contains(kid) {
-            let _ = writeln!(
-                s,
-                "{prefix}{branch}[{lab}] (above)",
-                lab = linked_inline(lab, kid)
-            );
-            continue;
-        }
-        if !seen.insert(kid) {
+        if placed.contains(kid) || !seen.insert(kid) {
             let _ = writeln!(
                 s,
                 "{prefix}{branch}[{lab}] (above)",
@@ -565,65 +597,6 @@ fn centered(text: &str, width: usize) -> String {
     format!("{}{}", " ".repeat(pad), text)
 }
 
-/// All connected components (undirected) over origin-only dependence
-/// edges, largest first: multi-node beats singleton, then size, then
-/// smallest member id.
-fn components(graph: &Graph, depends: &BTreeMap<&str, Vec<&str>>) -> Vec<BTreeSet<String>> {
-    let mut adj: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
-    for (src, tgts) in depends {
-        for tgt in tgts {
-            adj.entry(src).or_default().insert(tgt);
-            adj.entry(tgt).or_default().insert(src);
-        }
-    }
-    for n in &graph.nodes {
-        if !n.fork {
-            adj.entry(n.id.as_str()).or_default();
-        }
-    }
-    let mut seen: BTreeSet<&str> = BTreeSet::new();
-    let mut comps: Vec<BTreeSet<String>> = Vec::new();
-    for start in adj.keys().copied().collect::<Vec<_>>() {
-        if !seen.insert(start) {
-            continue;
-        }
-        let mut comp: BTreeSet<String> = BTreeSet::new();
-        let mut stack = vec![start];
-        while let Some(cur) = stack.pop() {
-            if !comp.insert(cur.to_string()) {
-                continue;
-            }
-            if let Some(next) = adj.get(cur) {
-                for nb in next {
-                    if !seen.contains(nb) {
-                        seen.insert(nb);
-                        stack.push(nb);
-                    }
-                }
-            }
-        }
-        comps.push(comp);
-    }
-    comps.sort_by(|a, b| {
-        (b.len() > 1, b.len(), std::cmp::Reverse(b.iter().next())).cmp(&(
-            a.len() > 1,
-            a.len(),
-            std::cmp::Reverse(a.iter().next()),
-        ))
-    });
-    comps
-}
-
-/// GitHub URL for a portfolio id.
-fn url_of(id: &str) -> String {
-    format!("https://github.com/{id}")
-}
-
-/// Short label: repo name without the owner.
-fn short(id: &str) -> &str {
-    id.split('/').nth(1).unwrap_or(id)
-}
-
 /// Abbreviated display labels: owner stripped, one leading `rust-`
 /// stripped, collisions fall back to the full name.
 fn abbreviations<'a>(
@@ -658,4 +631,14 @@ fn candidate(id: &str) -> String {
         .strip_prefix("rust-")
         .unwrap_or(short(id))
         .to_string()
+}
+
+/// GitHub URL for a portfolio id.
+fn url_of(id: &str) -> String {
+    format!("https://github.com/{id}")
+}
+
+/// Short label: repo name without the owner.
+fn short(id: &str) -> &str {
+    id.split('/').nth(1).unwrap_or(id)
 }
