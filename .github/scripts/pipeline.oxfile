@@ -1,11 +1,5 @@
-# Daily publish pipeline: build → collect → schema → render.
-# Run by .github/workflows/publish.yml AFTER the toolchain step:
-# `oxdock .github/scripts/pipeline.oxfile`.
-# Paths mirror src/paths.rs (the DSL can't import it — keep in sync).
-# Fail-closed: a failing RUN stops the pipeline immediately, so any
-# stage failure means no deploy and Pages keeps serving the last good
-# site. No graph edge comes from this file: the workflow scanner only
-# reads `uses:` tokens, and these are RUN steps.
+# Nightly publish: build, collect the graph, write the schema, render the fragment.
+# Called from publish.yml. If any step fails the run stops and the old site stays up.
 
 INHERIT_ENV [JZOMBIE_GRAPH_TOKEN, CARGO_TARGET_DIR]
 
