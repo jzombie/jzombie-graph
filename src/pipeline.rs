@@ -185,7 +185,7 @@ pub async fn collect_live(
     let mut digest: Vec<String> = vec![];
 
     let five_days_ago = chrono::Utc::now() - chrono::Duration::days(5);
-    let thirty_days_ago = chrono::Utc::now() - chrono::Duration::days(30);
+    let thirty_days_ago = five_days_ago - chrono::Duration::days(25);
     for (i, repo) in repos.iter().enumerate() {
         eprintln!(
             "[{}/{}] {} @{} …",
@@ -209,31 +209,56 @@ pub async fn collect_live(
         // Trailing-window commit velocity: 5d heat vs its own 30d
         // baseline (self-normalized, so busy repos don't auto-win).
         // Fail-open 0 with a digest note — a silent 0 would read as dead.
-        let commits_5d = match client
-            .commit_count_since(&repo.full_name, &repo.default_branch, &five_days_ago)
+        let (commits_5d, _) = match client
+            .commit_count_since(&repo.full_name, &repo.default_branch, Some(&five_days_ago))
             .await
         {
-            Ok(c) => c,
+            Ok(v) => v,
             Err(_) => {
                 digest.push(format!(
                     "{}: 5d commit velocity unavailable — heat fail-open 0",
                     repo.full_name
                 ));
-                0
+                (0, None)
             }
         };
-        let commits_30d = match client
-            .commit_count_since(&repo.full_name, &repo.default_branch, &thirty_days_ago)
+        let (commits_30d, latest_30d) = match client
+            .commit_count_since(
+                &repo.full_name,
+                &repo.default_branch,
+                Some(&thirty_days_ago),
+            )
             .await
         {
-            Ok(c) => c,
+            Ok(v) => v,
             Err(_) => {
                 digest.push(format!(
                     "{}: 30d commit velocity unavailable — baseline fail-open 0",
                     repo.full_name
                 ));
-                0
+                (0, None)
             }
+        };
+        // Latest default-branch commit: the 30d window's newest IS the
+        // newest overall when non-empty. Only empty baselines need one
+        // unbounded probe (dormant repos — exactly where idle matters).
+        // `pushed_at` is repo-level (any branch); idle measures default.
+        let last_commit_at = match latest_30d {
+            Some(d) => Some(d),
+            None if commits_30d == 0 => match client
+                .commit_count_since(&repo.full_name, &repo.default_branch, None)
+                .await
+            {
+                Ok((_, d)) => d,
+                Err(_) => {
+                    digest.push(format!(
+                        "{}: latest-commit probe unavailable — idle falls back to pushed_at",
+                        repo.full_name
+                    ));
+                    None
+                }
+            },
+            None => None,
         };
         // Captured gauges as of collection (frozen into the JSON; live
         // paths recompute from the inputs above).
@@ -242,8 +267,8 @@ pub async fn collect_live(
         } else {
             Some(commits_5d as f32 * 6.0 / commits_30d as f32)
         };
-        let focus = repo.pushed_at.map(|p| {
-            let idle = (chrono::Utc::now() - p).num_days().max(0) as f32;
+        let focus = last_commit_at.or(repo.pushed_at).map(|t| {
+            let idle = (chrono::Utc::now() - t).num_days().max(0) as f32;
             commit_heat.unwrap_or(0.0) - idle / 30.0
         });
         // Default-branch-only collection: one branch scanned, period.
@@ -589,6 +614,7 @@ pub async fn collect_live(
             commits_30d,
             commit_heat,
             focus,
+            last_commit_at,
             branches: branch_names,
             visible: false, // computed below
             visible_reason: None,
@@ -685,6 +711,7 @@ mod tests {
                 commits_30d: 0,
                 commit_heat: None,
                 focus: None,
+                last_commit_at: None,
                 branches: vec!["main".into()],
                 visible: true,
                 visible_reason: None,
@@ -718,6 +745,7 @@ mod tests {
                 commits_30d: 0,
                 commit_heat: None,
                 focus: None,
+                last_commit_at: None,
                 branches: vec!["main".into()],
                 visible: false,
                 visible_reason: None,
@@ -788,6 +816,7 @@ mod tests {
             commits_30d: 0,
             commit_heat: None,
             focus: None,
+            last_commit_at: None,
             branches: vec!["main".into()],
             visible: false,
             visible_reason: None,

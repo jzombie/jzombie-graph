@@ -35,6 +35,7 @@ fn node(id: &str, fork: bool, private: bool) -> Node {
         commits_30d: 0,
         commit_heat: None,
         focus: None,
+        last_commit_at: None,
         branches: vec!["main".into()],
         visible: true,
         visible_reason: None,

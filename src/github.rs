@@ -441,20 +441,26 @@ impl GitHubClient {
 
     /// Trailing-window commit velocity (default branch): total commits
     /// with `since`, via `per_page=1` — the count comes off the
-    /// `Link: rel="last"` page number, no pagination walks. One call per
+    /// `Link: rel="last"` page number, no pagination walks. Also returns
+    /// the newest commit's date in the window (first item): whenever the
+    /// window is non-empty that IS the latest default-branch commit.
+    /// `since=None` means unbounded (latest commit overall). One call per
     /// window per repo. Empty repos (409) and errors are the caller's
     /// fail-open, never fatal here.
     pub async fn commit_count_since(
         &self,
         full_name: &str,
         branch: &str,
-        since: &DateTime<Utc>,
-    ) -> Result<u32> {
-        let url = format!(
-            "{}/repos/{full_name}/commits?sha={branch}&since={}&per_page=1",
-            self.api_base,
-            since.to_rfc3339(),
+        since: Option<&DateTime<Utc>>,
+    ) -> Result<(u32, Option<DateTime<Utc>>)> {
+        let mut url = format!(
+            "{}/repos/{full_name}/commits?sha={branch}&per_page=1",
+            self.api_base
         );
+        if let Some(s) = since {
+            url.push_str("&since=");
+            url.push_str(&s.to_rfc3339());
+        }
         let resp = self.http.get(&url).send().await?;
         if !resp.status().is_success() {
             anyhow::bail!("{url}: HTTP {}", resp.status());
@@ -465,8 +471,9 @@ impl GitHubClient {
             .and_then(|v| v.to_str().ok())
             .map(|s| s.to_string());
         let body: serde_json::Value = resp.json().await?;
-        let n = body.as_array().map(|a| a.len()).unwrap_or(0);
-        Ok(parse_commit_total(link.as_deref(), n))
+        let items = body.as_array().cloned().unwrap_or_default();
+        let n = parse_commit_total(link.as_deref(), items.len());
+        Ok((n, latest_commit_date(&items)))
     }
 
     #[allow(dead_code)]
@@ -499,6 +506,19 @@ pub fn parse_commit_total(link: Option<&str>, body_len: usize) -> u32 {
     body_len.min(1) as u32
 }
 
+/// Newest commit date from a `per_page=1` commits listing: the first item
+/// is the latest commit, preferring the committer date (what landed) with
+/// author-date fallback. None when the window is empty.
+pub fn latest_commit_date(items: &[serde_json::Value]) -> Option<DateTime<Utc>> {
+    let commit = items.first()?.get("commit")?;
+    let s = commit
+        .get("committer")
+        .and_then(|c| c.get("date"))
+        .or_else(|| commit.get("author").and_then(|a| a.get("date")))?
+        .as_str()?;
+    s.parse::<DateTime<Utc>>().ok()
+}
+
 #[cfg(test)]
 mod tests {
     use base64::{Engine as _, engine::general_purpose::STANDARD as B64};
@@ -518,5 +538,21 @@ mod tests {
         assert_eq!(parse_commit_total(None, 1), 1);
         assert_eq!(parse_commit_total(None, 0), 0);
         assert_eq!(parse_commit_total(Some(r#"<u?page=3>; rel="next""#), 1), 1);
+    }
+
+    #[test]
+    fn commit_date_prefers_committer() {
+        use super::latest_commit_date;
+        let items = serde_json::json!([
+            {"commit": {"committer": {"date": "2026-11-07T10:00:00Z"}, "author": {"date": "2026-11-06T10:00:00Z"}}}
+        ]);
+        let got = latest_commit_date(items.as_array().unwrap()).unwrap();
+        assert_eq!(got.to_rfc3339(), "2026-11-07T10:00:00+00:00");
+        let author_only = serde_json::json!([
+            {"commit": {"author": {"date": "2026-11-06T10:00:00Z"}}}
+        ]);
+        let arr = author_only.as_array().unwrap();
+        assert!(latest_commit_date(arr).is_some());
+        assert_eq!(latest_commit_date(&[]), None);
     }
 }

@@ -137,6 +137,12 @@ pub struct Node {
     /// it live from the inputs above.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub focus: Option<f32>,
+    /// Latest default-branch commit date (from the velocity probes; one
+    /// unbounded probe only when the 30d window is empty). Idle and focus
+    /// measure from here — repo-level `pushed_at` moves on any branch push
+    /// and would read 0 idle while main sat still.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_commit_at: Option<DateTime<Utc>>,
     /// Branches observed during collection.
     pub branches: Vec<String>,
     /// Structural role, set once at ingestion by `apply_layers` on the
@@ -167,9 +173,12 @@ impl Node {
         Some(self.commits_5d as f32 * 6.0 / self.commits_30d as f32)
     }
 
-    /// Whole days since the last push, if known.
+    /// Whole days since the default branch last moved, if known.
+    /// Prefers `last_commit_at`, falls back to repo-level `pushed_at`
+    /// (pre-recency JSON), unknown when both are missing.
     pub fn idle_days(&self, now: &chrono::DateTime<chrono::Utc>) -> Option<i64> {
-        self.pushed_at.map(|p| (*now - p).num_days().max(0))
+        let t = self.last_commit_at.or(self.pushed_at)?;
+        Some((*now - t).num_days().max(0))
     }
 
     /// Focus gauge (transparent heuristic, never scored): what I'm
@@ -471,6 +480,7 @@ mod tests {
             commits_30d: 0,
             commit_heat: None,
             focus: None,
+            last_commit_at: None,
         }
     }
 
