@@ -46,7 +46,7 @@ impl EdgeKind {
 /// and never recomputed: identical in the briefing lane and the public
 /// file, regardless of render. Dependence edges (docs/workflow/xrefs)
 /// never count.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Layer {
     Foundation,

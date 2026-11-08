@@ -1,0 +1,17 @@
+[package]
+name = "jzombie-graph-cathedral"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Markdown renderer for jzombie-graph JSON (reads the collector's schema, writes the doc)"
+
+[[bin]]
+name = "cathedral"
+path = "src/main.rs"
+
+[lib]
+name = "cathedral"
+path = "src/lib.rs"
+
+[dependencies]
+jzombie-graph = { path = "../.." }

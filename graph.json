@@ -1,6 +1,6 @@
 {
-  "schema_version": 4,
-  "generated_at": "2026-11-08T03:23:53.558341Z",
+  "schema_version": 5,
+  "generated_at": "2026-11-08T03:42:47.276099Z",
   "nodes": [
     {
       "id": "jzombie/Calculator",
@@ -20,6 +20,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -42,6 +43,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -66,6 +68,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -91,6 +94,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     },
@@ -116,6 +120,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -140,6 +145,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -163,6 +169,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -188,6 +195,7 @@
       "branches": [
         "main"
       ],
+      "layer": "foundation",
       "visible": true,
       "visible_reason": "fork: load-bearing fan-in, has portfolio edge"
     },
@@ -213,6 +221,7 @@
       "branches": [
         "main"
       ],
+      "layer": "foundation",
       "visible": true,
       "visible_reason": "fork: load-bearing fan-in, has portfolio edge"
     },
@@ -238,6 +247,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -263,6 +273,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -287,6 +298,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -314,6 +326,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -339,6 +352,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -363,6 +377,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -388,6 +403,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -416,6 +432,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -447,6 +464,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     },
@@ -472,6 +490,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     },
@@ -501,6 +520,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -529,6 +549,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     },
@@ -554,6 +575,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -575,6 +597,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -597,6 +620,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     },
@@ -621,6 +645,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     },
@@ -646,6 +671,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -668,6 +694,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     },
@@ -690,6 +717,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     },
@@ -728,6 +756,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     },
@@ -751,6 +780,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -772,6 +802,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     },
@@ -796,6 +827,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -819,6 +851,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -848,6 +881,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -873,6 +907,7 @@
       "branches": [
         "master"
       ],
+      "layer": "foundation",
       "visible": true,
       "visible_reason": "fork: load-bearing fan-in, has portfolio edge"
     },
@@ -894,6 +929,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -918,6 +954,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -940,6 +977,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -965,6 +1003,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -990,6 +1029,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -1014,6 +1054,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -1037,6 +1078,7 @@
       "branches": [
         "master"
       ],
+      "layer": "application",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -1060,6 +1102,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -1085,6 +1128,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -1110,6 +1154,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -1145,6 +1190,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     },
@@ -1168,6 +1214,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -1192,6 +1239,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -1224,6 +1272,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     },
@@ -1249,6 +1298,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -1275,6 +1325,7 @@
       "branches": [
         "main"
       ],
+      "layer": "foundation",
       "visible": true,
       "visible_reason": "fork: load-bearing fan-in, has portfolio edge"
     },
@@ -1299,6 +1350,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -1324,6 +1376,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -1347,6 +1400,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     },
@@ -1379,6 +1433,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     },
@@ -1407,13 +1462,14 @@
       "forks_count": 0,
       "open_issues": 6,
       "license": "Apache-2.0",
-      "size_kb": 366,
+      "size_kb": 306,
       "has_readme": true,
       "has_agents_md": true,
       "has_license_file": true,
       "branches": [
         "main"
       ],
+      "layer": "application",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -1448,6 +1504,7 @@
       "branches": [
         "main"
       ],
+      "layer": "foundation",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -1478,6 +1535,7 @@
       "branches": [
         "main"
       ],
+      "layer": "application",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -1503,6 +1561,7 @@
       "branches": [
         "main"
       ],
+      "layer": "foundation",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -1533,6 +1592,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     },
@@ -1564,6 +1624,7 @@
       "branches": [
         "main"
       ],
+      "layer": "foundation",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -1597,6 +1658,7 @@
       "branches": [
         "main"
       ],
+      "layer": "application",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -1629,6 +1691,7 @@
       "branches": [
         "main"
       ],
+      "layer": "middleware",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -1664,6 +1727,7 @@
       "branches": [
         "main"
       ],
+      "layer": "middleware",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -1686,6 +1750,7 @@
       "branches": [
         "master"
       ],
+      "layer": "application",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -1708,6 +1773,7 @@
       "branches": [
         "main"
       ],
+      "layer": "application",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -1742,6 +1808,7 @@
       "branches": [
         "main"
       ],
+      "layer": "middleware",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -1774,6 +1841,7 @@
       "branches": [
         "main"
       ],
+      "layer": "application",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -1810,6 +1878,7 @@
       "branches": [
         "main"
       ],
+      "layer": "middleware",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -1832,6 +1901,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -1863,6 +1933,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     },
@@ -1894,6 +1965,7 @@
       "branches": [
         "main"
       ],
+      "layer": "middleware",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -1920,6 +1992,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     },
@@ -1952,6 +2025,7 @@
       "branches": [
         "main"
       ],
+      "layer": "application",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -1989,6 +2063,7 @@
       "branches": [
         "main"
       ],
+      "layer": "application",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -2013,6 +2088,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -2037,6 +2113,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -2061,6 +2138,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -2086,6 +2164,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -2115,6 +2194,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -2143,6 +2223,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     },
@@ -2171,6 +2252,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -2196,6 +2278,7 @@
       "branches": [
         "main"
       ],
+      "layer": "application",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -2220,6 +2303,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     },
@@ -2244,6 +2328,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -2267,6 +2352,7 @@
       "branches": [
         "dev--draft"
       ],
+      "layer": "application",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -2301,6 +2387,7 @@
       "branches": [
         "main"
       ],
+      "layer": "middleware",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -2330,6 +2417,7 @@
       "branches": [
         "main"
       ],
+      "layer": "foundation",
       "visible": true,
       "visible_reason": "fork: diverged (ahead of upstream), has portfolio edge"
     },
@@ -2355,6 +2443,7 @@
       "branches": [
         "develop"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     },
@@ -2380,6 +2469,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -2402,6 +2492,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     },
@@ -2427,6 +2518,7 @@
       "branches": [
         "main"
       ],
+      "layer": "application",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -2449,6 +2541,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     },
@@ -2474,6 +2567,7 @@
       "branches": [
         "master"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -2509,6 +2603,7 @@
       "branches": [
         "main"
       ],
+      "layer": "application",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -2532,6 +2627,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     },
@@ -2555,6 +2651,7 @@
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "tier3: isolated, no portfolio edge"
     }
