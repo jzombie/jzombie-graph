@@ -544,10 +544,12 @@ pub async fn collect_live(
             branches: branch_names,
             visible: false, // computed below
             visible_reason: None,
+            layer: graph::Layer::Isolated, // computed below via apply_layers
         });
     }
 
     graph::apply_visibility(&mut nodes, &all_edges);
+    graph::apply_layers(&mut nodes, &all_edges);
     let g = Graph::new(nodes, all_edges);
     eprintln!(
         "done: {} repos, {} nodes, {} edges",
@@ -598,6 +600,7 @@ mod tests {
                 branches: vec!["main".into()],
                 visible: true,
                 visible_reason: None,
+                layer: graph::Layer::Isolated,
             },
             Node {
                 id: "me/secret".into(),
@@ -626,6 +629,7 @@ mod tests {
                 branches: vec!["main".into()],
                 visible: false,
                 visible_reason: None,
+                layer: graph::Layer::Isolated,
             },
         ];
         let edges = vec![Edge {
@@ -637,6 +641,7 @@ mod tests {
             version: None,
         }];
         graph::apply_visibility(&mut nodes, &edges);
+        graph::apply_layers(&mut nodes, &edges);
         Graph::new(nodes, edges)
     }
 

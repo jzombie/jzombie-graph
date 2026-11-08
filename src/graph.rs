@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Stable schema version. Bump only with a documented migration.
-pub const SCHEMA_VERSION: u32 = 4;
+pub const SCHEMA_VERSION: u32 = 5;
 
 fn is_false(b: &bool) -> bool {
     !*b
@@ -34,25 +34,25 @@ impl EdgeKind {
     }
 }
 
-/// Structural role derived from *dependence* fan-in/fan-out
-/// (`EdgeKind::is_dependence`), never stored, always computed live on
-/// whichever graph instance you hold:
+/// Structural role from *dependence* fan-in/fan-out
+/// (`EdgeKind::is_dependence`: manifest/submodule/registry).
 ///
 /// - `Foundation`: depended upon, depends on nothing (`in > 0, out == 0`).
 /// - `Middleware`: both used and using (`in > 0, out > 0`).
 /// - `Application`: top of its chain (`in == 0, out > 0`).
 /// - `Isolated`: no dependence edges either way.
 ///
-/// Privacy note: private nodes are transit — they count here. A public
-/// node's layer on the true graph can reflect private dependents; the
-/// same query on `public_subgraph()` gives the public-only layer and
-/// leaks nothing. Persisting true-graph layers into public JSON would
-/// leak a private-usage delta, so layers stay derived, never serialized.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// The contract is the stored `Node.layer`, set once by `apply_layers`
+/// and never recomputed: identical in the briefing lane and the public
+/// file, regardless of render. Dependence edges (docs/workflow/xrefs)
+/// never count.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Layer {
     Foundation,
     Middleware,
     Application,
+    #[default]
     Isolated,
 }
 
@@ -121,6 +121,15 @@ pub struct Node {
     pub has_license_file: bool,
     /// Branches observed during collection.
     pub branches: Vec<String>,
+    /// Structural role, set once at ingestion by `apply_layers` on the
+    /// true graph (private transit included) and preserved verbatim by
+    /// `public_subgraph` — so the value is identical in the briefing
+    /// lane and the committed file, regardless of render. Persisted so
+    /// layers are minable straight from the JSON (`jq` on `.layer`).
+    /// Stated cost: a public `application -> middleware` value can reflect
+    /// a private dependent (never which one, no counts).
+    #[serde(default)]
+    pub layer: Layer,
     /// Computed visibility: renderers filter blindly on this, never re-decide.
     pub visible: bool,
     /// Why visible / hidden — machine-readable for the briefing digest.
@@ -208,9 +217,10 @@ impl Graph {
         counts
     }
 
-    /// Structural layer per node from dependence fan-in/fan-out.
-    /// Computed on `self`: true graph counts private transit, public
-    /// subgraph counts public-only. See `Layer` privacy note.
+    /// Ad-hoc layer recompute over `self`'s edges (same rule as
+    /// `apply_layers`). The stored `Node.layer` is the contract;
+    /// this is for one-off queries on graphs that never went through
+    /// ingestion.
     pub fn node_layers(&self) -> BTreeMap<String, Layer> {
         let fan_in = self.node_fan_in();
         let fan_out = self.node_fan_out();
@@ -331,7 +341,31 @@ pub fn apply_visibility(nodes: &mut [Node], edges: &[Edge]) {
     }
 }
 
-// Helper removed: ids are canonical (`owner/repo`), sets now own their Strings.
+/// Set `node.layer` for every node from *dependence* fan-in/fan-out
+/// (`EdgeKind::is_dependence` only — workflow/docs/xrefs never count).
+/// Call once on the true graph (private included) before `select_output`;
+/// `public_subgraph` preserves the values verbatim, so the stored layer
+/// is render-stable by construction. Re-running it on an already-stripped
+/// public graph would give public-only values — don't; set once upstream.
+pub fn apply_layers(nodes: &mut [Node], edges: &[Edge]) {
+    use std::collections::BTreeMap;
+    let mut fan_in: BTreeMap<&str, u32> = BTreeMap::new();
+    let mut fan_out: BTreeMap<&str, u32> = BTreeMap::new();
+    for e in edges.iter().filter(|e| e.kind.is_dependence()) {
+        *fan_in.entry(e.target.as_str()).or_default() += 1;
+        *fan_out.entry(e.source.as_str()).or_default() += 1;
+    }
+    for n in nodes.iter_mut() {
+        let i = fan_in.get(n.id.as_str()).copied().unwrap_or(0);
+        let o = fan_out.get(n.id.as_str()).copied().unwrap_or(0);
+        n.layer = match (i, o) {
+            (0, 0) => Layer::Isolated,
+            (_, 0) => Layer::Foundation,
+            (_, _) if i > 0 && o > 0 => Layer::Middleware,
+            _ => Layer::Application,
+        };
+    }
+}
 
 /// Public subgraph: both endpoints public. Scoring sees the true graph;
 /// all surfaces show this. Private nodes vanish entirely (no stubs).
@@ -385,6 +419,7 @@ mod tests {
             branches: vec!["main".into()],
             visible: false,
             visible_reason: None,
+            layer: Layer::Isolated,
         }
     }
 
@@ -517,23 +552,28 @@ mod tests {
     }
 
     #[test]
-    fn layers_count_private_transit_on_true_graph_only() {
-        // Public app with zero public fan-in: application publicly, but
-        // middleware on the true graph once a private node uses it.
-        // No private facts leak through the layer query on the public lane.
-        let g = Graph::new(
-            vec![
-                node("me/app", false, false, None),
-                node("me/lib", false, false, None),
-                node("me/secret", false, true, None),
-            ],
-            vec![
-                edge("me/app", "me/lib", EdgeKind::Manifest),
-                edge("me/secret", "me/app", EdgeKind::Manifest),
-            ],
-        );
-        assert_eq!(g.node_layer("me/app"), Layer::Middleware);
+    fn stored_layer_survives_public_strip_verbatim() {
+        // Determinism contract: `apply_layers` runs once on the true graph
+        // (private transit included); `public_subgraph` preserves the stored
+        // value, so both lanes report the same layer. Here `me/app` is
+        // middleware because the private `me/secret` uses it — that verdict
+        // is identical before and after stripping.
+        let mut nodes = vec![
+            node("me/app", false, false, None),
+            node("me/lib", false, false, None),
+            node("me/secret", false, true, None),
+        ];
+        let edges = vec![
+            edge("me/app", "me/lib", EdgeKind::Manifest),
+            edge("me/secret", "me/app", EdgeKind::Manifest),
+        ];
+        apply_visibility(&mut nodes, &edges);
+        apply_layers(&mut nodes, &edges);
+        let g = Graph::new(nodes, edges);
+        let stored = |gr: &Graph, id: &str| gr.nodes.iter().find(|n| n.id == id).unwrap().layer;
+        assert_eq!(stored(&g, "me/app"), Layer::Middleware);
         let pub_g = public_subgraph(&g);
-        assert_eq!(pub_g.node_layer("me/app"), Layer::Application);
+        assert_eq!(stored(&pub_g, "me/app"), Layer::Middleware);
+        assert_eq!(stored(&pub_g, "me/lib"), Layer::Foundation);
     }
 }

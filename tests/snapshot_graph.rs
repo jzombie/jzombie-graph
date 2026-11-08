@@ -36,6 +36,7 @@ fn node(id: &str, fork: bool, private: bool, ahead_by: Option<u32>) -> Node {
         branches: vec!["main".into()],
         visible: false,
         visible_reason: None,
+        layer: jzombie_graph::graph::Layer::Isolated,
     }
 }
 
@@ -101,6 +102,7 @@ fn snapshot_reference_portfolio() {
         },
     ];
     graph::apply_visibility(&mut nodes, &edges);
+    graph::apply_layers(&mut nodes, &edges);
     let g = Graph::new(nodes, edges);
 
     // Known truths (asserted, then snapshotted):

@@ -3,7 +3,7 @@ source: tests/snapshot_graph.rs
 expression: "&pub_g"
 ---
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "generated_at": "1970-01-01T00:00:00Z",
   "nodes": [
     {
@@ -34,6 +34,7 @@ expression: "&pub_g"
       "branches": [
         "main"
       ],
+      "layer": "application",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -54,6 +55,7 @@ expression: "&pub_g"
       "branches": [
         "main"
       ],
+      "layer": "foundation",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
     },
@@ -74,6 +76,7 @@ expression: "&pub_g"
       "branches": [
         "main"
       ],
+      "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
     },
@@ -94,6 +97,7 @@ expression: "&pub_g"
       "branches": [
         "main"
       ],
+      "layer": "foundation",
       "visible": true,
       "visible_reason": "fork: diverged (ahead of upstream), has portfolio edge"
     }
