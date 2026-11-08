@@ -4,8 +4,10 @@
 //! renders jzombie's portfolio as a 2D projection of the dependence graph:
 //! nodes that share edges pull together, unconnected nodes push apart.
 //! No buses, no stubs, no intermediate glyphs — one braille trace per real
-//! dependence edge (`manifest`/`submodule`/`registry`), plus a fainter dotted
-//! trace per `docs` reference (runtime coupling the manifest can't see).
+//! edge: cargo-level dependence (`manifest`/`submodule`/`registry`) plus
+//! `docs` references (runtime coupling the manifest can't see, e.g.
+//! precompiled binaries the main project consumes). Docs edges pull with
+//! lighter gravity in layout but render with the same glyphs.
 //! Every node label is a link; tags are zero-width so
 //! geometry computed on visible text stays aligned.
 //!
@@ -38,7 +40,7 @@ pub fn render_cathedral(graph: &Graph) -> String {
     s.push_str("jzombie's portfolio as a 2D projection — proximity is edge strength.\n\n");
     let _ = writeln!(
         s,
-        "Generated from `graph.json` (schema v{}). Braille = cargo dependence; dotted = docs reference. Every label links to GitHub.\n",
+        "Generated from `graph.json` (schema v{}). Braille traces show cargo dependence plus docs runtime coupling; every label links to GitHub.\n",
         graph.schema_version,
     );
     let Some(draw) = select_cluster(graph) else {
@@ -303,13 +305,13 @@ fn render_pre(graph: &Graph, cluster: &Cluster) -> String {
         boxes.push((xu, yu, w, 1));
         placed.insert(id.as_str(), (xu, yu, w));
     }
-    // Braille dot-grid for traces: 2×4 dots per character cell, so
-    // edges get ~8× the resolution of the old `·` cells in the same block.
-    // One trace per real edge; nodes mask the dots beneath them.
+    // Braille dot-grid for traces: 2×4 dots per character cell. Strong
+    // (cargo) and weak (docs runtime coupling) edges share the same glyphs;
+    // docs keeps lighter gravity in layout only. Nodes mask the dots beneath.
     let dw = WIDTH * 2;
     let dh = HEIGHT * 4;
     let mut dots: Vec<Vec<bool>> = vec![vec![false; dw]; dh];
-    for (a, b) in &cluster.edges {
+    for (a, b) in cluster.edges.iter().chain(cluster.weak.iter()) {
         let Some(&(ax, ay, aw)) = placed.get(a.as_str()) else {
             continue;
         };
@@ -363,27 +365,6 @@ fn render_pre(graph: &Graph, cluster: &Cluster) -> String {
                 bits |= 0x80;
             }
             grid[cy][cx] = braille_of(bits);
-        }
-    }
-    // Weak docs-reference traces as sparse dots, only where no braille
-    // trace already runs — visually distinct from cargo dependence.
-    for (a, b) in &cluster.weak {
-        let Some(&(ax, ay, aw)) = placed.get(a.as_str()) else {
-            continue;
-        };
-        let Some(&(bx, by, bw)) = placed.get(b.as_str()) else {
-            continue;
-        };
-        let (x0, y0) = (ax as isize + aw as isize / 2, ay as isize);
-        let (x1, y1) = (bx as isize + bw as isize / 2, by as isize);
-        for (x, y) in bresenham(x0, y0, x1, y1) {
-            if x < 0 || y < 0 || x >= WIDTH as isize || y >= HEIGHT as isize {
-                continue;
-            }
-            let (xu, yu) = (x as usize, y as usize);
-            if grid[yu][xu] == ' ' {
-                grid[yu][xu] = '·';
-            }
         }
     }
     // Nodes on top; record link spans on visible text.

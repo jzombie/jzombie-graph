@@ -106,9 +106,9 @@ fn no_tables_or_tier_language() {
 }
 
 #[test]
-fn docs_edges_draw_faint_reference_trace() {
-    // app -> lib is docs-only: no braille, but a faint dotted trace that
-    // attaches the satellite. Workflow-only edges attach nothing.
+fn docs_edges_draw_same_braille_trace() {
+    // app -> lib is docs-only: lighter gravity in layout, same braille
+    // glyphs in the drawing. Workflow-only edges attach nothing.
     let mut nodes = vec![
         node("me/a", false, false),
         node("me/b", false, false),
@@ -126,7 +126,10 @@ fn docs_edges_draw_faint_reference_trace() {
         md.contains(">a</a>") && md.contains(">c</a>"),
         "nodes drawn"
     );
-    assert!(md.contains('·'), "docs reference drawn faint");
+    assert!(
+        md.chars().any(|c| ('\u{2800}'..='\u{28FF}').contains(&c)),
+        "docs reference drawn in braille"
+    );
 }
 
 #[test]
