@@ -270,16 +270,22 @@ fn render_pre(graph: &Graph, cluster: &Cluster) -> String {
     let labels = abbreviations(graph, &cluster.nodes);
     let fan_in = graph.node_fan_in();
     // Deterministic force-directed layout over all edges (docs keeps
-    // lighter gravity). Weak-only satellites would still orbit far on
-    // light pull, so pin each just outside its anchor instead — adjacent
-    // still means connected, and they stop stretching the normalization
-    // that scrunches the core.
+    // lighter gravity). Leaves (≤1 strong edge) would still orbit far on
+    // equilibrium — a leaf's pull always loses to the whole core's
+    // repulsion — so pin each just outside its anchor instead. Adjacent
+    // still means connected, and outliers stop stretching the
+    // normalization that scrunches the core.
     let mut pos = layout(cluster);
     let strong_members: BTreeSet<&str> = cluster
         .edges
         .iter()
         .flat_map(|(a, b)| [a.as_str(), b.as_str()])
         .collect();
+    let mut strong_degree: BTreeMap<&str, usize> = BTreeMap::new();
+    for (a, b) in &cluster.edges {
+        *strong_degree.entry(a.as_str()).or_default() += 1;
+        *strong_degree.entry(b.as_str()).or_default() += 1;
+    }
     if !strong_members.is_empty() {
         let (mut cx, mut cy) = (0.0, 0.0);
         for id in &strong_members {
@@ -291,11 +297,13 @@ fn render_pre(graph: &Graph, cluster: &Cluster) -> String {
         cx /= strong_members.len() as f64;
         cy /= strong_members.len() as f64;
         for id in &cluster.nodes {
-            if strong_members.contains(id.as_str()) {
+            if strong_degree.get(id.as_str()).copied().unwrap_or(0) > 1 {
                 continue;
             }
+            // Anchor: the strong neighbor when there is one, else a weak
+            // neighbor in the core.
             let mut anchors: Vec<&str> = cluster
-                .weak
+                .edges
                 .iter()
                 .filter_map(|(a, b)| {
                     if a == id {
@@ -307,6 +315,21 @@ fn render_pre(graph: &Graph, cluster: &Cluster) -> String {
                     }
                 })
                 .collect();
+            if anchors.is_empty() {
+                anchors = cluster
+                    .weak
+                    .iter()
+                    .filter_map(|(a, b)| {
+                        if a == id {
+                            Some(b.as_str())
+                        } else if b == id {
+                            Some(a.as_str())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+            }
             anchors.sort();
             let anchor = anchors
                 .iter()
