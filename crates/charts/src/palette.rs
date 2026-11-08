@@ -19,6 +19,14 @@ pub const INK: &str = "#767676";
 /// Secondary text (empty states).
 pub const MUTED: &str = "#767676";
 
+/// Text drawn over an opaque bar. Dark ink is unreadable on a dark page,
+/// but on top of a filled bar the bar IS the background — always legible.
+pub const INK_ON_BAR: &str = "#1a1a1a";
+
+/// Diverging focus bars: heating right, dormant left.
+pub const FOCUS_POSITIVE: &str = "#009E73";
+pub const FOCUS_NEGATIVE: &str = "#999999";
+
 /// Category color for series `i`, cycling the palette.
 pub fn categorical(i: usize) -> &'static str {
     CATEGORICAL[i % CATEGORICAL.len()]

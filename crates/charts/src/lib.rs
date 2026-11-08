@@ -100,15 +100,18 @@ fn f1(x: f64) -> String {
     format!("{x:.1}")
 }
 
-/// Top-`n` repos by trailing-5d commits plus an `Other` bucket, with pie
-/// geometry precomputed. Zero-commit repos never slice. Empty when nothing
-/// committed in window (script emits a labeled empty canvas instead).
+/// Rows for the commit-share pie: own-work repos only, via the shared
+/// `is_own_work` filter — pristine forks you never contributed to never
+/// slice. Top-`n` plus an `Other` bucket, with pie geometry precomputed.
+/// Zero-commit repos never slice. Empty when nothing committed in window
+/// (script emits a labeled empty canvas instead).
 /// Colors come from the shared [`palette`] module — same values every chart.
 fn share_rows(graph_json: &str, n: usize) -> anyhow::Result<Vec<SliceRow>> {
     let graph = jzombie_graph::graph::Graph::from_json(graph_json)?;
     let mut repos: Vec<(&str, u32)> = graph
         .nodes
         .iter()
+        .filter(|nd| !nd.private && jzombie_graph::graph::is_own_work(nd))
         .filter(|nd| nd.commits_5d > 0)
         .map(|nd| (nd.name.as_str(), nd.commits_5d))
         .collect();
@@ -182,6 +185,233 @@ fn share_rows(graph_json: &str, n: usize) -> anyhow::Result<Vec<SliceRow>> {
     Ok(rows)
 }
 
+/// One focus bar: everything preformatted — the script interpolates only.
+/// `bx`/`bw` place the bar against the zero axis; name and value live in
+/// fixed left columns (right-anchored). Each text element carries its own
+/// ink: page-gray normally, dark when its bar crosses underneath it (the
+/// bar is opaque, so dark-on-fill reads in either page theme).
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+struct FocusRow {
+    label: String,
+    value: String,
+    color: String,
+    bx: String,
+    bw: String,
+    by: String,
+    tx: String,
+    ty: String,
+    vx: String,
+    vanchor: String,
+    name_ink: String,
+    value_ink: String,
+}
+
+/// Chart document: diverging bars from a zero axis. Same contract as PieDoc
+/// (all values precomputed in Rust, script only interpolates).
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+struct FocusDoc {
+    header: String,
+    footer: String,
+    zero_x: String,
+    zero_y1: String,
+    zero_y2: String,
+    bar_h: String,
+    fs: String,
+    ink: String,
+    muted: String,
+    mx: String,
+    my: String,
+    msg: String,
+    empty: bool,
+    rows: Vec<FocusRow>,
+}
+
+/// Longest repo name shown; longer names truncate with an ellipsis.
+const LABEL_MAX: usize = 18;
+
+fn truncate_name(name: &str, max: usize) -> String {
+    let chars: Vec<char> = name.chars().collect();
+    if chars.len() <= max {
+        name.to_string()
+    } else {
+        chars[..max.saturating_sub(1)].iter().collect::<String>() + "…"
+    }
+}
+
+/// Top-`n_top` repos by focus plus the `n_bottom` lowest scored (dormant
+/// tail), unknown-focus repos excluded — unknowns can't sit on a scale.
+/// Own-work repos only, via the shared `is_own_work` filter.
+/// Display order stays descending. Each side scales to its own max, so heat
+/// and dormancy depth (different processes, different magnitudes) each read
+/// fully; exact values ride in the labels.
+fn focus_rows(graph_json: &str, n_top: usize, n_bottom: usize) -> anyhow::Result<Vec<FocusRow>> {
+    let graph = jzombie_graph::graph::Graph::from_json(graph_json)?;
+    let now = graph.generated_at;
+    let mut scored: Vec<(&str, f32)> = graph
+        .nodes
+        .iter()
+        .filter(|nd| !nd.private && jzombie_graph::graph::is_own_work(nd))
+        .filter_map(|nd| {
+            nd.focus
+                .or_else(|| nd.focus(&now))
+                .map(|f| (nd.name.as_str(), f))
+        })
+        .collect();
+    scored.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.0.cmp(b.0))
+    });
+    let mut picked: Vec<(&str, f32)> = scored.iter().take(n_top.max(1)).copied().collect();
+    let taken: std::collections::BTreeSet<&str> = picked.iter().map(|(n, _)| *n).collect();
+    let mut tail: Vec<(&str, f32)> = scored
+        .iter()
+        .rev()
+        .filter(|(n, _)| !taken.contains(*n))
+        .take(n_bottom)
+        .copied()
+        .collect();
+    tail.reverse();
+    picked.extend(tail);
+    if picked.is_empty() {
+        return Ok(vec![]);
+    }
+    // Per-side scales: positives fill the right half against their own max,
+    // negatives the left half against theirs. Heat caps at 6 while dormancy
+    // sinks unbounded — one shared scale would erase the top cluster.
+    let pos_max = picked
+        .iter()
+        .filter(|(_, f)| *f >= 0.0)
+        .map(|(_, f)| *f)
+        .fold(0.0_f32, f32::max)
+        .max(0.01);
+    let neg_max = picked
+        .iter()
+        .filter(|(_, f)| *f < 0.0)
+        .map(|(_, f)| f.abs())
+        .fold(0.0_f32, f32::max)
+        .max(0.01);
+    // Fixed columns: names right-anchored at `name_x`, values right-anchored
+    // at `value_x` (tabular, never collides with bars), zero axis, bars.
+    let title_h = 44.0;
+    let row_h = 26.0;
+    let name_x = 130.0;
+    let value_x = 200.0;
+    let zero_x = 260.0;
+    let max_bar = 200.0;
+    let rows = picked
+        .into_iter()
+        .enumerate()
+        .map(|(i, (label, f))| {
+            let len = if f >= 0.0 {
+                f as f64 / pos_max as f64 * max_bar
+            } else {
+                f.abs() as f64 / neg_max as f64 * max_bar
+            };
+            let bx = if f >= 0.0 { zero_x } else { zero_x - len };
+            let ty = title_h + i as f64 * row_h + 18.0;
+            // Ink per element: the value column ends at 200 and names at
+            // 130, so a negative bar crossing those x-lines sits under the
+            // text. Dark-on-fill reads in either page theme; gray is for
+            // text over the page itself. Positive bars never reach left.
+            let value_ink = if f < 0.0 && len > 60.0 {
+                palette::INK_ON_BAR
+            } else {
+                palette::INK
+            };
+            let name_ink = if f < 0.0 && len > 130.0 {
+                palette::INK_ON_BAR
+            } else {
+                palette::INK
+            };
+            FocusRow {
+                label: xml_escape(&truncate_name(label, LABEL_MAX)),
+                value: format!("{f:.2}"),
+                color: if f >= 0.0 {
+                    palette::FOCUS_POSITIVE.to_string()
+                } else {
+                    palette::FOCUS_NEGATIVE.to_string()
+                },
+                bx: f1(bx),
+                bw: f1(len),
+                by: f1(title_h + i as f64 * row_h + 6.0),
+                tx: f1(name_x),
+                ty: f1(ty),
+                vx: f1(value_x),
+                vanchor: "end".to_string(),
+                name_ink: name_ink.to_string(),
+                value_ink: value_ink.to_string(),
+            }
+        })
+        .collect();
+    Ok(rows)
+}
+
+/// Plugin function: validated graph JSON in, focus-bars document out.
+#[oxdock_func(pure, name = "FOCUS_BARS")]
+fn focus_bars(graph_json: String, n_top: i64, n_bottom: i64) -> anyhow::Result<Value> {
+    let rows = focus_rows(&graph_json, n_top.max(1) as usize, n_bottom.max(0) as usize)?;
+    let h = 44.0 + rows.len() as f64 * 26.0 + 16.0;
+    let doc = FocusDoc {
+        header: format!(
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"Helvetica, Arial, sans-serif\"><title>Focus ranking</title><text x=\"16\" y=\"30\" font-size=\"20\" fill=\"{ink}\">Focus ranking</text>",
+            f1(480.0),
+            f1(h),
+            ink = palette::INK
+        ),
+        footer: "</svg>".to_string(),
+        zero_x: f1(260.0),
+        zero_y1: f1(44.0),
+        zero_y2: f1(h - 16.0),
+        bar_h: "14".to_string(),
+        fs: "14".to_string(),
+        ink: palette::INK.to_string(),
+        muted: palette::MUTED.to_string(),
+        mx: f1(240.0),
+        my: f1(44.0 + 40.0),
+        msg: "No focus data".to_string(),
+        empty: rows.is_empty(),
+        rows,
+    };
+    Ok(Value::string(serde_json::to_string(&doc)?))
+}
+
+/// Render the focus ranking bars for validated graph JSON. Same transport
+/// as the pie: embedded script emits markup into a temp workspace.
+pub fn render_focus_svg(graph_json: &str) -> anyhow::Result<String> {
+    let engine = engine();
+    let steps: Vec<oxdock_parser::Step> = oxdock! {
+        modules: [CHARTS],
+        IMPORT [CHARTS]
+        IMPORT [STD]
+        LET $rows_json: STRING = CHARTS::FOCUS_BARS(#graph_json, 12, 5)
+        WRITE rows.json $rows_json
+        LET $doc: MAP<ANY> = LOAD_JSON("rows.json")
+        WRITE out.svg $doc.header
+        APPEND out.svg "<line x1=\"{{ $doc.zero_x }}\" y1=\"{{ $doc.zero_y1 }}\" x2=\"{{ $doc.zero_x }}\" y2=\"{{ $doc.zero_y2 }}\" stroke=\"{{ $doc.muted }}\" stroke-width=\"1\"/>"
+        IF $doc.empty {
+            APPEND out.svg "<text x=\"{{ $doc.mx }}\" y=\"{{ $doc.my }}\" text-anchor=\"middle\" font-size=\"{{ $doc.fs }}\" fill=\"{{ $doc.muted }}\">{{ $doc.msg }}</text>"
+        } ELSE {
+            FOR $r: MAP<ANY> IN $doc.rows {
+                APPEND out.svg """
+                    <rect x="{{ $r.bx }}" y="{{ $r.by }}" width="{{ $r.bw }}" height="{{ $doc.bar_h }}" fill="{{ $r.color }}"><title>{{ $r.label }} {{ $r.value }}</title></rect>
+                    """
+                APPEND out.svg "<text x=\"{{ $r.tx }}\" y=\"{{ $r.ty }}\" text-anchor=\"end\" font-size=\"{{ $doc.fs }}\" fill=\"{{ $r.name_ink }}\">{{ $r.label }}</text><text x=\"{{ $r.vx }}\" y=\"{{ $r.ty }}\" text-anchor=\"end\" font-size=\"{{ $doc.fs }}\" fill=\"{{ $r.value_ink }}\">{{ $r.value }}</text>"
+            }
+        }
+        APPEND out.svg $doc.footer
+        LET $check: STRING = READ out.svg
+        ASSERT_CONTAINS $check "<svg"
+        ASSERT_CONTAINS $check "</svg>"
+    };
+    let temp = oxdock::GuardedPath::tempdir().expect("tempdir");
+    let root = temp.as_guarded_path().clone();
+    engine.run_steps_without_snapshot(&root, &steps)?;
+    let resolver = oxdock::PathResolver::new(root.as_path(), root.as_path()).expect("resolver");
+    let out = root.join("out.svg").expect("out path");
+    Ok(resolver.read_to_string(&out).expect("read out"))
+}
+
 /// Plugin function: validated graph JSON in, chart document out.
 /// Pure data shaping (no IO) — the binary reads the file once, from the
 /// `paths::` constant; the script never names a data path.
@@ -217,7 +447,7 @@ fn engine() -> Engine {
     let mut engine = Engine::new();
     engine.register_module(HostModule {
         name: "CHARTS".to_string(),
-        funcs: vec![PieSlices::registration()],
+        funcs: vec![PieSlices::registration(), FocusBars::registration()],
         types: vec![],
         record_schemas: vec![],
         states: vec![],
@@ -314,6 +544,48 @@ mod tests {
         jzombie_graph::output::render_json(&Graph::new(nodes, vec![])).unwrap()
     }
 
+    fn graph_with_focus(scores: &[(&str, Option<f32>)]) -> String {
+        use jzombie_graph::graph::{Graph, Layer, Node};
+        let nodes = scores
+            .iter()
+            .map(|(name, f)| Node {
+                id: format!("me/{name}"),
+                owner: "me".into(),
+                name: (*name).into(),
+                fork: false,
+                private: false,
+                upstream: None,
+                ahead_by: None,
+                pushed_at: None,
+                description: None,
+                topics: vec![],
+                language: Some("Rust".into()),
+                homepage: None,
+                stars: 0,
+                forks_count: 0,
+                open_issues: 0,
+                license: None,
+                archived: false,
+                disabled: false,
+                size_kb: 0,
+                has_readme: false,
+                has_llms_txt: false,
+                has_agents_md: false,
+                has_license_file: false,
+                commits_5d: 0,
+                commits_30d: 0,
+                commit_heat: None,
+                focus: *f,
+                last_commit_at: None,
+                branches: vec!["main".into()],
+                visible: true,
+                visible_reason: None,
+                layer: Layer::Isolated,
+            })
+            .collect();
+        jzombie_graph::output::render_json(&Graph::new(nodes, vec![])).unwrap()
+    }
+
     #[test]
     fn rows_rank_top_n_plus_other_and_conserve() {
         let g = graph_with(&[("a", 10), ("b", 7), ("c", 3), ("d", 1), ("e", 0)]);
@@ -349,5 +621,192 @@ mod tests {
         // Repo names can't contain these, but the emitter must be safe anyway.
         assert_eq!(xml_escape("a&b<c>"), "a&amp;b&lt;c&gt;");
         assert_eq!(f1(12.345), "12.3");
+    }
+
+    fn focus_val(rows: &[FocusRow], label: &str) -> f32 {
+        rows.iter()
+            .find(|r| r.label == label)
+            .unwrap_or_else(|| panic!("missing row {label}"))
+            .value
+            .parse()
+            .unwrap()
+    }
+
+    #[test]
+    fn focus_ranks_descending_unknowns_excluded() {
+        let g = graph_with_focus(&[
+            ("hot", Some(3.0)),
+            ("warm", Some(0.43)),
+            ("flat", Some(0.0)),
+            ("cool", Some(-0.2)),
+            ("stale", Some(-8.5)),
+            ("ancient", Some(-54.83)),
+            ("mystery", None),
+        ]);
+        let rows = focus_rows(&g, 12, 5).unwrap();
+        let labels: Vec<&str> = rows.iter().map(|r| r.label.as_str()).collect();
+        // Descending, unknowns excluded (can't sit on a scale).
+        assert_eq!(
+            labels,
+            vec!["hot", "warm", "flat", "cool", "stale", "ancient"]
+        );
+        assert!((focus_val(&rows, "ancient") - -54.83).abs() < 1e-6);
+    }
+
+    #[test]
+    fn focus_top_plus_bottom_never_duplicates() {
+        let g = graph_with_focus(&[("a", Some(2.0)), ("b", Some(-1.0))]);
+        // More slots than repos: every repo exactly once.
+        let rows = focus_rows(&g, 12, 5).unwrap();
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].label, "a");
+        assert_eq!(rows[1].label, "b");
+    }
+
+    #[test]
+    fn focus_splits_top_and_dormant_tail() {
+        let scores: Vec<(&str, Option<f32>)> = (0..20)
+            .map(|i| {
+                let name: &'static str = Box::leak(format!("r{i:02}").into_boxed_str());
+                (name, Some(10.0 - i as f32))
+            })
+            .collect();
+        let g = graph_with_focus(&scores);
+        let rows = focus_rows(&g, 12, 5).unwrap();
+        // Top 12 by score, then the 5 lowest of the rest — no overlap.
+        assert_eq!(rows.len(), 17);
+        assert_eq!(rows[0].label, "r00");
+        assert_eq!(rows[11].label, "r11");
+        assert_eq!(rows[12].label, "r15");
+        assert_eq!(rows[16].label, "r19");
+        let labels: Vec<&str> = rows.iter().map(|r| r.label.as_str()).collect();
+        let mut sorted = labels.clone();
+        sorted.sort_unstable();
+        sorted.dedup();
+        assert_eq!(labels.len(), sorted.len());
+    }
+
+    #[test]
+    fn focus_bars_diverge_from_zero_by_sign() {
+        let g = graph_with_focus(&[("up", Some(2.0)), ("down", Some(-4.0))]);
+        let rows = focus_rows(&g, 12, 5).unwrap();
+        // Fixed tabular columns: names end at 130, values end at 200,
+        // zero axis at 260 — text over the page stays gray.
+        for r in &rows {
+            let tx: f64 = r.tx.parse().unwrap();
+            let vx: f64 = r.vx.parse().unwrap();
+            assert!((tx - 130.0).abs() < 1e-6);
+            assert!((vx - 200.0).abs() < 1e-6);
+            assert_eq!(r.vanchor, "end");
+        }
+        let up = rows.iter().find(|r| r.label == "up").unwrap();
+        let down = rows.iter().find(|r| r.label == "down").unwrap();
+        let up_bw: f64 = up.bw.parse().unwrap();
+        let down_bx: f64 = down.bx.parse().unwrap();
+        let down_bw: f64 = down.bw.parse().unwrap();
+        // Positive starts at zero and extends right; negative ends at zero.
+        let up_bx: f64 = up.bx.parse().unwrap();
+        assert!((up_bx - 260.0).abs() < 1e-6);
+        assert!((down_bx + down_bw - 260.0).abs() < 1e-6);
+        // Each side fills its own half against its own max: both bars span
+        // the full half-width despite |−4| ≠ |2|.
+        assert!((up_bw - 200.0).abs() < 1e-6);
+        assert!((down_bw - 200.0).abs() < 1e-6);
+        // Short bars touch no text: page-gray throughout.
+        assert_eq!(up.name_ink, palette::INK);
+        assert_eq!(up.value_ink, palette::INK);
+        // Long negative bar crosses both columns: dark-on-fill.
+        assert_eq!(down.name_ink, palette::INK_ON_BAR);
+        assert_eq!(down.value_ink, palette::INK_ON_BAR);
+        // Long names truncate; short ones pass through.
+        assert_eq!(truncate_name("short", LABEL_MAX), "short");
+        assert!(truncate_name(&"x".repeat(40), LABEL_MAX).ends_with('…'));
+    }
+
+    #[test]
+    fn focus_ink_splits_by_crossing() {
+        // neg_max = 10: mid (-2) spans 40px — crosses neither the value
+        // column (200) nor names (130), so both stay gray. low (-10)
+        // spans the full half and crosses both, so both go dark.
+        let g = graph_with_focus(&[
+            ("top", Some(10.0)),
+            ("mid", Some(-2.0)),
+            ("low", Some(-10.0)),
+        ]);
+        let rows = focus_rows(&g, 12, 5).unwrap();
+        let mid = rows.iter().find(|r| r.label == "mid").unwrap();
+        assert_eq!(mid.value_ink, palette::INK);
+        assert_eq!(mid.name_ink, palette::INK);
+        let low = rows.iter().find(|r| r.label == "low").unwrap();
+        assert_eq!(low.value_ink, palette::INK_ON_BAR);
+        assert_eq!(low.name_ink, palette::INK_ON_BAR);
+    }
+
+    fn mixed_ownership_graph() -> String {
+        use jzombie_graph::graph::{Graph, Layer, Node};
+        let mk =
+            |name: &str, fork: bool, upstream: Option<&str>, ahead: Option<u32>, private: bool| {
+                Node {
+                    id: format!("me/{name}"),
+                    owner: "me".into(),
+                    name: name.into(),
+                    fork,
+                    private,
+                    upstream: upstream.map(str::to_string),
+                    ahead_by: ahead,
+                    pushed_at: None,
+                    description: None,
+                    topics: vec![],
+                    language: Some("Rust".into()),
+                    homepage: None,
+                    stars: 0,
+                    forks_count: 0,
+                    open_issues: 0,
+                    license: None,
+                    archived: false,
+                    disabled: false,
+                    size_kb: 0,
+                    has_readme: false,
+                    has_llms_txt: false,
+                    has_agents_md: false,
+                    has_license_file: false,
+                    commits_5d: 4,
+                    commits_30d: 24,
+                    commit_heat: None,
+                    focus: Some(1.0),
+                    last_commit_at: None,
+                    branches: vec!["main".into()],
+                    visible: true,
+                    visible_reason: None,
+                    layer: Layer::Isolated,
+                }
+            };
+        let nodes = vec![
+            mk("mine", false, None, None, false),
+            mk("pristine", true, Some("other/pristine"), Some(0), false),
+            mk("diverged", true, Some("other/diverged"), Some(3), false),
+            mk("renamed", true, Some("other/upstream-name"), Some(0), false),
+            mk("secret", false, None, None, true),
+        ];
+        jzombie_graph::output::render_json(&Graph::new(nodes, vec![])).unwrap()
+    }
+
+    #[test]
+    fn charts_show_only_own_work() {
+        // Pristine forks (nothing contributed) and private repos never
+        // chart, even with commits and focus. Diverged or renamed forks do.
+        // `visible` is deliberately ignored here: it answers what the map
+        // draws, not what you worked on (all fixtures mark visible).
+        let g = mixed_ownership_graph();
+        let pie = share_rows(&g, 8).unwrap();
+        let pie_names: Vec<&str> = pie.iter().map(|r| r.label.as_str()).collect();
+        assert!(pie_names.contains(&"mine"));
+        assert!(pie_names.contains(&"diverged"));
+        assert!(pie_names.contains(&"renamed"));
+        assert!(!pie_names.contains(&"pristine"));
+        assert!(!pie_names.contains(&"secret"));
+        let focus = focus_rows(&g, 12, 5).unwrap();
+        let focus_names: Vec<&str> = focus.iter().map(|r| r.label.as_str()).collect();
+        assert_eq!(focus_names, pie_names);
     }
 }

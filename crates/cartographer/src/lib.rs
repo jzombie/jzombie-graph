@@ -22,7 +22,7 @@
 //! - only the largest connected component over dependence edges is drawn,
 //!   so detached scraps never appear as footnote lists.
 
-use jzombie_graph::graph::{EdgeKind, Graph};
+use jzombie_graph::graph::{EdgeKind, Graph, is_own_work};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
@@ -246,17 +246,6 @@ fn select_cluster(graph: &Graph) -> Option<Cluster> {
         weak,
         weight,
     })
-}
-
-fn is_own_work(n: &jzombie_graph::graph::Node) -> bool {
-    if n.ahead_by.unwrap_or(0) > 0 {
-        return true;
-    }
-    let Some(up) = n.upstream.as_deref() else {
-        return false;
-    };
-    let parent = up.split('/').nth(1).unwrap_or(up);
-    !parent.eq_ignore_ascii_case(&n.name)
 }
 
 fn is_stale(graph: &Graph, n: &jzombie_graph::graph::Node) -> bool {

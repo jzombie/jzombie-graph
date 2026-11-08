@@ -31,6 +31,9 @@ pub const FRAGMENT_MD: &str = "data/markdown/fragments/portfolio-graph.md";
 /// working copy under gitignored `data/`.
 pub const SHARE_SVG: &str = "data/svg/portfolio-graph-share.svg";
 
+/// Focus ranking bars SVG. Same deal: local working copy until wired.
+pub const FOCUS_SVG: &str = "data/svg/portfolio-graph-focus.svg";
+
 /// Checked-in schema expectation the drift test guards. Source, not data:
 /// changing the types means consciously copying the lane output over this.
 pub const COMMITTED_SCHEMA: &str = "json/portfolio-graph-schema.json";

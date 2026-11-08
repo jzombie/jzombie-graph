@@ -1600,6 +1600,7 @@ name = "jzombie-graph-cartographer"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "clap",
  "jzombie-graph",
 ]
 
@@ -1608,6 +1609,7 @@ name = "jzombie-graph-charts"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "clap",
  "insta",
  "jzombie-graph",
  "oxdock",

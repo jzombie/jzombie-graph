@@ -334,6 +334,27 @@ impl Graph {
     }
 }
 
+/// Own-work repos: everything you actually contributed to. Non-forks always
+/// count; forks count only when diverged (`ahead_by > 0`, any commit) or
+/// renamed from the parent (name differs from the upstream repo name).
+/// Pristine forks never count. This is the workspace-wide filter for "did I
+/// work on this repo" — renderers use it instead of re-deciding. (The
+/// `visible` flag answers a different question: what the map draws, where
+/// isolation and staleness also apply.)
+pub fn is_own_work(node: &Node) -> bool {
+    if !node.fork {
+        return true;
+    }
+    if node.ahead_by.unwrap_or(0) > 0 {
+        return true;
+    }
+    let Some(up) = node.upstream.as_deref() else {
+        return false;
+    };
+    let parent = up.split('/').nth(1).unwrap_or(up);
+    !parent.eq_ignore_ascii_case(&node.name)
+}
+
 /// Compute `visible` for every node per the locked rules:
 ///
 /// - Private repos: `visible = false` always (they compute as transit nodes,
