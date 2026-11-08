@@ -548,6 +548,24 @@ pub async fn collect_live(
         });
     }
 
+    // Pristine forks are never edge targets (`ahead_by == Some(0)` is
+    // positive evidence of zero contributions). Dropped before visibility
+    // so a phantom edge can't bootstrap load-bearing fan-in. `None`
+    // (unknown) fails open.
+    {
+        let pristine_names: Vec<String> = nodes
+            .iter()
+            .filter(|n| n.fork && n.ahead_by == Some(0))
+            .map(|n| n.id.clone())
+            .collect();
+        let dropped = cut_pristine_fork_edges(&nodes, &mut all_edges);
+        if dropped > 0 {
+            digest.push(format!(
+                "pristine-fork cut: dropped {dropped} edge(s) to {} (ahead_by=0, not own work)",
+                pristine_names.join(", ")
+            ));
+        }
+    }
     graph::apply_visibility(&mut nodes, &all_edges);
     graph::apply_layers(&mut nodes, &all_edges);
     let g = Graph::new(nodes, all_edges);
@@ -565,6 +583,24 @@ pub async fn collect_live(
         }
     }
     Ok(g)
+}
+
+/// Drop edges targeting pristine forks (`ahead_by == Some(0)`).
+/// Positive evidence of zero contributions: not own work, never a
+/// proximity. Returns the number dropped. `None` (unknown) fails open.
+pub fn cut_pristine_fork_edges(nodes: &[Node], all_edges: &mut Vec<Edge>) -> usize {
+    use std::collections::BTreeSet;
+    let pristine: BTreeSet<&str> = nodes
+        .iter()
+        .filter(|n| n.fork && n.ahead_by == Some(0))
+        .map(|n| n.id.as_str())
+        .collect();
+    if pristine.is_empty() {
+        return 0;
+    }
+    let before = all_edges.len();
+    all_edges.retain(|e| !pristine.contains(e.target.as_str()));
+    before - all_edges.len()
 }
 
 #[cfg(test)]
@@ -665,5 +701,69 @@ mod tests {
         let back = Graph::from_json(&text).unwrap();
         assert_eq!(back.schema_version, crate::graph::SCHEMA_VERSION);
         assert_eq!(back.nodes.len(), 2);
+    }
+
+    fn cut_node(id: &str, fork: bool, ahead_by: Option<u32>) -> Node {
+        Node {
+            id: id.into(),
+            owner: "me".into(),
+            name: id.rsplit('/').next().unwrap_or(id).into(),
+            fork,
+            private: false,
+            upstream: None,
+            ahead_by,
+            pushed_at: None,
+            description: None,
+            topics: vec![],
+            language: None,
+            homepage: None,
+            stars: 0,
+            forks_count: 0,
+            open_issues: 0,
+            license: None,
+            archived: false,
+            disabled: false,
+            size_kb: 0,
+            has_readme: false,
+            has_llms_txt: false,
+            has_agents_md: false,
+            has_license_file: false,
+            branches: vec!["main".into()],
+            visible: false,
+            visible_reason: None,
+            layer: graph::Layer::Isolated,
+        }
+    }
+
+    fn cut_edge(source: &str, target: &str) -> Edge {
+        Edge {
+            source: source.into(),
+            target: target.into(),
+            kind: EdgeKind::Manifest,
+            declaring_branches: vec!["main".into()],
+            recency: None,
+            version: None,
+        }
+    }
+
+    #[test]
+    fn pristine_forks_are_never_edge_targets() {
+        // The ratatui case: pristine fork (ahead_by 0) must not anchor.
+        let nodes = vec![
+            cut_node("me/app", false, None),
+            cut_node("me/pristine-fork", true, Some(0)),
+            cut_node("me/diverged-fork", true, Some(3)),
+            cut_node("me/unknown-fork", true, None),
+        ];
+        let mut edges = vec![
+            cut_edge("me/app", "me/pristine-fork"),
+            cut_edge("me/app", "me/diverged-fork"),
+            cut_edge("me/app", "me/unknown-fork"),
+        ];
+        let dropped = cut_pristine_fork_edges(&nodes, &mut edges);
+        assert_eq!(dropped, 1);
+        assert!(edges.iter().all(|e| e.target != "me/pristine-fork"));
+        assert!(edges.iter().any(|e| e.target == "me/diverged-fork"));
+        assert!(edges.iter().any(|e| e.target == "me/unknown-fork"));
     }
 }
