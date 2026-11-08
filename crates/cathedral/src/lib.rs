@@ -233,8 +233,11 @@ fn select_cluster(graph: &Graph) -> Option<Cluster> {
         }
         if !weak.contains(&(a.clone(), b.clone())) {
             weak.push((a.clone(), b.clone()));
-            weight.entry((a, b)).or_insert(0.3);
         }
+        // Each directed docs edge adds pull; a mutual pair (both
+        // directions, like the runtime-coupling pairs here) lands at 0.6 —
+        // still clearly lighter than a cargo edge at 1.0+.
+        *weight.entry((a, b)).or_insert(0.0) += 0.3;
     }
     weak.sort();
     Some(Cluster {
@@ -266,8 +269,72 @@ fn is_stale(graph: &Graph, n: &jzombie_graph::graph::Node) -> bool {
 fn render_pre(graph: &Graph, cluster: &Cluster) -> String {
     let labels = abbreviations(graph, &cluster.nodes);
     let fan_in = graph.node_fan_in();
-    // Deterministic force-directed layout over dependence edges.
-    let pos = layout(cluster);
+    // Deterministic force-directed layout over all edges (docs keeps
+    // lighter gravity). Weak-only satellites would still orbit far on
+    // light pull, so pin each just outside its anchor instead — adjacent
+    // still means connected, and they stop stretching the normalization
+    // that scrunches the core.
+    let mut pos = layout(cluster);
+    let strong_members: BTreeSet<&str> = cluster
+        .edges
+        .iter()
+        .flat_map(|(a, b)| [a.as_str(), b.as_str()])
+        .collect();
+    if !strong_members.is_empty() {
+        let (mut cx, mut cy) = (0.0, 0.0);
+        for id in &strong_members {
+            if let Some((x, y)) = pos.get(*id) {
+                cx += x;
+                cy += y;
+            }
+        }
+        cx /= strong_members.len() as f64;
+        cy /= strong_members.len() as f64;
+        for id in &cluster.nodes {
+            if strong_members.contains(id.as_str()) {
+                continue;
+            }
+            let mut anchors: Vec<&str> = cluster
+                .weak
+                .iter()
+                .filter_map(|(a, b)| {
+                    if a == id {
+                        Some(b.as_str())
+                    } else if b == id {
+                        Some(a.as_str())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            anchors.sort();
+            let anchor = anchors
+                .iter()
+                .find(|a| strong_members.contains(*a))
+                .or(anchors.first())
+                .copied();
+            let Some(anchor) = anchor else { continue };
+            let Some(&(ax, ay)) = pos.get(anchor) else {
+                continue;
+            };
+            let (mut dx, mut dy) = (ax - cx, ay - cy);
+            let len = (dx * dx + dy * dy).sqrt();
+            if len < 0.01 {
+                dx = 1.0;
+                dy = 0.0;
+            } else {
+                dx /= len;
+                dy /= len;
+            }
+            pos.insert(
+                id.clone(),
+                (
+                    (ax + dx * 0.09).clamp(0.0, 1.0),
+                    (ay + dy * 0.09).clamp(0.0, 1.0),
+                ),
+            );
+        }
+    }
     // Map to grid with padding for label widths.
     let mut placed: BTreeMap<&str, (usize, usize, usize)> = BTreeMap::new(); // id -> (x, y, w)
     let mut order: Vec<&String> = cluster.nodes.iter().collect();
