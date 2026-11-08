@@ -484,7 +484,7 @@ fn engine() -> Engine {
         funcs: vec![
             PieSlices::registration(),
             FocusBars::registration(),
-            Glyphs::registration(),
+            Indicators::registration(),
         ],
         types: vec![],
         record_schemas: vec![],
@@ -536,14 +536,14 @@ pub fn render_share_svg(graph_json: &str) -> anyhow::Result<String> {
     Ok(resolver.read_to_string(&out).expect("read out"))
 }
 
-/// Status glyphs: small round indicators with a CSS pulse. Rust picks the
+/// Status indicators: small round indicators with a CSS pulse. Rust picks the
 /// sample set and precomputes color/rate; the script emits markup only.
 /// Pure SVG + embedded `<style>` — no SMIL, no scripts — so the pulse runs
 /// anywhere the file renders as an image, README embeds included.
-/// Glyphs carry no text: the table around them names the repo; `<title>`
+/// Indicators carry no text: the table around them names the repo; `<title>`
 /// keeps a hover tooltip.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
-struct GlyphRow {
+struct IndicatorRow {
     label: String,
     heat: String,
     color: String,
@@ -553,22 +553,22 @@ struct GlyphRow {
     cx: String,
 }
 
-/// Glyph document: dots in a row, one cell each. All geometry precomputed;
+/// Indicator document: dots in a row, one cell each. All geometry precomputed;
 /// the script only interpolates.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
-struct GlyphDoc {
+struct IndicatorDoc {
     header: String,
     footer: String,
     cy: String,
     dot_r: String,
     ring_w: String,
-    rows: Vec<GlyphRow>,
+    rows: Vec<IndicatorRow>,
 }
 
 /// Table-sized cells: 44px, dot r8 (pulse peaks inside the cell).
-const GLYPH_CELL: f64 = 44.0;
-const GLYPH_CY: f64 = 22.0;
-const GLYPH_R: f64 = 8.0;
+const INDICATOR_CELL: f64 = 44.0;
+const INDICATOR_CY: f64 = 22.0;
+const INDICATOR_R: f64 = 8.0;
 
 /// Heat color, stepped on the documented `commit_heat` bands: heating green,
 /// steady blue, cooling amber (still pulses, slow), dormant faint gray.
@@ -597,21 +597,21 @@ const BANDS: [(&str, f32); 4] = [
 ];
 
 /// Band names in strip order, for the badge files.
-pub fn glyph_names() -> Vec<String> {
+pub fn indicator_names() -> Vec<String> {
     BANDS.iter().map(|(name, _)| name.to_string()).collect()
 }
 
-/// Plugin function: glyph document out. Bands are static by design —
+/// Plugin function: indicator document out. Bands are static by design —
 /// the graph arg only keeps the call shape uniform with the other charts.
-#[oxdock_func(pure, name = "GLYPHS")]
-fn glyphs(graph_json: String, only: String) -> anyhow::Result<Value> {
+#[oxdock_func(pure, name = "INDICATORS")]
+fn indicators(graph_json: String, only: String) -> anyhow::Result<Value> {
     let _ = graph_json;
-    let rows: Vec<GlyphRow> = BANDS
+    let rows: Vec<IndicatorRow> = BANDS
         .into_iter()
         .filter(|(name, _)| only.is_empty() || *name == only.as_str())
         .map(|(name, h)| {
             let norm = (h / 6.0).clamp(0.0, 1.0);
-            GlyphRow {
+            IndicatorRow {
                 label: format!("{name} {h:.2}"),
                 heat: format!("{h:.2}"),
                 color: heat_color(h).to_string(),
@@ -622,49 +622,49 @@ fn glyphs(graph_json: String, only: String) -> anyhow::Result<Value> {
             }
         })
         .collect();
-    let mut doc = GlyphDoc {
+    let mut doc = IndicatorDoc {
         header: String::new(),
         footer: "</svg>".to_string(),
-        cy: f1(GLYPH_CY),
-        dot_r: f1(GLYPH_R),
+        cy: f1(INDICATOR_CY),
+        dot_r: f1(INDICATOR_R),
         ring_w: "2".to_string(),
         rows,
     };
     for (i, r) in doc.rows.iter_mut().enumerate() {
-        r.cx = f1(i as f64 * GLYPH_CELL + GLYPH_CELL / 2.0);
+        r.cx = f1(i as f64 * INDICATOR_CELL + INDICATOR_CELL / 2.0);
     }
     doc.header = format!(
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"Helvetica, Arial, sans-serif\"><title>Status glyphs</title><style>.ring{{transform-box:fill-box;transform-origin:center;animation:ping 1.6s ease-out infinite}}@keyframes ping{{0%{{transform:scale(1);opacity:.7}}100%{{transform:scale(2.4);opacity:0}}}}@media (prefers-reduced-motion:reduce){{.ring{{animation:none}}}}</style>",
-        f1(doc.rows.len() as f64 * GLYPH_CELL),
-        f1(GLYPH_CELL),
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"Helvetica, Arial, sans-serif\"><title>Status indicators</title><style>.ring{{transform-box:fill-box;transform-origin:center;animation:ping 1.6s ease-out infinite}}@keyframes ping{{0%{{transform:scale(1);opacity:.7}}100%{{transform:scale(2.4);opacity:0}}}}@media (prefers-reduced-motion:reduce){{.ring{{animation:none}}}}</style>",
+        f1(doc.rows.len() as f64 * INDICATOR_CELL),
+        f1(INDICATOR_CELL),
     );
     Ok(Value::string(serde_json::to_string(&doc)?))
 }
 
-/// Render the glyph strip: all four bands in one row. Graph-free —
+/// Render the indicator strip: all four bands in one row. Graph-free —
 /// bands are static; the strip is the look-check.
-pub fn render_glyphs_svg() -> anyhow::Result<String> {
-    render_glyph_doc("")
+pub fn render_indicators_svg() -> anyhow::Result<String> {
+    render_indicator_doc("")
 }
 
 /// Render one badge by band name (`heating`/`steady`/`cooling`/`dormant`).
 /// Unknown bands are an error, not an empty file.
-pub fn render_glyph_svg(band: &str) -> anyhow::Result<String> {
+pub fn render_indicator_svg(band: &str) -> anyhow::Result<String> {
     anyhow::ensure!(
         BANDS.iter().any(|(name, _)| *name == band),
-        "unknown glyph band: {band}"
+        "unknown indicator band: {band}"
     );
-    render_glyph_doc(band)
+    render_indicator_doc(band)
 }
 
-fn render_glyph_doc(only: &str) -> anyhow::Result<String> {
+fn render_indicator_doc(only: &str) -> anyhow::Result<String> {
     let engine = engine();
     let only_arg = only.to_string();
     let graph_json = String::new();
     let steps: Vec<oxdock_parser::Step> = oxdock! {
         modules: [CHARTS],
         IMPORT [STD, CHARTS]
-        LET $rows_json: STRING = CHARTS::GLYPHS(#graph_json, #only_arg)
+        LET $rows_json: STRING = CHARTS::INDICATORS(#graph_json, #only_arg)
         WRITE rows.json $rows_json
         LET $doc: MAP<ANY> = LOAD_JSON("rows.json")
         WRITE out.svg $doc.header
@@ -882,7 +882,7 @@ mod tests {
         assert_eq!(labels, vec!["hot", "warm", "a", "b", "c"]);
     }
     #[test]
-    fn glyphs_pulse_with_heat_static_when_dormant() {
+    fn indicators_pulse_with_heat_static_when_dormant() {
         // Stepped ramp on the documented heat bands: heating green,
         // steady blue, cooling amber (still pulses), dormant faint.
         assert_eq!(heat_color(6.0), palette::FOCUS_POSITIVE);
@@ -892,8 +892,8 @@ mod tests {
     }
 
     #[test]
-    fn glyphs_render_pure_css_pulse() {
-        let strip = render_glyphs_svg().unwrap();
+    fn indicators_render_pure_css_pulse() {
+        let strip = render_indicators_svg().unwrap();
         assert!(strip.starts_with("<svg "));
         assert!(strip.ends_with("</svg>"));
         // Embedded CSS keyframes — no SMIL, no scripts, no text:
@@ -910,13 +910,13 @@ mod tests {
     }
 
     #[test]
-    fn glyphs_single_is_one_badge() {
-        let one = render_glyph_svg("steady").unwrap();
+    fn indicators_single_is_one_badge() {
+        let one = render_indicator_svg("steady").unwrap();
         // Ring + core, one 44px cell, tooltip kept, unknown bands error.
         assert_eq!(one.matches("<circle").count(), 2);
         assert!(one.contains("viewBox=\"0 0 44.0 44.0\""));
         assert!(one.contains("steady 1.00"));
-        assert!(render_glyph_svg("volcanic").is_err());
+        assert!(render_indicator_svg("volcanic").is_err());
     }
 
     #[test]

@@ -20,4 +20,7 @@ RUN ["./target/release/charts"]
 ECHO "charts: focus (binary default paths)"
 RUN ["./target/release/charts", "--chart", "focus"]
 
+ECHO "charts: indicators (binary default paths)"
+RUN ["./target/release/charts", "--chart", "indicators"]
+
 ECHO "pipeline complete"
