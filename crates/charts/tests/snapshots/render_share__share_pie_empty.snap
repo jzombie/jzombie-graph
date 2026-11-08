@@ -1,0 +1,6 @@
+---
+source: crates/charts/tests/render_share.rs
+assertion_line: 88
+expression: svg
+---
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 80.0" role="img"><title>Trailing-5d commit share</title></svg>

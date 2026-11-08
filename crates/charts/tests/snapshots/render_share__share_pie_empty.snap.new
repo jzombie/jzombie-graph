@@ -1,0 +1,6 @@
+---
+source: crates/charts/tests/render_share.rs
+assertion_line: 88
+expression: svg
+---
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 444.0 256.0" role="img" font-family="Helvetica, Arial, sans-serif"><title>Trailing-5d commit share</title><text x="16" y="30" font-size="20" fill="#767676">Trailing-5d commit share</text><text x="222.0" y="84.0" text-anchor="middle" font-size="14" fill="#767676">No commits in trailing 5d</text></svg>

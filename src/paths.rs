@@ -27,6 +27,10 @@ pub const SCHEMA_JSON: &str = "data/json/portfolio-graph-schema.json";
 /// at the repo root.
 pub const FRAGMENT_MD: &str = "data/markdown/fragments/portfolio-graph.md";
 
+/// Commit-share pie SVG. Published asset once wired; until then a local
+/// working copy under gitignored `data/`.
+pub const SHARE_SVG: &str = "data/svg/portfolio-graph-share.svg";
+
 /// Checked-in schema expectation the drift test guards. Source, not data:
 /// changing the types means consciously copying the lane output over this.
 pub const COMMITTED_SCHEMA: &str = "json/portfolio-graph-schema.json";

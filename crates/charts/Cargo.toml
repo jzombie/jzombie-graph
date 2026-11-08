@@ -1,0 +1,25 @@
+[package]
+name = "jzombie-graph-charts"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Chart renderers for jzombie-graph JSON (OxDock-templated SVG)"
+
+[[bin]]
+name = "charts"
+path = "src/main.rs"
+
+[lib]
+name = "charts"
+path = "src/lib.rs"
+
+[dependencies]
+anyhow = "1"
+jzombie-graph = { path = "../.." }
+oxdock = "=0.35.0-alpha"
+oxdock-core = "=0.35.0-alpha"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+insta = { version = "1", features = ["json"] }
