@@ -779,38 +779,6 @@ fn esc_attr(s: &str) -> String {
     s.replace('&', "&amp;").replace('"', "&quot;")
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn inside_dot(x: isize, y: isize, b: &(usize, usize, usize, usize)) -> bool {
-        x >= b.0 as isize * 2
-            && x < (b.0 + b.2) as isize * 2
-            && y >= b.1 as isize * 4
-            && y < (b.1 + 1) as isize * 4
-    }
-
-    #[test]
-    fn routed_traces_never_enter_third_party_boxes() {
-        // Source left, target right, blocker dead center on the straight
-        // line: a straight trace would cross it; the route must go around.
-        let boxes = vec![(2, 2, 4, 1), (10, 2, 4, 1), (6, 2, 4, 1)];
-        let path = route_around_boxes(32, 12, &boxes, (2, 2, 4), (10, 2, 4));
-        assert!(!path.is_empty(), "a way around exists");
-        for (x, y) in &path {
-            assert!(
-                !inside_dot(*x, *y, &boxes[2]),
-                "trace enters unconnected box at ({x}, {y})"
-            );
-        }
-        // Endpoints still terminate inside their own boxes.
-        let first = path[0];
-        let last = path[path.len() - 1];
-        assert!(inside_dot(first.0, first.1, &boxes[0]));
-        assert!(inside_dot(last.0, last.1, &boxes[1]));
-    }
-}
-
 fn abbreviations<'a>(graph: &'a Graph, wanted: &[String]) -> BTreeMap<&'a str, String> {
     let want: BTreeSet<&str> = wanted.iter().map(String::as_str).collect();
     let ids: Vec<&str> = graph
@@ -851,4 +819,36 @@ fn url_of(id: &str) -> String {
 /// Short label: repo name without the owner.
 fn short(id: &str) -> &str {
     id.split('/').nth(1).unwrap_or(id)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn inside_dot(x: isize, y: isize, b: &(usize, usize, usize, usize)) -> bool {
+        x >= b.0 as isize * 2
+            && x < (b.0 + b.2) as isize * 2
+            && y >= b.1 as isize * 4
+            && y < (b.1 + 1) as isize * 4
+    }
+
+    #[test]
+    fn routed_traces_never_enter_third_party_boxes() {
+        // Source left, target right, blocker dead center on the straight
+        // line: a straight trace would cross it; the route must go around.
+        let boxes = vec![(2, 2, 4, 1), (10, 2, 4, 1), (6, 2, 4, 1)];
+        let path = route_around_boxes(32, 12, &boxes, (2, 2, 4), (10, 2, 4));
+        assert!(!path.is_empty(), "a way around exists");
+        for (x, y) in &path {
+            assert!(
+                !inside_dot(*x, *y, &boxes[2]),
+                "trace enters unconnected box at ({x}, {y})"
+            );
+        }
+        // Endpoints still terminate inside their own boxes.
+        let first = path[0];
+        let last = path[path.len() - 1];
+        assert!(inside_dot(first.0, first.1, &boxes[0]));
+        assert!(inside_dot(last.0, last.1, &boxes[1]));
+    }
 }
