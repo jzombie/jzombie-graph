@@ -18,6 +18,7 @@ jobs:
     env:
       JZOMBIE_GRAPH_TOKEN: ${{ secrets.JZOMBIE_GRAPH_TOKEN }}
       # Script builds land here (bridged via INHERIT_ENV); without it cargo uses a /tmp sandbox.
+      # TODO: drop this once oxdock ships UNSET_ENV (jzombie/rust-oxdock#284) — unsetting lets cargo use its ./target default.
       CARGO_TARGET_DIR: ${{ github.workspace }}/target
     steps:
       - uses: actions/checkout@v4
