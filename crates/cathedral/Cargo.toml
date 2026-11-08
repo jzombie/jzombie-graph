@@ -15,3 +15,6 @@ path = "src/lib.rs"
 
 [dependencies]
 jzombie-graph = { path = "../.." }
+
+[dev-dependencies]
+chrono = "0.4"

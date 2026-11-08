@@ -1,8 +1,8 @@
-//! Fixture tests: the arch draws the core, the table links every stone,
-//! chapels cover what the arch doesn't. No lists-as-structure, no tables
-//! of contents — just the building, its register, and its chapels.
+//! Cluster tests: proximity from real edges, links intact, portfolio
+//! filter (own-work forks only, no stale), no tables or tier language.
 
 use cathedral::render_cathedral;
+use chrono::{TimeZone, Utc};
 use jzombie_graph::graph::{self, EdgeKind, Graph, Layer, Node};
 
 fn node(id: &str, fork: bool, private: bool) -> Node {
@@ -50,21 +50,17 @@ fn edge(source: &str, target: &str, kind: EdgeKind) -> jzombie_graph::graph::Edg
 }
 
 fn fixture() -> Graph {
-    // lib <- mid <- {app, app2}; island-a -> island-b detached.
+    // lib <- mid <- {app, app2}.
     let mut nodes = vec![
         node("me/lib", false, false),
         node("me/mid", false, false),
         node("me/app", false, false),
         node("me/app2", false, false),
-        node("me/island-a", false, false),
-        node("me/island-b", false, false),
     ];
     let edges = vec![
         edge("me/mid", "me/lib", EdgeKind::Manifest),
         edge("me/app", "me/mid", EdgeKind::Manifest),
         edge("me/app2", "me/mid", EdgeKind::Manifest),
-        edge("me/app", "me/lib", EdgeKind::Docs),
-        edge("me/island-a", "me/island-b", EdgeKind::Manifest),
     ];
     graph::apply_visibility(&mut nodes, &edges);
     graph::apply_layers(&mut nodes, &edges);
@@ -72,48 +68,67 @@ fn fixture() -> Graph {
 }
 
 #[test]
-fn arch_draws_core_with_clickable_boxes() {
+fn cluster_draws_linked_nodes_with_dot_traces() {
     let md = render_cathedral(&fixture());
-    assert!(md.contains("<pre>"), "whitespace-preserved block");
-    assert!(md.contains("▲"), "crown");
-    assert!(md.contains("FOUNDATION:"), "bedrock banner");
+    assert!(md.contains("zenOSmosis"), "correct branding");
+    assert!(!md.contains("Zenosmosis"), "old casing gone");
+    assert!(md.contains("<pre>"), "projection block");
+    assert!(md.contains("</pre>"), "projection closes");
     assert!(
         md.contains("<a href=\"https://github.com/me/app\">app</a>"),
-        "apex stone linked"
+        "nodes clickable"
     );
-    assert!(md.contains(">mid</a>"), "course stone linked");
-    assert!(md.contains(">lib</a>"), "bedrock stone linked");
-    assert!(md.contains('|'), "bearings drawn");
+    assert!(md.contains(">mid</a>"), "mid linked");
+    assert!(md.contains(">lib</a>"), "lib linked");
+    assert!(md.contains('·'), "per-edge traces drawn");
 }
 
 #[test]
-fn table_links_every_stone() {
+fn no_tables_or_tier_language() {
     let md = render_cathedral(&fixture());
-    assert!(md.contains("| Level |"), "register header");
+    assert!(!md.contains("| Level |"), "no elevation table");
+    assert!(!md.contains("Spires"), "no tier names");
+    assert!(!md.contains("Vaults"), "no tier names");
+    assert!(!md.contains("Crypt"), "no crypt");
+    assert!(!md.contains("FOUNDATION"), "no bedrock banner");
+    assert!(!md.contains("Side Chapels"), "no detached-note lists");
+    assert!(!md.contains("Lone stones"), "no detached-note lists");
+}
+
+#[test]
+fn docs_edges_leave_no_trace() {
+    // app -> lib is docs-only: no dependence, so no trace may rely on it.
+    // The cluster still draws (mid edges carry it); the point is the
+    // renderer only ever draws manifest/submodule/registry pairs.
+    let mut nodes = vec![
+        node("me/a", false, false),
+        node("me/b", false, false),
+        node("me/c", false, false),
+    ];
+    let edges = vec![
+        edge("me/a", "me/b", EdgeKind::Manifest),
+        edge("me/b", "me/c", EdgeKind::Manifest),
+        edge("me/a", "me/c", EdgeKind::Docs),
+    ];
+    graph::apply_visibility(&mut nodes, &edges);
+    graph::apply_layers(&mut nodes, &edges);
+    let md = render_cathedral(&Graph::new(nodes, edges));
     assert!(
-        md.contains("[`app`](https://github.com/me/app)"),
-        "table links core nodes"
-    );
-    assert!(
-        md.contains("rests on mid"),
-        "table shows bearings with versions"
+        md.contains(">a</a>") && md.contains(">c</a>"),
+        "nodes drawn"
     );
 }
 
 #[test]
-fn chapels_cover_the_detached() {
-    let md = render_cathedral(&fixture());
-    assert!(md.contains("Side Chapels"), "chapels section exists");
-    assert!(md.contains("island-a"), "detached island drawn");
-    assert!(md.contains("island-b"), "island bearer drawn");
-}
-
-#[test]
-fn forks_appear_only_where_they_bear_load() {
+fn fork_without_work_is_excluded() {
     let mut nodes = vec![
         node("me/app", false, false),
         node("me/lib", false, false),
-        node("me/vendor", true, false),
+        Node {
+            upstream: Some("other/vendor".into()),
+            ahead_by: Some(0),
+            ..node("me/vendor", true, false)
+        },
     ];
     let edges = vec![
         edge("me/app", "me/lib", EdgeKind::Manifest),
@@ -123,34 +138,54 @@ fn forks_appear_only_where_they_bear_load() {
     graph::apply_visibility(&mut nodes, &edges);
     graph::apply_layers(&mut nodes, &edges);
     let md = render_cathedral(&Graph::new(nodes, edges));
-    // vendor bears load (fan-in 2): named in the crypt ...
-    assert!(md.contains("vendor"), "load-bearing fork named in crypt");
-    // ... but never drawn as a stone.
-    let art = md
-        .split("<pre>")
-        .nth(1)
-        .unwrap()
-        .split("</pre>")
-        .next()
-        .unwrap();
-    assert!(!art.contains("[vendor]"), "no fork boxes in the arch");
+    assert!(!md.contains("vendor"), "plain fork omitted");
 }
 
 #[test]
-fn load_less_forks_appear_nowhere() {
+fn fork_with_a_commit_is_kept() {
     let mut nodes = vec![
         node("me/app", false, false),
-        node("me/lib", false, false),
-        node("me/leaf", true, false),
+        Node {
+            upstream: Some("other/lib".into()),
+            ahead_by: Some(1),
+            ..node("me/vendor", true, false)
+        },
     ];
-    let edges = vec![
-        edge("me/app", "me/lib", EdgeKind::Manifest),
-        edge("me/leaf", "me/lib", EdgeKind::Manifest),
-    ];
+    let edges = vec![edge("me/app", "me/vendor", EdgeKind::Manifest)];
     graph::apply_visibility(&mut nodes, &edges);
     graph::apply_layers(&mut nodes, &edges);
     let md = render_cathedral(&Graph::new(nodes, edges));
-    assert!(!md.contains("leaf"), "unbearing fork omitted entirely");
+    assert!(md.contains("vendor"), "one commit keeps the fork");
+}
+
+#[test]
+fn renamed_fork_is_kept() {
+    let mut nodes = vec![
+        node("me/app", false, false),
+        Node {
+            upstream: Some("doy/vt100-rust".into()),
+            ahead_by: Some(0),
+            ..node("me/term-wm-vt100", true, false)
+        },
+    ];
+    let edges = vec![edge("me/app", "me/term-wm-vt100", EdgeKind::Manifest)];
+    graph::apply_visibility(&mut nodes, &edges);
+    graph::apply_layers(&mut nodes, &edges);
+    let md = render_cathedral(&Graph::new(nodes, edges));
+    assert!(md.contains("term-wm-vt100"), "renamed fork kept");
+}
+
+#[test]
+fn stale_repos_are_omitted() {
+    let mut nodes = vec![node("me/app", false, false), node("me/old", false, false)];
+    nodes[1].pushed_at = Some(Utc.with_ymd_and_hms(2020, 1, 1, 0, 0, 0).single().unwrap());
+    let edges = vec![edge("me/app", "me/old", EdgeKind::Manifest)];
+    graph::apply_visibility(&mut nodes, &edges);
+    graph::apply_layers(&mut nodes, &edges);
+    let mut g = Graph::new(nodes, edges);
+    g.generated_at = Utc.with_ymd_and_hms(2026, 11, 8, 0, 0, 0).single().unwrap();
+    let md = render_cathedral(&g);
+    assert!(!md.contains("old"), "stale repo omitted");
 }
 
 #[test]
@@ -171,6 +206,6 @@ fn labels_abbreviate_rust_prefix() {
 fn empty_graph_renders() {
     let g = Graph::new(vec![], vec![]);
     let md = render_cathedral(&g);
-    assert!(md.contains("# The Zenosmosis Cathedral"));
-    assert!(md.contains("(no load-bearing structure)"));
+    assert!(md.contains("zenOSmosis"));
+    assert!(md.contains("(no connected cluster)"));
 }
