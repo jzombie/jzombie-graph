@@ -1,6 +1,6 @@
 {
   "schema_version": 5,
-  "generated_at": "2026-11-08T07:14:54.121562Z",
+  "generated_at": "2026-11-08T08:38:21.586245Z",
   "nodes": [
     {
       "id": "jzombie/Calculator",
@@ -17,6 +17,9 @@
       "open_issues": 0,
       "size_kb": 211,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -54.833332,
       "branches": [
         "main"
       ],
@@ -40,6 +43,9 @@
       "open_issues": 0,
       "size_kb": 14738,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -86.46667,
       "branches": [
         "master"
       ],
@@ -65,6 +71,9 @@
       "size_kb": 314720,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -44.333332,
       "branches": [
         "main"
       ],
@@ -91,6 +100,9 @@
       "size_kb": 21,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -109.03333,
       "branches": [
         "master"
       ],
@@ -117,6 +129,9 @@
       "size_kb": 6191,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -47.6,
       "branches": [
         "master"
       ],
@@ -142,6 +157,9 @@
       "size_kb": 1284,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -66.333336,
       "branches": [
         "master"
       ],
@@ -166,6 +184,9 @@
       "size_kb": 8159,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -63.6,
       "branches": [
         "main"
       ],
@@ -192,6 +213,9 @@
       "size_kb": 398,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -4.366667,
       "branches": [
         "main"
       ],
@@ -218,6 +242,9 @@
       "size_kb": 230,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -5.6666665,
       "branches": [
         "main"
       ],
@@ -244,6 +271,9 @@
       "size_kb": 201,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -11.0,
       "branches": [
         "main"
       ],
@@ -270,6 +300,9 @@
       "size_kb": 177662,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -38.766666,
       "branches": [
         "main"
       ],
@@ -295,6 +328,9 @@
       "size_kb": 902,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -57.7,
       "branches": [
         "master"
       ],
@@ -323,6 +359,9 @@
       "has_readme": true,
       "has_agents_md": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -13.233334,
       "branches": [
         "main"
       ],
@@ -349,6 +388,9 @@
       "size_kb": 1300,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -13.266666,
       "branches": [
         "main"
       ],
@@ -374,6 +416,9 @@
       "size_kb": 155504,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -57.233334,
       "branches": [
         "master"
       ],
@@ -400,6 +445,9 @@
       "size_kb": 172304,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -11.8,
       "branches": [
         "main"
       ],
@@ -429,6 +477,9 @@
       "open_issues": 2,
       "size_kb": 99,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -11.6,
       "branches": [
         "main"
       ],
@@ -461,6 +512,9 @@
       "size_kb": 21,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -27.766666,
       "branches": [
         "main"
       ],
@@ -487,6 +541,9 @@
       "size_kb": 95,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -34.566666,
       "branches": [
         "main"
       ],
@@ -517,6 +574,10 @@
       "open_issues": 2,
       "size_kb": 946,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 1,
+      "commit_heat": 0.0,
+      "focus": -0.23333333,
       "branches": [
         "main"
       ],
@@ -546,6 +607,9 @@
       "open_issues": 1,
       "size_kb": 5,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -6.9,
       "branches": [
         "main"
       ],
@@ -572,6 +636,9 @@
       "size_kb": 147263,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -25.3,
       "branches": [
         "master"
       ],
@@ -594,6 +661,9 @@
       "open_issues": 0,
       "size_kb": 16,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -12.466666,
       "branches": [
         "master"
       ],
@@ -617,6 +687,9 @@
       "open_issues": 0,
       "size_kb": 19,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -27.833334,
       "branches": [
         "main"
       ],
@@ -642,6 +715,9 @@
       "open_issues": 0,
       "size_kb": 1027313,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -20.433332,
       "branches": [
         "main"
       ],
@@ -668,6 +744,9 @@
       "size_kb": 600,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -15.133333,
       "branches": [
         "main"
       ],
@@ -691,6 +770,9 @@
       "open_issues": 27,
       "size_kb": 2069,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -46.766666,
       "branches": [
         "master"
       ],
@@ -714,6 +796,9 @@
       "open_issues": 0,
       "size_kb": 1,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -34.733334,
       "branches": [
         "main"
       ],
@@ -753,6 +838,9 @@
       "size_kb": 417,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -28.066668,
       "branches": [
         "main"
       ],
@@ -777,6 +865,9 @@
       "size_kb": 330,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -35.766666,
       "branches": [
         "main"
       ],
@@ -799,6 +890,9 @@
       "forks_count": 1,
       "open_issues": 0,
       "size_kb": 0,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -82.6,
       "branches": [
         "master"
       ],
@@ -824,6 +918,9 @@
       "size_kb": 262,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -48.7,
       "branches": [
         "main"
       ],
@@ -848,6 +945,9 @@
       "size_kb": 7,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -102.96667,
       "branches": [
         "master"
       ],
@@ -878,6 +978,10 @@
       "open_issues": 2,
       "size_kb": 65,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 1,
+      "commit_heat": 0.0,
+      "focus": -0.2,
       "branches": [
         "main"
       ],
@@ -904,6 +1008,9 @@
       "size_kb": 474,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -25.433332,
       "branches": [
         "master"
       ],
@@ -926,6 +1033,9 @@
       "open_issues": 1,
       "size_kb": 26394,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -2.7,
       "branches": [
         "main"
       ],
@@ -951,6 +1061,9 @@
       "license": "Apache-2.0",
       "size_kb": 953,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -10.133333,
       "branches": [
         "master"
       ],
@@ -974,6 +1087,9 @@
       "size_kb": 5016,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -35.0,
       "branches": [
         "main"
       ],
@@ -1000,6 +1116,9 @@
       "size_kb": 481,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -47.866665,
       "branches": [
         "master"
       ],
@@ -1026,6 +1145,9 @@
       "size_kb": 1582,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -62.466667,
       "branches": [
         "master"
       ],
@@ -1051,6 +1173,9 @@
       "size_kb": 665,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -46.566666,
       "branches": [
         "master"
       ],
@@ -1075,6 +1200,9 @@
       "size_kb": 8702,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -68.46667,
       "branches": [
         "master"
       ],
@@ -1099,6 +1227,9 @@
       "open_issues": 0,
       "size_kb": 923,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -63.4,
       "branches": [
         "master"
       ],
@@ -1125,6 +1256,9 @@
       "size_kb": 1720,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -33.533333,
       "branches": [
         "main"
       ],
@@ -1151,6 +1285,9 @@
       "size_kb": 1129,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -33.566666,
       "branches": [
         "master"
       ],
@@ -1187,6 +1324,9 @@
       "size_kb": 57,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -21.133333,
       "branches": [
         "main"
       ],
@@ -1211,6 +1351,9 @@
       "size_kb": 102,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -49.7,
       "branches": [
         "master"
       ],
@@ -1236,6 +1379,9 @@
       "size_kb": 1086,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -51.5,
       "branches": [
         "master"
       ],
@@ -1269,6 +1415,9 @@
       "size_kb": 42,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -31.533333,
       "branches": [
         "main"
       ],
@@ -1295,6 +1444,9 @@
       "size_kb": 947,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -48.5,
       "branches": [
         "master"
       ],
@@ -1322,6 +1474,10 @@
       "size_kb": 10376,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 46,
+      "commit_heat": 0.0,
+      "focus": -0.36666667,
       "branches": [
         "main"
       ],
@@ -1347,6 +1503,9 @@
       "size_kb": 21898,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -28.066668,
       "branches": [
         "master"
       ],
@@ -1373,6 +1532,9 @@
       "size_kb": 3053,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -25.3,
       "branches": [
         "main"
       ],
@@ -1397,6 +1559,9 @@
       "open_issues": 2,
       "size_kb": 152,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -57.2,
       "branches": [
         "main"
       ],
@@ -1430,6 +1595,9 @@
       "size_kb": 10,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -20.466667,
       "branches": [
         "main"
       ],
@@ -1466,6 +1634,10 @@
       "has_readme": true,
       "has_agents_md": true,
       "has_license_file": true,
+      "commits_5d": 1,
+      "commits_30d": 2,
+      "commit_heat": 3.0,
+      "focus": 3.0,
       "branches": [
         "main"
       ],
@@ -1501,6 +1673,9 @@
       "size_kb": 74,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -1.0333333,
       "branches": [
         "main"
       ],
@@ -1532,6 +1707,9 @@
       "size_kb": 68,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -20.9,
       "branches": [
         "main"
       ],
@@ -1558,6 +1736,9 @@
       "size_kb": 46,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -20.766666,
       "branches": [
         "main"
       ],
@@ -1589,6 +1770,9 @@
       "size_kb": 19,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -21.3,
       "branches": [
         "main"
       ],
@@ -1621,6 +1805,10 @@
       "size_kb": 44,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 1,
+      "commit_heat": 0.0,
+      "focus": -0.33333334,
       "branches": [
         "main"
       ],
@@ -1655,6 +1843,9 @@
       "has_readme": true,
       "has_agents_md": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -8.333333,
       "branches": [
         "main"
       ],
@@ -1688,6 +1879,10 @@
       "has_readme": true,
       "has_agents_md": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 3,
+      "commit_heat": 0.0,
+      "focus": -0.23333333,
       "branches": [
         "main"
       ],
@@ -1724,6 +1919,10 @@
       "has_readme": true,
       "has_agents_md": true,
       "has_license_file": true,
+      "commits_5d": 2,
+      "commits_30d": 28,
+      "commit_heat": 0.42857143,
+      "focus": 0.42857143,
       "branches": [
         "main"
       ],
@@ -1747,6 +1946,9 @@
       "open_issues": 0,
       "size_kb": 9,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -21.433332,
       "branches": [
         "master"
       ],
@@ -1770,6 +1972,9 @@
       "open_issues": 0,
       "size_kb": 8,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -21.433332,
       "branches": [
         "main"
       ],
@@ -1805,6 +2010,10 @@
       "size_kb": 99,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 1,
+      "commit_heat": 0.0,
+      "focus": -0.2,
       "branches": [
         "main"
       ],
@@ -1838,6 +2047,9 @@
       "size_kb": 11846,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -1.6666666,
       "branches": [
         "main"
       ],
@@ -1875,6 +2087,10 @@
       "size_kb": 502,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 4,
+      "commit_heat": 0.0,
+      "focus": -0.16666667,
       "branches": [
         "main"
       ],
@@ -1898,6 +2114,9 @@
       "open_issues": 0,
       "size_kb": 78,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -95.86667,
       "branches": [
         "master"
       ],
@@ -1930,6 +2149,9 @@
       "size_kb": 31,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -20.166666,
       "branches": [
         "main"
       ],
@@ -1962,6 +2184,9 @@
       "size_kb": 14,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -20.466667,
       "branches": [
         "main"
       ],
@@ -1989,6 +2214,9 @@
       "size_kb": 11,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -20.466667,
       "branches": [
         "main"
       ],
@@ -2022,6 +2250,9 @@
       "size_kb": 2267,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -20.433332,
       "branches": [
         "main"
       ],
@@ -2060,6 +2291,10 @@
       "has_readme": true,
       "has_agents_md": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 6,
+      "commit_heat": 0.0,
+      "focus": -0.16666667,
       "branches": [
         "main"
       ],
@@ -2085,6 +2320,9 @@
       "size_kb": 26,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -67.46667,
       "branches": [
         "master"
       ],
@@ -2110,6 +2348,9 @@
       "size_kb": 268,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -64.7,
       "branches": [
         "master"
       ],
@@ -2135,6 +2376,9 @@
       "size_kb": 2700,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -67.4,
       "branches": [
         "master"
       ],
@@ -2161,6 +2405,9 @@
       "size_kb": 134,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -92.8,
       "branches": [
         "master"
       ],
@@ -2191,6 +2438,9 @@
       "open_issues": 0,
       "size_kb": 143420,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -12.1,
       "branches": [
         "main"
       ],
@@ -2220,6 +2470,9 @@
       "open_issues": 0,
       "size_kb": 9,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -12.833333,
       "branches": [
         "main"
       ],
@@ -2249,6 +2502,9 @@
       "open_issues": 0,
       "size_kb": 20,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -12.1,
       "branches": [
         "main"
       ],
@@ -2275,6 +2531,9 @@
       "size_kb": 10154,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -1.1333333,
       "branches": [
         "main"
       ],
@@ -2300,6 +2559,9 @@
       "size_kb": 80,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -63.266666,
       "branches": [
         "master"
       ],
@@ -2325,6 +2587,9 @@
       "size_kb": 6168,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -35.366665,
       "branches": [
         "master"
       ],
@@ -2349,6 +2614,9 @@
       "open_issues": 1,
       "size_kb": 1196,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -2.4666667,
       "branches": [
         "dev--draft"
       ],
@@ -2384,6 +2652,10 @@
       "has_readme": true,
       "has_agents_md": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 4,
+      "commit_heat": 0.0,
+      "focus": -0.23333333,
       "branches": [
         "main"
       ],
@@ -2414,6 +2686,10 @@
       "size_kb": 1553,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 3,
+      "commit_heat": 0.0,
+      "focus": -0.1,
       "branches": [
         "main"
       ],
@@ -2440,6 +2716,9 @@
       "size_kb": 1798,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -10.533334,
       "branches": [
         "develop"
       ],
@@ -2466,6 +2745,9 @@
       "size_kb": 1261,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -27.766666,
       "branches": [
         "main"
       ],
@@ -2489,6 +2771,9 @@
       "open_issues": 0,
       "size_kb": 57,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -60.066666,
       "branches": [
         "main"
       ],
@@ -2515,6 +2800,9 @@
       "has_readme": true,
       "has_agents_md": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -11.366667,
       "branches": [
         "main"
       ],
@@ -2538,6 +2826,9 @@
       "open_issues": 0,
       "license": "MIT",
       "size_kb": 22711,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -108.8,
       "branches": [
         "master"
       ],
@@ -2564,6 +2855,9 @@
       "size_kb": 6425,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -47.933334,
       "branches": [
         "master"
       ],
@@ -2597,9 +2891,13 @@
       "forks_count": 0,
       "open_issues": 3,
       "license": "Apache-2.0",
-      "size_kb": 5590,
+      "size_kb": 5584,
       "has_readme": true,
       "has_license_file": true,
+      "commits_5d": 0,
+      "commits_30d": 64,
+      "commit_heat": 0.0,
+      "focus": 0.0,
       "branches": [
         "main"
       ],
@@ -2624,6 +2922,9 @@
       "open_issues": 3,
       "size_kb": 568,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 0,
+      "focus": -10.366667,
       "branches": [
         "main"
       ],
@@ -2648,6 +2949,10 @@
       "open_issues": 2,
       "size_kb": 1146,
       "has_readme": true,
+      "commits_5d": 0,
+      "commits_30d": 1,
+      "commit_heat": 0.0,
+      "focus": -0.23333333,
       "branches": [
         "main"
       ],
