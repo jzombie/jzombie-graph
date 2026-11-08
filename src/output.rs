@@ -21,19 +21,43 @@ pub fn render_dump(graph: &Graph) -> String {
         graph.schema_version,
         graph.generated_at.to_rfc3339(),
     ));
-    // Per-node in/out adjacency for the vertical blocks.
+    // Per-node in/out adjacency for the vertical blocks (dependence only,
+    // matching `node_fan_in` — associations render in the in/out lists
+    // below but never count toward the tallies or the layer).
     let mut incoming: BTreeMap<&str, Vec<&crate::graph::Edge>> = BTreeMap::new();
     let mut outgoing: BTreeMap<&str, Vec<&crate::graph::Edge>> = BTreeMap::new();
     for e in &graph.edges {
         incoming.entry(e.target.as_str()).or_default().push(e);
         outgoing.entry(e.source.as_str()).or_default().push(e);
     }
+    let layers = graph.node_layers();
+    let dep_incoming: BTreeMap<&str, usize> = graph
+        .edges
+        .iter()
+        .filter(|e| e.kind.is_dependence())
+        .fold(BTreeMap::new(), |mut m, e| {
+            *m.entry(e.target.as_str()).or_default() += 1;
+            m
+        });
+    let dep_outgoing: BTreeMap<&str, usize> = graph
+        .edges
+        .iter()
+        .filter(|e| e.kind.is_dependence())
+        .fold(BTreeMap::new(), |mut m, e| {
+            *m.entry(e.source.as_str()).or_default() += 1;
+            m
+        });
     s.push_str(&format!(
         "--- nodes ({}, fan-in desc) ---\n",
         graph.nodes.len()
     ));
     for (i, (n, fan_in)) in graph.nodes_by_fan_in().iter().enumerate() {
-        let fan_out = outgoing.get(n.id.as_str()).map(|v| v.len()).unwrap_or(0);
+        let fan_out = dep_outgoing.get(n.id.as_str()).copied().unwrap_or(0);
+        let dep_in = dep_incoming.get(n.id.as_str()).copied().unwrap_or(0);
+        let layer = layers
+            .get(n.id.as_str())
+            .copied()
+            .unwrap_or(crate::graph::Layer::Isolated);
         s.push_str(&format!(
             "[node {}/{}] {}\n",
             i + 1,
@@ -79,7 +103,9 @@ pub fn render_dump(graph: &Graph) -> String {
             "  pushed_at: {}\n",
             n.pushed_at.map(|t| t.to_rfc3339()).unwrap_or("-".into()),
         ));
-        s.push_str(&format!("  fan-in: {fan_in} fan-out: {fan_out}\n"));
+        s.push_str(&format!(
+            "  fan-in: {fan_in} fan-out: {fan_out} layer: {layer} (dep-in: {dep_in})\n"
+        ));
         match incoming.get(n.id.as_str()) {
             Some(v) if !v.is_empty() => {
                 s.push_str("  in:\n");

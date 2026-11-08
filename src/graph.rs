@@ -34,6 +34,40 @@ impl EdgeKind {
     }
 }
 
+/// Structural role derived from *dependence* fan-in/fan-out
+/// (`EdgeKind::is_dependence`), never stored, always computed live on
+/// whichever graph instance you hold:
+///
+/// - `Foundation`: depended upon, depends on nothing (`in > 0, out == 0`).
+/// - `Middleware`: both used and using (`in > 0, out > 0`).
+/// - `Application`: top of its chain (`in == 0, out > 0`).
+/// - `Isolated`: no dependence edges either way.
+///
+/// Privacy note: private nodes are transit — they count here. A public
+/// node's layer on the true graph can reflect private dependents; the
+/// same query on `public_subgraph()` gives the public-only layer and
+/// leaks nothing. Persisting true-graph layers into public JSON would
+/// leak a private-usage delta, so layers stay derived, never serialized.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Layer {
+    Foundation,
+    Middleware,
+    Application,
+    Isolated,
+}
+
+impl std::fmt::Display for Layer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Layer::Foundation => "foundation",
+            Layer::Middleware => "middleware",
+            Layer::Application => "application",
+            Layer::Isolated => "isolated",
+        };
+        write!(f, "{s}")
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Node {
     /// Canonical id: `owner/repo` full name.
@@ -156,6 +190,64 @@ impl Graph {
             }
         }
         counts
+    }
+
+    /// Node fan-out: count of outgoing *dependence* edges (how many
+    /// portfolio repos this node depends on). Mirror of `node_fan_in`;
+    /// associations never contribute.
+    pub fn node_fan_out(&self) -> BTreeMap<String, u32> {
+        let mut counts: BTreeMap<String, u32> = BTreeMap::new();
+        for n in &self.nodes {
+            counts.entry(n.id.clone()).or_insert(0);
+        }
+        for e in &self.edges {
+            if e.kind.is_dependence() {
+                *counts.entry(e.source.clone()).or_insert(0) += 1;
+            }
+        }
+        counts
+    }
+
+    /// Structural layer per node from dependence fan-in/fan-out.
+    /// Computed on `self`: true graph counts private transit, public
+    /// subgraph counts public-only. See `Layer` privacy note.
+    pub fn node_layers(&self) -> BTreeMap<String, Layer> {
+        let fan_in = self.node_fan_in();
+        let fan_out = self.node_fan_out();
+        self.nodes
+            .iter()
+            .map(|n| {
+                let i = fan_in.get(&n.id).copied().unwrap_or(0);
+                let o = fan_out.get(&n.id).copied().unwrap_or(0);
+                let layer = match (i, o) {
+                    (0, 0) => Layer::Isolated,
+                    (_, 0) => Layer::Foundation,
+                    (_, _) if i > 0 && o > 0 => Layer::Middleware,
+                    _ => Layer::Application,
+                };
+                (n.id.clone(), layer)
+            })
+            .collect()
+    }
+
+    /// Single-node layer (same rule as `node_layers`).
+    pub fn node_layer(&self, id: &str) -> Layer {
+        let fan_in = self
+            .edges
+            .iter()
+            .filter(|e| e.kind.is_dependence() && e.target == id)
+            .count();
+        let fan_out = self
+            .edges
+            .iter()
+            .filter(|e| e.kind.is_dependence() && e.source == id)
+            .count();
+        match (fan_in, fan_out) {
+            (0, 0) => Layer::Isolated,
+            (_, 0) => Layer::Foundation,
+            (_, _) if fan_in > 0 && fan_out > 0 => Layer::Middleware,
+            _ => Layer::Application,
+        }
     }
 
     /// Ordering: fan-in desc, stability tiebreak (id asc). Pure helper for renderers.
@@ -385,5 +477,63 @@ mod tests {
             ],
         );
         assert_eq!(g.node_fan_in()["me/b"], 1);
+    }
+
+    #[test]
+    fn layers_classify_foundation_middleware_application_isolated() {
+        // lib <- mid <- app, plus a loner with no dependence edges.
+        let g = Graph::new(
+            vec![
+                node("me/lib", false, false, None),
+                node("me/mid", false, false, None),
+                node("me/app", false, false, None),
+                node("me/loner", false, false, None),
+            ],
+            vec![
+                edge("me/mid", "me/lib", EdgeKind::Manifest),
+                edge("me/app", "me/mid", EdgeKind::Manifest),
+            ],
+        );
+        let layers = g.node_layers();
+        assert_eq!(layers["me/lib"], Layer::Foundation);
+        assert_eq!(layers["me/mid"], Layer::Middleware);
+        assert_eq!(layers["me/app"], Layer::Application);
+        assert_eq!(layers["me/loner"], Layer::Isolated);
+        assert_eq!(g.node_layer("me/app"), Layer::Application);
+    }
+
+    #[test]
+    fn layers_ignore_association_kinds() {
+        // A docs-only link must not promote either endpoint.
+        let g = Graph::new(
+            vec![
+                node("me/a", false, false, None),
+                node("me/b", false, false, None),
+            ],
+            vec![edge("me/a", "me/b", EdgeKind::Docs)],
+        );
+        assert_eq!(g.node_layer("me/a"), Layer::Isolated);
+        assert_eq!(g.node_layer("me/b"), Layer::Isolated);
+    }
+
+    #[test]
+    fn layers_count_private_transit_on_true_graph_only() {
+        // Public app with zero public fan-in: application publicly, but
+        // middleware on the true graph once a private node uses it.
+        // No private facts leak through the layer query on the public lane.
+        let g = Graph::new(
+            vec![
+                node("me/app", false, false, None),
+                node("me/lib", false, false, None),
+                node("me/secret", false, true, None),
+            ],
+            vec![
+                edge("me/app", "me/lib", EdgeKind::Manifest),
+                edge("me/secret", "me/app", EdgeKind::Manifest),
+            ],
+        );
+        assert_eq!(g.node_layer("me/app"), Layer::Middleware);
+        let pub_g = public_subgraph(&g);
+        assert_eq!(pub_g.node_layer("me/app"), Layer::Application);
     }
 }
