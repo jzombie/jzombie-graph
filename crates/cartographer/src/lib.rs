@@ -13,8 +13,10 @@
 //!
 //! Portfolio filter (renderer-side, mechanical — no hand lists):
 //! - private nodes never render;
-//! - forks render only when they are own work: `ahead_by > 0` (any commit)
-//!   or renamed from the parent (`name` differs from the upstream repo name);
+//! - forks render only when they are own work: `ahead_by > 0` (own commits —
+//!   the collector counts only ahead commits you authored, so stale forks of
+//!   rewritten upstreams stay excluded) or renamed from the parent (`name`
+//!   differs from the upstream repo name);
 //! - stale nodes (`pushed_at` more than 365 days before `generated_at`)
 //!   are omitted unless something current depends on them (transitive
 //!   dependence pulls a stale dependency back in; a stale dependent that

@@ -100,7 +100,7 @@
       "type": "object",
       "properties": {
         "ahead_by": {
-          "description": "Commits ahead of upstream (`compare` API). Rule (a): divergence re-admits forks.",
+          "description": "Commits ahead of upstream authored by you (`compare` API + authorship\nfilter). Rule (a): divergence re-admits forks. Raw ahead counts lie:\na fork frozen while upstream rewrote history shows ahead commits\nauthored entirely by upstream — those count as pristine, not diverged.",
           "type": [
             "integer",
             "null"

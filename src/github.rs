@@ -133,6 +133,49 @@ struct ApiContents {
 #[derive(Debug, Clone, Deserialize)]
 struct ApiCompare {
     ahead_by: Option<u32>,
+    #[serde(default)]
+    total_commits: u32,
+    #[serde(default)]
+    commits: Vec<ApiCompareCommit>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ApiCompareCommit {
+    sha: String,
+    author: Option<ApiSimpleUser>,
+    committer: Option<ApiSimpleUser>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ApiSimpleUser {
+    login: Option<String>,
+}
+
+/// Own-ahead commits: ahead commits authored (or committed) by the repo
+/// owner. Pure function over one compare page — unit-tested directly.
+fn own_ahead_commits<'a>(
+    commits: impl IntoIterator<Item = &'a ApiCompareCommit>,
+    owner: &str,
+) -> usize {
+    commits
+        .into_iter()
+        .filter(|c| is_owner_commit(c, owner))
+        .count()
+}
+
+fn is_owner_commit(c: &ApiCompareCommit, owner: &str) -> bool {
+    c.author
+        .as_ref()
+        .and_then(|a| a.login.as_deref())
+        .or_else(|| c.committer.as_ref().and_then(|a| a.login.as_deref()))
+        .is_some_and(|login| login.eq_ignore_ascii_case(owner))
+}
+
+/// Own-ahead divergence for forks: `(raw_ahead, owner_authored)`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AheadBy {
+    pub raw: u32,
+    pub own: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -410,12 +453,22 @@ impl GitHubClient {
         }
     }
 
-    /// Commits ahead of upstream (`compare` API) — fork divergence rule (a).
+    /// Own-ahead divergence for forks: how many of the fork's ahead commits
+    /// were authored by the repo owner (`compare` API + authorship check).
     /// Base is the *parent default branch*, head is `owner:default_branch`.
     /// Returns None when not a fork or comparison is unavailable (fail-open:
     /// private/deleted upstream). Callers log the fail-open to the digest
     /// so diverged forks don't silently read as `ahead_by: null`.
-    pub async fn ahead_by(&self, repo: &RepoMeta) -> Result<Option<u32>> {
+    ///
+    /// Raw `ahead_by` alone is not divergence: a fork frozen while upstream
+    /// rewrote history shows ahead commits authored entirely by upstream
+    /// (verified live: 46-ahead and 8-ahead forks with zero owner commits).
+    /// Only owner-authored ahead commits count — anything else is a stale
+    /// fork, not own work. Pages beyond the first are walked only when the
+    /// compare truncates (`total_commits` exceeds the returned page);
+    /// termination is by SHA-set (no new SHAs, error, empty, or a page cap),
+    /// so an endpoint that ignores paging still terminates.
+    pub async fn ahead_by(&self, repo: &RepoMeta) -> Result<Option<AheadBy>> {
         let Some(parent) = repo.parent_full_name.as_deref() else {
             return Ok(None);
         };
@@ -428,15 +481,70 @@ impl GitHubClient {
             Ok(p) => p.default_branch,
             Err(_) => return Ok(None),
         };
-        let url = format!(
+        let base = format!(
             "{}/repos/{}/compare/{}...{}:{}",
             self.api_base, parent, parent_default, repo.owner, repo.default_branch
         );
-        // Compare failures (private upstream, deleted parent) are fail-open: None.
-        match self.get_json::<ApiCompare>(&url).await {
-            Ok(c) => Ok(c.ahead_by),
-            Err(_) => Ok(None),
+        // First page: no paging params, same URL as before.
+        let first: ApiCompare = match self.get_json(&base).await {
+            Ok(c) => c,
+            Err(_) => return Ok(None),
+        };
+        let raw = first.ahead_by.unwrap_or(0);
+        if raw == 0 {
+            return Ok(Some(AheadBy { raw: 0, own: 0 }));
         }
+        // Walk pages until the ahead set is covered. Termination never
+        // depends on paging support: empty pages, errors, repeated SHAs
+        // (an endpoint ignoring ?page repeats page 1), and a page cap all
+        // stop the walk. Uncovered remainder + no match yet = unknown.
+        let mut seen: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+        let mut own = 0u32;
+        let mut total = first.total_commits.max(raw);
+        let mut page = 1;
+        let mut current = first;
+        let mut complete = true;
+        loop {
+            let fresh: Vec<&ApiCompareCommit> = current
+                .commits
+                .iter()
+                .filter(|c| !seen.contains(&c.sha))
+                .collect();
+            if fresh.is_empty() {
+                complete = seen.len() as u32 >= total;
+                break;
+            }
+            for c in &fresh {
+                seen.insert(c.sha.clone());
+            }
+            own += own_ahead_commits(fresh, &repo.owner) as u32;
+            if seen.len() as u32 >= total {
+                break;
+            }
+            if page >= 10 {
+                complete = false;
+                break;
+            }
+            page += 1;
+            let url = format!("{base}?per_page=100&page={page}");
+            match self.get_json::<ApiCompare>(&url).await {
+                Ok(c) => {
+                    total = total.max(c.total_commits);
+                    current = c;
+                }
+                Err(_) => {
+                    complete = false;
+                    break;
+                }
+            }
+        }
+        if !complete && own == 0 {
+            // Truncated view, no owner commits seen: authorship unknown,
+            // not proven-absent. Fail-open to hidden (same as unavailable),
+            // callers log it via the digest note below.
+            return Ok(None);
+        }
+        Ok(Some(AheadBy { raw, own }))
     }
 
     /// Trailing-window commit velocity (default branch): total commits
@@ -554,5 +662,40 @@ mod tests {
         let arr = author_only.as_array().unwrap();
         assert!(latest_commit_date(arr).is_some());
         assert_eq!(latest_commit_date(&[]), None);
+    }
+
+    #[test]
+    fn own_ahead_counts_only_owner_commits() {
+        use super::{ApiCompareCommit, ApiSimpleUser, own_ahead_commits};
+        let commit = |login: Option<&str>| ApiCompareCommit {
+            sha: format!("sha-{login:?}"),
+            author: login.map(|l| ApiSimpleUser {
+                login: Some(l.into()),
+            }),
+            committer: None,
+        };
+        // Mixed authorship: only the owner's commits count.
+        // Case-insensitive login match; unlinked (null-author) never counts.
+        let commits = vec![
+            commit(Some("jzombie")),
+            commit(Some("JZOMBIE")),
+            commit(Some("someone-else")),
+            commit(None),
+        ];
+        assert_eq!(own_ahead_commits(&commits, "jzombie"), 2);
+        assert_eq!(own_ahead_commits(&[], "jzombie"), 0);
+    }
+
+    #[test]
+    fn committer_login_counts_when_author_missing() {
+        use super::{ApiCompareCommit, ApiSimpleUser, is_owner_commit};
+        let c = ApiCompareCommit {
+            sha: "abc".into(),
+            author: None,
+            committer: Some(ApiSimpleUser {
+                login: Some("jzombie".into()),
+            }),
+        };
+        assert!(is_owner_commit(&c, "jzombie"));
     }
 }

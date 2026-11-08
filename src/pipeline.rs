@@ -202,7 +202,15 @@ pub async fn collect_live(
                         repo.full_name
                     ));
                 }
-                v
+                if let Some(a) = &v
+                    && a.raw > a.own
+                {
+                    digest.push(format!(
+                        "{}: {} ahead commits, {} authored by you — stale fork of rewritten upstream counts as pristine, not diverged",
+                        repo.full_name, a.raw, a.own
+                    ));
+                }
+                v.map(|a| a.own)
             }
             Err(_) => None,
         };

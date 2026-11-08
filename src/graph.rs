@@ -84,7 +84,10 @@ pub struct Node {
     pub private: bool,
     /// Upstream full name when `fork == true` (if known).
     pub upstream: Option<String>,
-    /// Commits ahead of upstream (`compare` API). Rule (a): divergence re-admits forks.
+    /// Commits ahead of upstream authored by you (`compare` API + authorship
+    /// filter). Rule (a): divergence re-admits forks. Raw ahead counts lie:
+    /// a fork frozen while upstream rewrote history shows ahead commits
+    /// authored entirely by upstream — those count as pristine, not diverged.
     pub ahead_by: Option<u32>,
     /// Last push to the repo (API `pushed_at`). Display fact only, never scored.
     /// Free in the enumerate/get responses — staleness/heartbeat signal.
@@ -335,7 +338,7 @@ impl Graph {
 }
 
 /// Own-work repos: everything you actually contributed to. Non-forks always
-/// count; forks count only when diverged (`ahead_by > 0`, any commit) or
+/// count; forks count only when diverged (`ahead_by > 0` own commits) or
 /// renamed from the parent (name differs from the upstream repo name).
 /// Pristine forks never count. This is the workspace-wide filter for "did I
 /// work on this repo" — renderers use it instead of re-deciding. (The
@@ -359,8 +362,8 @@ pub fn is_own_work(node: &Node) -> bool {
 ///
 /// - Private repos: `visible = false` always (they compute as transit nodes,
 ///   stripped before render — no nodes, stubs, links, counts, or deltas).
-/// - Forks: excluded by default; re-admitted by (a) divergence (`ahead_by > 0`)
-///   or (b) load-bearing fan-in (a portfolio repo depends on the fork).
+/// - Forks: excluded by default; re-admitted by (a) divergence (own ahead
+///   commits > 0) or (b) load-bearing fan-in (a portfolio repo depends on the fork).
 /// - Tier 3 isolation: >= 1 portfolio edge (in or out, dependence *or*
 ///   association) or omit. Study-forks pointing at other people's repos
 ///   self-omit here because their only edges leave the portfolio.
