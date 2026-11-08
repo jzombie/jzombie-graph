@@ -5,6 +5,10 @@ use std::collections::{BTreeMap, BTreeSet};
 /// Stable schema version. Bump only with a documented migration.
 pub const SCHEMA_VERSION: u32 = 4;
 
+fn is_false(b: &bool) -> bool {
+    !*b
+}
+
 /// Mechanically collected edge kinds. Dependence kinds count toward fan-in;
 /// association kinds display only (see plan: workflow/docs/xrefs).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
@@ -56,6 +60,31 @@ pub struct Node {
     pub language: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub homepage: Option<String>,
+    /// Tier-0 magnet signals: free in enumerate/get (+ tree for has_*).
+    /// Display/classification only, never scored. Stripped with private nodes.
+    #[serde(default)]
+    pub stars: u32,
+    #[serde(default)]
+    pub forks_count: u32,
+    #[serde(default)]
+    pub open_issues: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub license: Option<String>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub archived: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub disabled: bool,
+    #[serde(default)]
+    pub size_kb: u32,
+    /// Agent-parseability audit from the default-branch tree (free).
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub has_readme: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub has_llms_txt: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub has_agents_md: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub has_license_file: bool,
     /// Branches observed during collection.
     pub branches: Vec<String>,
     /// Computed visibility: renderers filter blindly on this, never re-decide.
@@ -237,6 +266,17 @@ mod tests {
             topics: vec![],
             language: None,
             homepage: None,
+            stars: 0,
+            forks_count: 0,
+            open_issues: 0,
+            license: None,
+            archived: false,
+            disabled: false,
+            size_kb: 0,
+            has_readme: false,
+            has_llms_txt: false,
+            has_agents_md: false,
+            has_license_file: false,
             branches: vec!["main".into()],
             visible: false,
             visible_reason: None,

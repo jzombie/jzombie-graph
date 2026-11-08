@@ -22,6 +22,17 @@ fn node(id: &str, fork: bool, private: bool, ahead_by: Option<u32>) -> Node {
         topics: vec![],
         language: None,
         homepage: None,
+        stars: 0,
+        forks_count: 0,
+        open_issues: 0,
+        license: None,
+        archived: false,
+        disabled: false,
+        size_kb: 0,
+        has_readme: false,
+        has_llms_txt: false,
+        has_agents_md: false,
+        has_license_file: false,
         branches: vec!["main".into()],
         visible: false,
         visible_reason: None,
@@ -45,6 +56,15 @@ fn snapshot_reference_portfolio() {
     nodes[0].topics = vec!["rust".into(), "graph".into()];
     nodes[0].language = Some("Rust".into());
     nodes[0].homepage = Some("https://example.com/hub".into());
+    nodes[0].stars = 42;
+    nodes[0].forks_count = 7;
+    nodes[0].open_issues = 3;
+    nodes[0].license = Some("MIT".into());
+    nodes[0].size_kb = 2048;
+    nodes[0].has_readme = true;
+    nodes[0].has_llms_txt = true;
+    nodes[0].has_agents_md = true;
+    nodes[0].has_license_file = true;
     let edges = vec![
         jzombie_graph::graph::Edge {
             source: "me/hub".into(),

@@ -102,6 +102,10 @@ diff <(jq -S . yesterday.json) <(jq -S . graph.json)
 - About: every node carries `description` / `topics` / `language` / `homepage`
   (API-native, free in the same responses). Display/classification only, never
   scored. Stripped with private nodes.
+- Magnet signals (Tier-0, free): `stars` / `forks_count` / `open_issues` /
+  `license` / `archived` / `disabled` / `size_kb` (same responses) plus
+  `has_readme` / `has_llms_txt` / `has_agents_md` / `has_license_file` (from
+  the tree already fetched). Inbound + agent-parseability audit, never scored.
 - `--format dump` is the debug lane: every node + every edge, all fields,
   vertical, nothing truncated. JSON stays the machine lane.
 - Use-site check: Rust via `syn` AST (`use` items incl. `pub use`; unparseable = match),

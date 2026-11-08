@@ -329,6 +329,11 @@ async fn collect_live(
             branch: b_name.clone(),
             recency: repo.pushed_at,
         }];
+        // Agent-parseability audit (free: derived from the tree already fetched).
+        let mut has_readme = false;
+        let mut has_llms_txt = false;
+        let mut has_agents_md = false;
+        let mut has_license_file = false;
 
         {
             // Tree-first: one tree call gates every existence probe.
@@ -356,6 +361,22 @@ async fn collect_live(
                     None => true, // no tree: probe (fail-open, may 404)
                 }
             };
+            // has_* surfaces: exact tree hits (case-insensitive where GitHub varies).
+            if let Some(set) = &tree_set {
+                has_readme = set.iter().any(|p| {
+                    p.eq_ignore_ascii_case("README.md") || p.eq_ignore_ascii_case("README")
+                });
+                has_llms_txt = set.iter().any(|p| p == "llms.txt" || p == "llms-full.txt");
+                has_agents_md = set.iter().any(|p| {
+                    p.eq_ignore_ascii_case("AGENTS.md") || p.eq_ignore_ascii_case("agents.md")
+                });
+                has_license_file = set.iter().any(|p| {
+                    p == "LICENSE"
+                        || p.starts_with("LICENSE-")
+                        || p.starts_with("LICENSE.")
+                        || p.eq_ignore_ascii_case("licence")
+                });
+            }
 
             // Manifests, registry-driven: one loop over MANIFEST_KINDS.
             // Presence-union: the package is declared or it isn't. Walked
@@ -608,6 +629,17 @@ async fn collect_live(
             topics: repo.topics.clone(),
             language: repo.language.clone(),
             homepage: repo.homepage.clone(),
+            stars: repo.stars,
+            forks_count: repo.forks_count,
+            open_issues: repo.open_issues,
+            license: repo.license.clone(),
+            archived: repo.archived,
+            disabled: repo.disabled,
+            size_kb: repo.size_kb,
+            has_readme,
+            has_llms_txt,
+            has_agents_md,
+            has_license_file,
             branches: branch_names,
             visible: false, // computed below
             visible_reason: None,
@@ -651,6 +683,17 @@ mod tests {
                 topics: vec![],
                 language: None,
                 homepage: None,
+                stars: 0,
+                forks_count: 0,
+                open_issues: 0,
+                license: None,
+                archived: false,
+                disabled: false,
+                size_kb: 0,
+                has_readme: false,
+                has_llms_txt: false,
+                has_agents_md: false,
+                has_license_file: false,
                 branches: vec!["main".into()],
                 visible: true,
                 visible_reason: None,
@@ -668,6 +711,17 @@ mod tests {
                 topics: vec![],
                 language: None,
                 homepage: None,
+                stars: 0,
+                forks_count: 0,
+                open_issues: 0,
+                license: None,
+                archived: false,
+                disabled: false,
+                size_kb: 0,
+                has_readme: false,
+                has_llms_txt: false,
+                has_agents_md: false,
+                has_license_file: false,
                 branches: vec!["main".into()],
                 visible: false,
                 visible_reason: None,

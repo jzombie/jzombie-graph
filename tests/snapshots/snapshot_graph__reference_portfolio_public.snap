@@ -22,6 +22,15 @@ expression: "&pub_g"
       ],
       "language": "Rust",
       "homepage": "https://example.com/hub",
+      "stars": 42,
+      "forks_count": 7,
+      "open_issues": 3,
+      "license": "MIT",
+      "size_kb": 2048,
+      "has_readme": true,
+      "has_llms_txt": true,
+      "has_agents_md": true,
+      "has_license_file": true,
       "branches": [
         "main"
       ],
@@ -38,6 +47,10 @@ expression: "&pub_g"
       "ahead_by": null,
       "pushed_at": null,
       "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "size_kb": 0,
       "branches": [
         "main"
       ],
@@ -54,6 +67,10 @@ expression: "&pub_g"
       "ahead_by": 0,
       "pushed_at": null,
       "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "size_kb": 0,
       "branches": [
         "main"
       ],
@@ -70,6 +87,10 @@ expression: "&pub_g"
       "ahead_by": 12,
       "pushed_at": null,
       "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "size_kb": 0,
       "branches": [
         "main"
       ],

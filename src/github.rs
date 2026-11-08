@@ -28,6 +28,21 @@ pub struct RepoMeta {
     pub language: Option<String>,
     #[serde(default)]
     pub homepage: Option<String>,
+    // Tier-0 magnet signals: free in enumerate/get, display only, never scored.
+    #[serde(default)]
+    pub stars: u32,
+    #[serde(default)]
+    pub forks_count: u32,
+    #[serde(default)]
+    pub open_issues: u32,
+    #[serde(default)]
+    pub license: Option<String>,
+    #[serde(default)]
+    pub archived: bool,
+    #[serde(default)]
+    pub disabled: bool,
+    #[serde(default)]
+    pub size_kb: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -61,6 +76,31 @@ struct ApiRepo {
     language: Option<String>,
     #[serde(default)]
     homepage: Option<String>,
+    // Tier-0 magnet signals: free in the same responses, display only.
+    #[serde(default)]
+    stargazers_count: u32,
+    #[serde(default)]
+    forks_count: u32,
+    #[serde(default)]
+    open_issues_count: u32,
+    #[serde(default)]
+    license: Option<ApiLicense>,
+    #[serde(default)]
+    archived: bool,
+    #[serde(default)]
+    disabled: bool,
+    #[serde(default)]
+    size: u32,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ApiLicense {
+    #[serde(default)]
+    key: Option<String>,
+    #[serde(default)]
+    spdx_id: Option<String>,
+    #[serde(default)]
+    name: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -100,6 +140,37 @@ pub struct GitHubClient {
     http: ClientWithMiddleware,
     token: String,
     api_base: String,
+}
+
+fn repo_meta_from_api(r: ApiRepo) -> RepoMeta {
+    let license = r.license.as_ref().and_then(|l| {
+        l.spdx_id
+            .clone()
+            .or_else(|| l.key.clone())
+            .or_else(|| l.name.clone())
+            .filter(|s| !s.is_empty() && s != "NOASSERTION")
+    });
+    RepoMeta {
+        full_name: r.full_name,
+        owner: r.owner.login,
+        name: r.name,
+        fork: r.fork,
+        private: r.private,
+        default_branch: r.default_branch.unwrap_or_else(|| "main".into()),
+        parent_full_name: r.parent.map(|p| p.full_name),
+        pushed_at: r.pushed_at,
+        description: r.description,
+        topics: r.topics.unwrap_or_default(),
+        language: r.language,
+        homepage: r.homepage.filter(|h| !h.is_empty()),
+        stars: r.stargazers_count,
+        forks_count: r.forks_count,
+        open_issues: r.open_issues_count,
+        license,
+        archived: r.archived,
+        disabled: r.disabled,
+        size_kb: r.size,
+    }
 }
 
 impl GitHubClient {
@@ -204,20 +275,7 @@ impl GitHubClient {
                 if r.fork && !include_forks {
                     continue;
                 }
-                out.push(RepoMeta {
-                    full_name: r.full_name,
-                    owner: r.owner.login,
-                    name: r.name,
-                    fork: r.fork,
-                    private: r.private,
-                    default_branch: r.default_branch.unwrap_or_else(|| "main".into()),
-                    parent_full_name: r.parent.map(|p| p.full_name),
-                    pushed_at: r.pushed_at,
-                    description: r.description,
-                    topics: r.topics.unwrap_or_default(),
-                    language: r.language,
-                    homepage: r.homepage.filter(|h| !h.is_empty()),
-                });
+                out.push(repo_meta_from_api(r));
             }
             if n < 100 {
                 break;
@@ -231,20 +289,7 @@ impl GitHubClient {
     pub async fn get_repo(&self, full_name: &str) -> Result<RepoMeta> {
         let url = format!("{}/repos/{full_name}", self.api_base);
         let r: ApiRepo = self.get_json(&url).await?;
-        Ok(RepoMeta {
-            full_name: r.full_name,
-            owner: r.owner.login,
-            name: r.name,
-            fork: r.fork,
-            private: r.private,
-            default_branch: r.default_branch.unwrap_or_else(|| "main".into()),
-            parent_full_name: r.parent.map(|p| p.full_name),
-            pushed_at: r.pushed_at,
-            description: r.description,
-            topics: r.topics.unwrap_or_default(),
-            language: r.language,
-            homepage: r.homepage.filter(|h| !h.is_empty()),
-        })
+        Ok(repo_meta_from_api(r))
     }
 
     /// Recursive git tree (paths only). Used for workspace members
