@@ -1,6 +1,6 @@
-# Daily publish pipeline: collect → schema → render.
-# Run by .github/workflows/publish.yml AFTER the toolchain + release
-# build steps: `oxdock .github/scripts/pipeline.oxfile`.
+# Daily publish pipeline: build → collect → schema → render.
+# Run by .github/workflows/publish.yml AFTER the toolchain step:
+# `oxdock .github/scripts/pipeline.oxfile`.
 # Paths mirror src/paths.rs (the DSL can't import it — keep in sync).
 # Fail-closed: a failing RUN stops the pipeline immediately, so any
 # stage failure means no deploy and Pages keeps serving the last good
@@ -10,6 +10,9 @@
 INHERIT_ENV [JZOMBIE_GRAPH_TOKEN]
 
 WORKSPACE LOCAL
+
+ECHO "build: workspace -> target/release"
+RUN ["cargo", "build", "--release", "--workspace"]
 
 ECHO "collect: sweep -> data/json/portfolio-graph.json"
 RUN ["./target/release/jzombie-graph", "--user", "jzombie", "--format", "json", "--output", "data/json/portfolio-graph.json"]

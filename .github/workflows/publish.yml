@@ -23,8 +23,7 @@ jobs:
       # Warm-cache rebuilds: same checked-in source, seconds instead of
       # minutes. Cache-only — no extra workflows, permissions, or binaries.
       - uses: Swatinem/rust-cache@v2
-      - run: cargo build --release --workspace
-      # OxDock owns the pipeline steps (collect → schema → render) via
+      # OxDock owns the pipeline (build → collect → schema → render) via
       # .github/scripts/pipeline.oxfile. Setup tracks latest (action @main,
       # engine `latest` by default) — we own both ends, and a bad oxdock
       # release fails closed (no deploy, last good site keeps serving).
