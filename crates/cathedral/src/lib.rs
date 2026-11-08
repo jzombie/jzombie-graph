@@ -589,11 +589,9 @@ fn layout(cluster: &Cluster) -> BTreeMap<String, (f64, f64)> {
         .collect()
 }
 
-/// BFS route from source-box center to target-box center that never
-/// enters a third-party node box. Third-party boxes are obstacles;
-/// source/target interiors are passable (masking clears them after).
-/// 8-directional, deterministic neighbor order. Falls back to a straight
-/// line only when enclosed.
+/// One trace per edge: the straight line when it doesn't cross an
+/// unconnected box (clean look preserved), a routed detour only when
+/// it would. No trace ever enters a third-party node box.
 fn route_around_boxes(
     dw: usize,
     dh: usize,
@@ -626,6 +624,21 @@ fn route_around_boxes(
         }
         true
     };
+    // Clean case first: the straight line stands when it touches no
+    // third-party box. Most edges take this path; only offenders detour.
+    let straight = bresenham(start.0, start.1, goal.0, goal.1);
+    let crosses = straight.iter().any(|&(x, y)| {
+        if (x, y) == start || (x, y) == goal {
+            return false;
+        }
+        boxes.iter().any(|b| {
+            let is_endpoint = Some(b) == src_box || Some(b) == tgt_box;
+            !is_endpoint && inside(x, y, b)
+        })
+    });
+    if !crosses {
+        return straight;
+    }
     if !passable(start.0, start.1) || !passable(goal.0, goal.1) {
         return bresenham(start.0, start.1, goal.0, goal.1);
     }
@@ -649,7 +662,20 @@ fn route_around_boxes(
         if (x, y) == goal {
             break;
         }
-        for (dx, dy) in DIRS {
+        // Goal-seeking order: most-aligned direction first, fixed
+        // tiebreak — detours stay tight instead of honeycombing.
+        let (gx, gy) = (goal.0 - x, goal.1 - y);
+        let mut dirs = DIRS;
+        dirs.sort_by(|a, b| {
+            (b.0 * gx + b.1 * gy)
+                .cmp(&(a.0 * gx + a.1 * gy))
+                .then_with(|| {
+                    DIRS.iter()
+                        .position(|d| d == a)
+                        .cmp(&DIRS.iter().position(|d| d == b))
+                })
+        });
+        for (dx, dy) in dirs {
             let (nx, ny) = (x + dx, y + dy);
             if !passable(nx, ny) {
                 continue;
