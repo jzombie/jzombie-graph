@@ -1,5 +1,5 @@
-//! Fixture tests: layers land in the right sections, fan-in orders
-//! nodes, associations never score.
+//! Fixture tests: the arch draws the apex cone, forks never appear,
+//! labels abbreviate, every drawn label links.
 
 use cathedral::render_cathedral;
 use jzombie_graph::graph::{self, EdgeKind, Graph, Layer, Node};
@@ -49,6 +49,8 @@ fn edge(source: &str, target: &str, kind: EdgeKind) -> jzombie_graph::graph::Edg
 }
 
 fn fixture() -> Graph {
+    // app -> mid -> lib, plus app -> lib docs (association, not drawn).
+    // lib is foundation, mid middleware, app application.
     let mut nodes = vec![
         node("me/lib", false, false),
         node("me/mid", false, false),
@@ -66,42 +68,118 @@ fn fixture() -> Graph {
 }
 
 #[test]
-fn sections_follow_stored_layers() {
+fn elevation_is_an_arch_with_clickable_stones() {
     let md = render_cathedral(&fixture());
-    assert!(md.contains("## foundation"), "foundation section");
-    assert!(md.contains("## middleware"), "middleware section");
-    assert!(md.contains("## application"), "application section");
-    assert!(md.contains("## Isolated"), "isolated section");
-    let foundation = md.split("## foundation").nth(1).unwrap();
-    let foundation = foundation.split("## middleware").next().unwrap();
-    assert!(foundation.contains("me/lib"), "lib in foundation");
-    assert!(!foundation.contains("me/app"), "app not in foundation");
-    let middleware = md.split("## middleware").nth(1).unwrap();
-    let middleware = middleware.split("## application").next().unwrap();
-    assert!(middleware.contains("me/mid"), "mid in middleware");
-    // Docs-only loner stays isolated, collapsed.
-    let isolated = md.split("## Isolated").nth(1).unwrap();
-    assert!(isolated.contains("me/loner"), "loner isolated");
-    assert!(isolated.contains("<details>"), "isolated collapsed");
+    let elev = md
+        .split("## Elevation")
+        .nth(1)
+        .unwrap()
+        .split("\nIndex:")
+        .next()
+        .unwrap();
+    assert!(elev.contains("<pre>"), "whitespace-preserved block");
+    assert!(elev.contains("▲"), "crown");
+    assert!(elev.contains("FOUNDATION:"), "bedrock banner");
+    assert!(
+        elev.contains("[app]") || elev.contains(">app</a>"),
+        "apex spire drawn"
+    );
+    assert!(
+        elev.contains("[mid]") || elev.contains(">mid</a>"),
+        "course drawn"
+    );
+    assert!(
+        elev.contains("[lib]") || elev.contains(">lib</a>"),
+        "bedrock drawn"
+    );
+    assert!(elev.contains('|'), "bearings drawn");
+    // Stones are links inside the drawing.
+    assert!(
+        elev.contains("<a href=\"https://github.com/me/lib\">lib</a>"),
+        "nodes clickable in the art"
+    );
+    // And the index below maps every drawn label.
+    let index = md.split("\nIndex:").nth(1).unwrap();
+    assert!(
+        index.contains("[lib](https://github.com/me/lib)"),
+        "index links every label"
+    );
 }
 
 #[test]
-fn associations_render_but_never_score() {
-    let md = render_cathedral(&fixture());
-    // Docs edge renders on the app block...
-    let app = md.split("### [`me/app`]").nth(1).unwrap();
-    assert!(app.contains("[docs]"), "association listed");
-    // ...but the app block still reports dependence-only tallies.
+fn forks_appear_nowhere() {
+    let mut nodes = vec![
+        node("me/app", false, false),
+        node("me/lib", false, false),
+        node("me/vendor", true, false),
+    ];
+    let edges = vec![
+        edge("me/app", "me/lib", EdgeKind::Manifest),
+        edge("me/app", "me/vendor", EdgeKind::Manifest),
+        edge("me/lib", "me/vendor", EdgeKind::Manifest),
+    ];
+    graph::apply_visibility(&mut nodes, &edges);
+    graph::apply_layers(&mut nodes, &edges);
+    let md = render_cathedral(&Graph::new(nodes, edges));
+    assert!(!md.contains("vendor"), "no fork anywhere");
+}
+
+#[test]
+fn labels_abbreviate_rust_prefix() {
+    let mut nodes = vec![
+        node("me/rust-widget", false, false),
+        node("me/lib", false, false),
+    ];
+    let edges = vec![edge("me/rust-widget", "me/lib", EdgeKind::Manifest)];
+    graph::apply_visibility(&mut nodes, &edges);
+    graph::apply_layers(&mut nodes, &edges);
+    let md = render_cathedral(&Graph::new(nodes, edges));
+    assert!(md.contains(">widget</a>"), "abbreviated label linked");
+    assert!(!md.contains("rust-widget</a>"), "no long labels");
     assert!(
-        app.contains("dependence fan-in: 0, fan-out: 1"),
-        "scores ignore docs, got:\n{app}"
+        md.contains("[widget](https://github.com/me/rust-widget)"),
+        "index uses the short label"
     );
+}
+
+#[test]
+fn detached_pairs_are_named_not_drawn() {
+    // island-a -> island-b: connected, but detached from the main core.
+    let mut nodes = vec![
+        node("me/lib", false, false),
+        node("me/mid", false, false),
+        node("me/app", false, false),
+        node("me/island-a", false, false),
+        node("me/island-b", false, false),
+    ];
+    let edges = vec![
+        edge("me/mid", "me/lib", EdgeKind::Manifest),
+        edge("me/app", "me/mid", EdgeKind::Manifest),
+        edge("me/island-a", "me/island-b", EdgeKind::Manifest),
+    ];
+    graph::apply_visibility(&mut nodes, &edges);
+    graph::apply_layers(&mut nodes, &edges);
+    let md = render_cathedral(&Graph::new(nodes, edges));
+    let elev = md.split("## Elevation").nth(1).unwrap();
+    let fence = elev
+        .split("<pre>")
+        .nth(1)
+        .unwrap()
+        .split("</pre>")
+        .next()
+        .unwrap();
+    assert!(!fence.contains("island"), "islands not drawn");
+    assert!(
+        md.contains("Detached from the load-bearing core"),
+        "detached named"
+    );
+    assert!(md.contains("island-a"), "island reachable from the index");
 }
 
 #[test]
 fn empty_graph_renders() {
     let g = Graph::new(vec![], vec![]);
     let md = render_cathedral(&g);
-    assert!(md.contains("# Portfolio architecture"));
-    assert!(md.contains("(none)"));
+    assert!(md.contains("# Cathedral"));
+    assert!(md.contains("(no load-bearing structure)"));
 }
