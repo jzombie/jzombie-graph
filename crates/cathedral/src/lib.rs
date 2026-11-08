@@ -50,7 +50,8 @@ pub fn render_cathedral(graph: &Graph) -> String {
     );
 
     // Apex: the core application with the most bearings on it.
-    let core = main_component(graph, &depends);
+    let comps = components(graph, &depends);
+    let core = comps.first().cloned().unwrap_or_default();
     let in_tree = |id: &str| -> bool { core.contains(id) };
     let mut apps: Vec<&str> = graph
         .nodes
@@ -104,7 +105,7 @@ pub fn render_cathedral(graph: &Graph) -> String {
     }
 
     let labels = abbreviations(graph, &|id| origin(id));
-    s.push_str(&elevation(graph, &rows, &depends, &labels));
+    s.push_str(&elevation(graph, &rows, &depends, &labels, &placed, &core));
     s
 }
 
@@ -149,13 +150,16 @@ fn permute<T: Clone>(xs: &mut Vec<T>, i: usize, f: &mut impl FnMut(&[T])) {
 }
 
 /// The arch: crown, spire, fanning courses with bus bearings,
-/// same-row bearings, convergence, bedrock banner. Node labels are
+/// same-row bearings, convergence, bedrock banner — then side chapels
+/// for every load-bearing node outside the drawn cone. Node labels are
 /// links; geometry is computed on visible text so alignment holds.
 fn elevation(
     graph: &Graph,
     rows: &[Vec<&str>],
     depends: &BTreeMap<&str, Vec<&str>>,
     labels: &BTreeMap<&str, String>,
+    placed: &BTreeSet<&str>,
+    core: &BTreeSet<String>,
 ) -> String {
     let lab =
         |id: &str| -> String { format!("[{}]", labels.get(id).map(String::as_str).unwrap_or(id)) };
@@ -357,8 +361,146 @@ fn elevation(
     d.push('\n');
     d.push_str(&bar);
     d.push('\n');
+    d.push_str(&chapels(graph, depends, labels, placed, core));
     d.push_str("</pre>\n");
     d
+}
+
+/// Side chapels: one small tree per load-bearing node outside the drawn
+/// cone — off-cone core stacks, detached islands, lone stones. Same
+/// branch glyphs as the register would use, inline links.
+fn chapels(
+    graph: &Graph,
+    depends: &BTreeMap<&str, Vec<&str>>,
+    labels: &BTreeMap<&str, String>,
+    placed: &BTreeSet<&str>,
+    core: &BTreeSet<String>,
+) -> String {
+    // Off-cone core applications root their own cones, pruned at drawn stone.
+    let mut roots: Vec<&str> = graph
+        .nodes
+        .iter()
+        .filter(|n| {
+            n.layer == Layer::Application
+                && core.contains(n.id.as_str())
+                && !placed.contains(n.id.as_str())
+        })
+        .map(|n| n.id.as_str())
+        .collect();
+    roots.sort_by(|a, b| {
+        depends
+            .get(b)
+            .map(Vec::len)
+            .unwrap_or(0)
+            .cmp(&depends.get(a).map(Vec::len).unwrap_or(0))
+            .then_with(|| a.cmp(b))
+    });
+    // Detached islands (non-core components with edges) root at the
+    // members nothing else in the island bears on.
+    let mut island_members: BTreeSet<&str> = BTreeSet::new();
+    let mut lone: Vec<&str> = Vec::new();
+    for n in &graph.nodes {
+        if n.fork || core.contains(n.id.as_str()) {
+            continue;
+        }
+        let has_edges = depends.contains_key(n.id.as_str())
+            || depends.values().any(|v| v.contains(&n.id.as_str()));
+        if !has_edges {
+            if n.layer != Layer::Isolated {
+                lone.push(n.id.as_str());
+            }
+            continue;
+        }
+        island_members.insert(n.id.as_str());
+    }
+    let mut island_roots: Vec<&str> = Vec::new();
+    for id in island_members.iter() {
+        let depended_on = depends
+            .iter()
+            .any(|(s, tgts)| island_members.contains(*s) && tgts.iter().any(|t| t == id));
+        if !depended_on {
+            island_roots.push(id);
+        }
+    }
+    island_roots.sort();
+    lone.sort();
+
+    if roots.is_empty() && island_roots.is_empty() && lone.is_empty() {
+        return String::new();
+    }
+    let mut d = String::from("-- side chapels --\n");
+    let mut seen: BTreeSet<&str> = BTreeSet::new();
+    for root in roots {
+        seen.insert(root);
+        let lab = labels.get(root).map(String::as_str).unwrap_or(root);
+        d.push_str(&format!("[{lab}]\n", lab = linked_inline(lab, root)));
+        chapel_tree(&mut d, depends, labels, placed, root, "", &mut seen);
+    }
+    for root in island_roots {
+        seen.insert(root);
+        let lab = labels.get(root).map(String::as_str).unwrap_or(root);
+        d.push_str(&format!("[{lab}]\n", lab = linked_inline(lab, root)));
+        chapel_tree(&mut d, depends, labels, placed, root, "", &mut seen);
+    }
+    for id in lone {
+        let lab = labels.get(id).map(String::as_str).unwrap_or(id);
+        d.push_str(&format!("[{lab}]\n", lab = linked_inline(lab, id)));
+    }
+    d
+}
+
+fn linked_inline(lab: &str, id: &str) -> String {
+    format!("<a href=\"{url}\">{lab}</a>", url = url_of(id))
+}
+
+/// One chapel tree: supports of `id`, pruned at drawn stone with an
+/// `(above)` marker, deduped within the whole elevation.
+fn chapel_tree<'a>(
+    s: &mut String,
+    depends: &BTreeMap<&str, Vec<&'a str>>,
+    labels: &BTreeMap<&'a str, String>,
+    placed: &BTreeSet<&str>,
+    id: &'a str,
+    prefix: &str,
+    seen: &mut BTreeSet<&'a str>,
+) {
+    let mut kids: Vec<&str> = depends.get(id).map(|v| v.to_vec()).unwrap_or_default();
+    kids.sort();
+    for (i, kid) in kids.iter().enumerate() {
+        let last = i + 1 == kids.len();
+        let (branch, ext) = if last {
+            ("└── ", "    ")
+        } else {
+            ("├── ", "│   ")
+        };
+        let lab = labels.get(kid).map(String::as_str).unwrap_or(kid);
+        if placed.contains(kid) {
+            let _ = writeln!(
+                s,
+                "{prefix}{branch}[{lab}] (above)",
+                lab = linked_inline(lab, kid)
+            );
+            continue;
+        }
+        if !seen.insert(kid) {
+            let _ = writeln!(
+                s,
+                "{prefix}{branch}[{lab}] (above)",
+                lab = linked_inline(lab, kid)
+            );
+            continue;
+        }
+        let _ = writeln!(s, "{prefix}{branch}[{lab}]", lab = linked_inline(lab, kid));
+        chapel_tree(
+            s,
+            depends,
+            labels,
+            placed,
+            kid,
+            &format!("{prefix}{ext}"),
+            seen,
+        );
+    }
 }
 
 /// Splice `<a>` links into one canvas row at the recorded visible spans.
@@ -423,9 +565,10 @@ fn centered(text: &str, width: usize) -> String {
     format!("{}{}", " ".repeat(pad), text)
 }
 
-/// Largest connected component (undirected) over origin-only dependence
-/// edges. Largest wins; ties break on smallest member id.
-fn main_component(graph: &Graph, depends: &BTreeMap<&str, Vec<&str>>) -> BTreeSet<String> {
+/// All connected components (undirected) over origin-only dependence
+/// edges, largest first: multi-node beats singleton, then size, then
+/// smallest member id.
+fn components(graph: &Graph, depends: &BTreeMap<&str, Vec<&str>>) -> Vec<BTreeSet<String>> {
     let mut adj: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
     for (src, tgts) in depends {
         for tgt in tgts {
@@ -439,7 +582,7 @@ fn main_component(graph: &Graph, depends: &BTreeMap<&str, Vec<&str>>) -> BTreeSe
         }
     }
     let mut seen: BTreeSet<&str> = BTreeSet::new();
-    let mut best: BTreeSet<String> = BTreeSet::new();
+    let mut comps: Vec<BTreeSet<String>> = Vec::new();
     for start in adj.keys().copied().collect::<Vec<_>>() {
         if !seen.insert(start) {
             continue;
@@ -459,14 +602,16 @@ fn main_component(graph: &Graph, depends: &BTreeMap<&str, Vec<&str>>) -> BTreeSe
                 }
             }
         }
-        let score = |c: &BTreeSet<String>| (c.len() > 1, c.len());
-        let better = score(&comp) > score(&best)
-            || (score(&comp) == score(&best) && comp.iter().next() < best.iter().next());
-        if better {
-            best = comp;
-        }
+        comps.push(comp);
     }
-    best
+    comps.sort_by(|a, b| {
+        (b.len() > 1, b.len(), std::cmp::Reverse(b.iter().next())).cmp(&(
+            a.len() > 1,
+            a.len(),
+            std::cmp::Reverse(a.iter().next()),
+        ))
+    });
+    comps
 }
 
 /// GitHub URL for a portfolio id.

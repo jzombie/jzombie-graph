@@ -116,7 +116,7 @@ fn labels_abbreviate() {
 }
 
 #[test]
-fn detached_never_drawn() {
+fn detached_islands_get_side_chapels() {
     let md = render_cathedral(&fixture());
     let art = md
         .split("<pre>")
@@ -125,7 +125,13 @@ fn detached_never_drawn() {
         .split("</pre>")
         .next()
         .unwrap();
-    assert!(!art.contains("island"), "islands not drawn");
+    assert!(art.contains("island-a"), "island root drawn");
+    assert!(art.contains("island-b"), "island bearer drawn");
+    assert!(
+        !md.contains("Detached from the load-bearing core"),
+        "no detached list — chapels instead"
+    );
+    assert!(!md.contains("## "), "still no sections");
 }
 
 #[test]
