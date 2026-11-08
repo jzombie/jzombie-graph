@@ -72,8 +72,15 @@ fn cluster_draws_linked_nodes_with_braille_traces() {
     let md = render_cathedral(&fixture());
     assert!(md.contains("zenOSmosis"), "correct branding");
     assert!(!md.contains("Zenosmosis"), "old casing gone");
-    assert!(md.contains("<pre>"), "projection block");
+    assert!(
+        md.contains("<pre aria-hidden=\"true\">"),
+        "projection block"
+    );
     assert!(md.contains("</pre>"), "projection closes");
+    assert!(
+        md.contains("Screen readers:"),
+        "screen-reader prelude present"
+    );
     assert!(
         md.contains("<a href=\"https://github.com/me/app\">app</a>"),
         "nodes clickable"

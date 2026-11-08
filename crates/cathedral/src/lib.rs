@@ -44,6 +44,11 @@ pub fn render_cathedral(graph: &Graph) -> String {
         s.push_str("(no connected cluster)\n");
         return s;
     };
+    s.push_str(
+        "<sub>Diagram: a 2D projection of these repos — closeness means shared dependencies. \
+Screen readers: the block below uses braille characters for lines and is noisy, so it is hidden; \
+the same edges are machine-readable in `graph.json`.</sub>\n\n",
+    );
     s.push_str(&render_pre(graph, &draw));
     s.push_str(
         "Proximity reflects dependence strength: nodes sharing an edge attract, \
@@ -317,7 +322,7 @@ fn render_pre(graph: &Graph, cluster: &Cluster) -> String {
         links.insert((y, x + 1, x + w - 1), url_of(id));
         let _ = w;
     }
-    let mut d = String::from("<pre>\n");
+    let mut d = String::from("<pre aria-hidden=\"true\">\n");
     for (r, line) in grid.iter().enumerate() {
         let text: String = line.iter().collect();
         let trimmed = text.trim_end();

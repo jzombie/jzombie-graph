@@ -4,7 +4,9 @@ jzombie's portfolio as a 2D projection — proximity is edge strength.
 
 Generated from `graph.json` (schema v5). One braille trace per real dependence edge; every label links to GitHub.
 
-<pre>
+<sub>Diagram: a 2D projection of these repos — closeness means shared dependencies. Screen readers: the block below uses braille characters for lines and is noisy, so it is hidden; the same edges are machine-readable in `graph.json`.</sub>
+
+<pre aria-hidden="true">
 
                                                   [<a href="https://github.com/jzombie/windows-headless">windows-headless</a>]
                                                   ⢀⣀⠤⠔⠒⠉⠉
