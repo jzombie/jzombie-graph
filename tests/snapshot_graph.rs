@@ -33,6 +33,10 @@ fn node(id: &str, fork: bool, private: bool, ahead_by: Option<u32>) -> Node {
         has_llms_txt: false,
         has_agents_md: false,
         has_license_file: false,
+        commits_5d: 0,
+        commits_30d: 0,
+        commit_heat: None,
+        focus: None,
         branches: vec!["main".into()],
         visible: false,
         visible_reason: None,
@@ -66,6 +70,14 @@ fn snapshot_reference_portfolio() {
     nodes[0].has_llms_txt = true;
     nodes[0].has_agents_md = true;
     nodes[0].has_license_file = true;
+    // Velocity contract: the hub carries captured gauges so the snapshot
+    // locks their JSON shape (computed by the same methods collection uses,
+    // against the normalized clock below — deterministic).
+    nodes[0].commits_5d = 2;
+    nodes[0].commits_30d = 12;
+    nodes[0].pushed_at = Some(chrono::DateTime::from_timestamp(0, 0).unwrap());
+    nodes[0].commit_heat = nodes[0].commit_heat();
+    nodes[0].focus = nodes[0].focus(&nodes[0].pushed_at.unwrap());
     let edges = vec![
         jzombie_graph::graph::Edge {
             source: "me/hub".into(),

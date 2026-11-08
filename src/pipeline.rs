@@ -145,7 +145,9 @@ pub async fn collect_live(
     // (1 SHA + 1 tree + root manifests + member Cargo.tomls, uncapped) then the
     // structure pass (1 tree gates every probe; workflows<=10 + members<=10 +
     // rs<=10; +1 parent fetch for forks missing it — the enumerate endpoint
-    // returns parent:null). Typical ~22/repo; sequential today, fan-out in 1.1.
+    // returns parent:null; +2 trailing-window commit-velocity probes
+    // (5d heat, 30d baseline).
+    // Typical ~26/repo; sequential today, fan-out in 1.1.
     const WORKFLOW_FILES_CAP: usize = 10;
     const MEMBER_MANIFEST_CAP: usize = 10;
     const RS_FILES_CAP: usize = 10;
@@ -156,7 +158,7 @@ pub async fn collect_live(
         let per_repo_worst = (2 + 1 + 4 + 40)
             + (2 + 1 + 1 + 2 + 2 + 3 + 1 + WORKFLOW_FILES_CAP + MEMBER_MANIFEST_CAP + RS_FILES_CAP);
         let est_worst = n_repos * per_repo_worst;
-        let est_typ = n_repos * 24;
+        let est_typ = n_repos * 26;
         eprintln!(
             "budget: {n_repos} repos (default branch only): ~{est_typ} API calls typical, ~{est_worst} worst-case \
              (two passes: live provider map + tree-gated structure; no 404-retry mult; rate limit 5000/hr)"
@@ -182,6 +184,8 @@ pub async fn collect_live(
     // Briefing digest lines: every phantom nullification + lockfile gate drop.
     let mut digest: Vec<String> = vec![];
 
+    let five_days_ago = chrono::Utc::now() - chrono::Duration::days(5);
+    let thirty_days_ago = chrono::Utc::now() - chrono::Duration::days(30);
     for (i, repo) in repos.iter().enumerate() {
         eprintln!(
             "[{}/{}] {} @{} …",
@@ -202,6 +206,46 @@ pub async fn collect_live(
             }
             Err(_) => None,
         };
+        // Trailing-window commit velocity: 5d heat vs its own 30d
+        // baseline (self-normalized, so busy repos don't auto-win).
+        // Fail-open 0 with a digest note — a silent 0 would read as dead.
+        let commits_5d = match client
+            .commit_count_since(&repo.full_name, &repo.default_branch, &five_days_ago)
+            .await
+        {
+            Ok(c) => c,
+            Err(_) => {
+                digest.push(format!(
+                    "{}: 5d commit velocity unavailable — heat fail-open 0",
+                    repo.full_name
+                ));
+                0
+            }
+        };
+        let commits_30d = match client
+            .commit_count_since(&repo.full_name, &repo.default_branch, &thirty_days_ago)
+            .await
+        {
+            Ok(c) => c,
+            Err(_) => {
+                digest.push(format!(
+                    "{}: 30d commit velocity unavailable — baseline fail-open 0",
+                    repo.full_name
+                ));
+                0
+            }
+        };
+        // Captured gauges as of collection (frozen into the JSON; live
+        // paths recompute from the inputs above).
+        let commit_heat = if commits_30d == 0 {
+            None
+        } else {
+            Some(commits_5d as f32 * 6.0 / commits_30d as f32)
+        };
+        let focus = repo.pushed_at.map(|p| {
+            let idle = (chrono::Utc::now() - p).num_days().max(0) as f32;
+            commit_heat.unwrap_or(0.0) - idle / 30.0
+        });
         // Default-branch-only collection: one branch scanned, period.
         // Unmerged branch deps are proposals, not structure; a repo that
         // develops on `next` while `main` lags needs a per-repo override,
@@ -541,6 +585,10 @@ pub async fn collect_live(
             has_llms_txt,
             has_agents_md,
             has_license_file,
+            commits_5d,
+            commits_30d,
+            commit_heat,
+            focus,
             branches: branch_names,
             visible: false, // computed below
             visible_reason: None,
@@ -633,6 +681,10 @@ mod tests {
                 has_llms_txt: false,
                 has_agents_md: false,
                 has_license_file: false,
+                commits_5d: 0,
+                commits_30d: 0,
+                commit_heat: None,
+                focus: None,
                 branches: vec!["main".into()],
                 visible: true,
                 visible_reason: None,
@@ -662,6 +714,10 @@ mod tests {
                 has_llms_txt: false,
                 has_agents_md: false,
                 has_license_file: false,
+                commits_5d: 0,
+                commits_30d: 0,
+                commit_heat: None,
+                focus: None,
                 branches: vec!["main".into()],
                 visible: false,
                 visible_reason: None,
@@ -728,6 +784,10 @@ mod tests {
             has_llms_txt: false,
             has_agents_md: false,
             has_license_file: false,
+            commits_5d: 0,
+            commits_30d: 0,
+            commit_heat: None,
+            focus: None,
             branches: vec!["main".into()],
             visible: false,
             visible_reason: None,

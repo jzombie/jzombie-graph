@@ -119,6 +119,24 @@ pub struct Node {
     pub has_agents_md: bool,
     #[serde(default, skip_serializing_if = "is_false")]
     pub has_license_file: bool,
+    /// Commit velocity: commits to the default branch in the trailing 5
+    /// days (heat) and trailing 30 days (baseline). 2 extra API calls per
+    /// repo; fail-open 0. `commit_heat()` compares the two so naturally-busy
+    /// repos don't auto-win — a repo is judged against itself.
+    #[serde(default)]
+    pub commits_5d: u32,
+    #[serde(default)]
+    pub commits_30d: u32,
+    /// Captured commit heat as of `generated_at` (same formula as
+    /// `commit_heat()`). Stored so the JSON carries the gauge directly;
+    /// frozen at collection — recompute live for today.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub commit_heat: Option<f32>,
+    /// Captured focus as of `generated_at` (same formula as `focus()`).
+    /// Frozen at collection; the offline `--format focus` path recomputes
+    /// it live from the inputs above.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub focus: Option<f32>,
     /// Branches observed during collection.
     pub branches: Vec<String>,
     /// Structural role, set once at ingestion by `apply_layers` on the
@@ -134,6 +152,35 @@ pub struct Node {
     pub visible: bool,
     /// Why visible / hidden — machine-readable for the briefing digest.
     pub visible_reason: Option<String>,
+}
+
+impl Node {
+    /// Commit heat (self-normalized, never scored): trailing-5d commits
+    /// against the repo's own trailing-30d baseline (pro-rata: a flat
+    /// repo would put ~1/6 of its 30d commits in any 5d slice).
+    /// Above 1.5 heating, ~1.0 steady, below 0.5 cooling. None means no
+    /// 30d baseline — dormant when `commits_5d` is also 0, fresh otherwise.
+    pub fn commit_heat(&self) -> Option<f32> {
+        if self.commits_30d == 0 {
+            return None;
+        }
+        Some(self.commits_5d as f32 * 6.0 / self.commits_30d as f32)
+    }
+
+    /// Whole days since the last push, if known.
+    pub fn idle_days(&self, now: &chrono::DateTime<chrono::Utc>) -> Option<i64> {
+        self.pushed_at.map(|p| (*now - p).num_days().max(0))
+    }
+
+    /// Focus gauge (transparent heuristic, never scored): what I'm
+    /// working on now. Velocity ratio minus one point per idle month, so
+    /// dormancy depth counts — a repo quiet for 8 months sinks below one
+    /// quiet for a week, even when both read heat 0. None only when the
+    /// last push is unknown.
+    pub fn focus(&self, now: &chrono::DateTime<chrono::Utc>) -> Option<f32> {
+        let idle = self.idle_days(now)? as f32;
+        Some(self.commit_heat().unwrap_or(0.0) - idle / 30.0)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -420,6 +467,10 @@ mod tests {
             visible: false,
             visible_reason: None,
             layer: Layer::Isolated,
+            commits_5d: 0,
+            commits_30d: 0,
+            commit_heat: None,
+            focus: None,
         }
     }
 
@@ -575,5 +626,49 @@ mod tests {
         let pub_g = public_subgraph(&g);
         assert_eq!(stored(&pub_g, "me/app"), Layer::Middleware);
         assert_eq!(stored(&pub_g, "me/lib"), Layer::Foundation);
+    }
+
+    #[test]
+    fn commit_heat_compares_5d_against_own_30d_baseline() {
+        let mut n = node("me/a", false, false, None);
+        // 12 in 5d vs 12 in 30d: 6x the flat share — heating.
+        n.commits_5d = 12;
+        n.commits_30d = 12;
+        assert!((n.commit_heat().unwrap() - 6.0).abs() < 1e-6);
+        // 2 in 5d vs 12 in 30d: exactly the flat share — steady.
+        n.commits_5d = 2;
+        assert!((n.commit_heat().unwrap() - 1.0).abs() < 1e-6);
+        // No 30d baseline: no ratio (dormant when 5d is 0 too).
+        n.commits_30d = 0;
+        n.commits_5d = 0;
+        assert_eq!(n.commit_heat(), None);
+        // Fresh (activity, no baseline): still None — check commits_5d.
+        n.commits_5d = 3;
+        assert_eq!(n.commit_heat(), None);
+    }
+
+    #[test]
+    fn focus_penalizes_idle_months() {
+        use chrono::TimeZone;
+        let now = chrono::Utc.with_ymd_and_hms(2026, 11, 8, 12, 0, 0).unwrap();
+        let mut n = node("me/a", false, false, None);
+        // Flat baseline, pushed today: 1.0 - 0 = 1.0.
+        n.commits_5d = 2;
+        n.commits_30d = 12;
+        n.pushed_at = Some(now);
+        assert!((n.focus(&now).unwrap() - 1.0).abs() < 1e-6);
+        // Same velocity, quiet 60 days: 0.0 - 2.0 = -2.0.
+        n.commits_5d = 0;
+        n.commits_30d = 4;
+        n.pushed_at = Some(now - chrono::Duration::days(60));
+        assert!((n.focus(&now).unwrap() + 2.0).abs() < 1e-6);
+        // Dormant 250 days, no baseline: 0.0 - 8.33 sinks deep.
+        n.commits_5d = 0;
+        n.commits_30d = 0;
+        n.pushed_at = Some(now - chrono::Duration::days(250));
+        assert!(n.focus(&now).unwrap() < -8.0);
+        // Unknown push: no focus.
+        n.pushed_at = None;
+        assert_eq!(n.focus(&now), None);
     }
 }

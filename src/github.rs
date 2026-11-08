@@ -439,10 +439,64 @@ impl GitHubClient {
         }
     }
 
+    /// Trailing-window commit velocity (default branch): total commits
+    /// with `since`, via `per_page=1` — the count comes off the
+    /// `Link: rel="last"` page number, no pagination walks. One call per
+    /// window per repo. Empty repos (409) and errors are the caller's
+    /// fail-open, never fatal here.
+    pub async fn commit_count_since(
+        &self,
+        full_name: &str,
+        branch: &str,
+        since: &DateTime<Utc>,
+    ) -> Result<u32> {
+        let url = format!(
+            "{}/repos/{full_name}/commits?sha={branch}&since={}&per_page=1",
+            self.api_base,
+            since.to_rfc3339(),
+        );
+        let resp = self.http.get(&url).send().await?;
+        if !resp.status().is_success() {
+            anyhow::bail!("{url}: HTTP {}", resp.status());
+        }
+        let link = resp
+            .headers()
+            .get(reqwest::header::LINK)
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_string());
+        let body: serde_json::Value = resp.json().await?;
+        let n = body.as_array().map(|a| a.len()).unwrap_or(0);
+        Ok(parse_commit_total(link.as_deref(), n))
+    }
+
     #[allow(dead_code)]
     pub fn token_len(&self) -> usize {
         self.token.len()
     }
+}
+
+/// Total commits from a `per_page=1` commits listing: the `rel="last"`
+/// page number IS the count (one commit per page). No Link header means
+/// a single short page — the body length (0 or 1) is the total.
+pub fn parse_commit_total(link: Option<&str>, body_len: usize) -> u32 {
+    if let Some(h) = link {
+        for part in h.split(',') {
+            let mut segs = part.split(';');
+            let url = segs.next().unwrap_or("").trim();
+            if !segs.any(|s| s.trim() == r#"rel="last""#) {
+                continue;
+            }
+            let u = url.trim_start_matches('<').trim_end_matches('>');
+            for q in u.split(&['?', '&'][..]) {
+                if let Some(n) = q.strip_prefix("page=")
+                    && let Ok(v) = n.parse::<u32>()
+                {
+                    return v;
+                }
+            }
+        }
+    }
+    body_len.min(1) as u32
 }
 
 #[cfg(test)]
@@ -454,5 +508,15 @@ mod tests {
         assert_eq!(B64.decode("aGVsbG8=").unwrap(), b"hello");
         assert_eq!(B64.decode("TQ==").unwrap(), b"M");
         assert!(B64.decode("!!!").is_err());
+    }
+
+    #[test]
+    fn commit_total_from_link_last_page() {
+        use super::parse_commit_total;
+        let link = r#"<https://api.github.com/repos/me/r/commits?since=x&per_page=1&page=2>; rel="next", <https://api.github.com/repos/me/r/commits?since=x&per_page=1&page=17>; rel="last""#;
+        assert_eq!(parse_commit_total(Some(link), 1), 17);
+        assert_eq!(parse_commit_total(None, 1), 1);
+        assert_eq!(parse_commit_total(None, 0), 0);
+        assert_eq!(parse_commit_total(Some(r#"<u?page=3>; rel="next""#), 1), 1);
     }
 }

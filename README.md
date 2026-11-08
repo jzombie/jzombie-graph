@@ -21,6 +21,14 @@ cargo run -p jzombie-graph-cathedral -- graph.json --output ARCHITECTURE.md
 
 Local only, no API calls. Reads the fresh `graph.json`, writes the clickable `<pre>` diagram. Commit both files together.
 
+## Focus ranking (offline, no API calls)
+
+```bash
+cargo run -- --input graph.json --format focus
+```
+
+Same `focus` the dump lane shows — commit heat vs own 30d baseline minus idle months, hottest first. Needs a recent ingest; counts freeze at collection time.
+
 ## License
 
 MIT OR Apache-2.0. See [`LICENSE-MIT`](LICENSE-MIT), [`LICENSE-APACHE`](LICENSE-APACHE).

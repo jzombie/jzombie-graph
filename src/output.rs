@@ -7,6 +7,41 @@ pub fn render_json(graph: &Graph) -> anyhow::Result<String> {
     Ok(serde_json::to_string_pretty(graph)?)
 }
 
+/// `--format focus`: the focus ranking, hottest first. Same `Node::focus`
+/// formula as the dump lane — commit heat vs own 30d baseline minus one
+/// point per idle month — so the number never lives in two places.
+/// Offline: pure function of the stored graph + `now`.
+pub fn render_focus(graph: &Graph, now: &chrono::DateTime<chrono::Utc>) -> String {
+    let mut rows: Vec<(&crate::graph::Node, Option<f32>)> =
+        graph.nodes.iter().map(|n| (n, n.focus(now))).collect();
+    rows.sort_by(|a, b| match (&a.1, &b.1) {
+        (Some(fa), Some(fb)) => fb
+            .partial_cmp(fa)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.0.id.cmp(&b.0.id)),
+        (Some(_), None) => std::cmp::Ordering::Less,
+        (None, Some(_)) => std::cmp::Ordering::Greater,
+        (None, None) => a.0.id.cmp(&b.0.id),
+    });
+    let mut s = String::new();
+    for (n, focus) in rows {
+        s.push_str(&format!(
+            "{} focus={} heat={} idle={}d 5d={} 30d={} issues={}\n",
+            n.id,
+            focus.map(|f| format!("{f:.2}")).unwrap_or("-".into()),
+            n.commit_heat()
+                .map(|h| format!("{h:.2}"))
+                .unwrap_or("-".into()),
+            n.idle_days(now)
+                .map(|d| d.to_string())
+                .unwrap_or("-".into()),
+            n.commits_5d,
+            n.commits_30d,
+            n.open_issues,
+        ));
+    }
+    s
+}
 /// `--format dump`: full debug lane. Every node + every edge, all fields,
 /// vertical, no truncation, no summary metrics standing in for data.
 /// JSON stays the machine lane; this is the "see what it's doing" lane.
@@ -86,6 +121,19 @@ pub fn render_dump(graph: &Graph) -> String {
         s.push_str(&format!(
             "  fan-in: {fan_in} fan-out: {fan_out} layer: {} (dep-in: {dep_in})\n",
             n.layer
+        ));
+        s.push_str(&format!(
+            "  focus: commits_5d={} commits_30d={} commit_heat={} idle={}d focus={} open_issues={}\n",
+            n.commits_5d,
+            n.commits_30d,
+            n.commit_heat().map(|h| format!("{h:.2}")).unwrap_or("-".into()),
+            n.idle_days(&graph.generated_at)
+                .map(|d| d.to_string())
+                .unwrap_or("-".into()),
+            n.focus(&graph.generated_at)
+                .map(|f| format!("{f:.2}"))
+                .unwrap_or("-".into()),
+            n.open_issues,
         ));
         match incoming.get(n.id.as_str()) {
             Some(v) if !v.is_empty() => {
@@ -203,6 +251,10 @@ mod tests {
                 has_llms_txt: true,
                 has_agents_md: false,
                 has_license_file: true,
+                commits_5d: 0,
+                commits_30d: 0,
+                commit_heat: None,
+                focus: None,
                 branches: vec!["main".into()],
                 visible: true,
                 visible_reason: Some("tier3: >=1 portfolio edge".into()),
@@ -232,6 +284,10 @@ mod tests {
                 has_llms_txt: false,
                 has_agents_md: false,
                 has_license_file: false,
+                commits_5d: 0,
+                commits_30d: 0,
+                commit_heat: None,
+                focus: None,
                 branches: vec!["main".into()],
                 visible: true,
                 visible_reason: Some("tier3: >=1 portfolio edge".into()),
@@ -269,5 +325,36 @@ mod tests {
         assert!(dump.contains("[edge 1/1]"));
         let dot = render_dot(&g);
         assert!(dot.contains("digraph") && dot.contains("me/a"));
+    }
+
+    #[test]
+    fn focus_ranks_hottest_first_unknown_last() {
+        use chrono::TimeZone;
+        let now = chrono::Utc.with_ymd_and_hms(2026, 11, 8, 12, 0, 0).unwrap();
+        let mut g = fixture();
+        // a: flat baseline, pushed now → focus 1.00.
+        g.nodes[0].commits_5d = 2;
+        g.nodes[0].commits_30d = 12;
+        g.nodes[0].pushed_at = Some(now);
+        // b: dormant 250 days → deep negative.
+        g.nodes[1].commits_5d = 0;
+        g.nodes[1].commits_30d = 0;
+        g.nodes[1].pushed_at = Some(now - chrono::Duration::days(250));
+        let text = render_focus(&g, &now);
+        let ids: Vec<&str> = text
+            .lines()
+            .map(|l| l.split_whitespace().next().unwrap())
+            .collect();
+        assert_eq!(ids, vec!["me/a", "me/b"]);
+        assert!(text.lines().next().unwrap().contains("focus=1.00"));
+        // Unknown push sorts last.
+        g.nodes[1].pushed_at = None;
+        let text2 = render_focus(&g, &now);
+        let ids2: Vec<&str> = text2
+            .lines()
+            .map(|l| l.split_whitespace().next().unwrap())
+            .collect();
+        assert_eq!(ids2, vec!["me/a", "me/b"]);
+        assert!(text2.lines().last().unwrap().contains("focus=-"));
     }
 }

@@ -14,7 +14,7 @@ expression: "&pub_g"
       "private": false,
       "upstream": null,
       "ahead_by": null,
-      "pushed_at": null,
+      "pushed_at": "1970-01-01T00:00:00Z",
       "description": "hub service",
       "topics": [
         "rust",
@@ -31,6 +31,10 @@ expression: "&pub_g"
       "has_llms_txt": true,
       "has_agents_md": true,
       "has_license_file": true,
+      "commits_5d": 2,
+      "commits_30d": 12,
+      "commit_heat": 1.0,
+      "focus": 1.0,
       "branches": [
         "main"
       ],
@@ -52,6 +56,8 @@ expression: "&pub_g"
       "forks_count": 0,
       "open_issues": 0,
       "size_kb": 0,
+      "commits_5d": 0,
+      "commits_30d": 0,
       "branches": [
         "main"
       ],
@@ -73,6 +79,8 @@ expression: "&pub_g"
       "forks_count": 0,
       "open_issues": 0,
       "size_kb": 0,
+      "commits_5d": 0,
+      "commits_30d": 0,
       "branches": [
         "main"
       ],
@@ -94,6 +102,8 @@ expression: "&pub_g"
       "forks_count": 0,
       "open_issues": 0,
       "size_kb": 0,
+      "commits_5d": 0,
+      "commits_30d": 0,
       "branches": [
         "main"
       ],
