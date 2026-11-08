@@ -1,4 +1,5 @@
 use crate::graph::Graph;
+use anyhow::Context;
 
 /// JSON-first: stable schema, jq-queryable from day one.
 /// Documented recipes (README): who-depends-on-X, orphans,
@@ -7,6 +8,18 @@ pub fn render_json(graph: &Graph) -> anyhow::Result<String> {
     Ok(serde_json::to_string_pretty(graph)?)
 }
 
+/// One write path for file assets: creates missing parent directories
+/// (`mkdir -p` semantics — fresh checkouts never have `data/` since it's
+/// gitignored), then writes the bytes verbatim.
+pub fn write_file(path: &std::path::Path, contents: &str) -> anyhow::Result<()> {
+    if let Some(parent) = path.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("creating {}", parent.display()))?;
+    }
+    std::fs::write(path, contents).with_context(|| format!("writing {}", path.display()))
+}
 /// `--format schema`: the JSON Schema for the graph contract, derived from
 /// the Rust types themselves via `schemars` — never hand-maintained, so
 /// there is no second copy of the contract to drift. Static: no graph data,
@@ -375,5 +388,21 @@ mod tests {
             .collect();
         assert_eq!(ids2, vec!["me/a", "me/b"]);
         assert!(text2.lines().last().unwrap().contains("focus=-"));
+    }
+
+    #[test]
+    fn write_file_creates_missing_parents() {
+        // Fresh checkouts never have `data/` (gitignored): the write path
+        // must create parents itself. Regression test for the CI failure
+        // where collect died with "No such file or directory" on a clean
+        // runner (publish run 42516260566).
+        let dir = tempfile::tempdir().unwrap();
+        let nested = dir.path().join("data").join("json").join("out.json");
+        write_file(&nested, "{\"ok\":true}").unwrap();
+        assert_eq!(std::fs::read_to_string(&nested).unwrap(), "{\"ok\":true}");
+        // Bare filename (no parent) still writes to cwd-relative path.
+        let cwd_file = dir.path().join("flat.txt");
+        write_file(&cwd_file, "flat").unwrap();
+        assert_eq!(std::fs::read_to_string(&cwd_file).unwrap(), "flat");
     }
 }

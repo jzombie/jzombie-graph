@@ -66,8 +66,8 @@ fn main() {
     let md = cartographer::render_cartographer(&graph);
     match &output {
         Some(p) => {
-            if let Err(e) = std::fs::write(p, &md) {
-                eprintln!("writing {}: {e}", p.display());
+            if let Err(e) = jzombie_graph::output::write_file(p, &md) {
+                eprintln!("writing {}: {e:#}", p.display());
                 std::process::exit(1);
             }
         }

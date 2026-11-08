@@ -7,7 +7,7 @@
 # site. No graph edge comes from this file: the workflow scanner only
 # reads `uses:` tokens, and these are RUN steps.
 
-INHERIT_ENV [JZOMBIE_GRAPH_TOKEN]
+INHERIT_ENV [JZOMBIE_GRAPH_TOKEN, CARGO_TARGET_DIR]
 
 WORKSPACE LOCAL
 

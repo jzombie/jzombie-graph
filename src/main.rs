@@ -134,7 +134,7 @@ async fn main() -> Result<()> {
 /// lands on disk, which is what the published assets depend on.
 fn write_out(text: &str, output: Option<&PathBuf>) -> Result<()> {
     if let Some(path) = output {
-        std::fs::write(path, text).with_context(|| format!("writing {}", path.display()))?;
+        output::write_file(path, text)?;
     } else {
         print!("{text}");
     }
