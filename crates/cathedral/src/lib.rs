@@ -381,7 +381,7 @@ fn render_pre(graph: &Graph, cluster: &Cluster) -> String {
         // Nudge down/right until free (deterministic, bounded).
         for _ in 0..HEIGHT {
             if boxes.iter().all(|(ox, oy, ow, _)| {
-                (x as usize + w + 1 <= *ox) || (*ox + *ow + 1 <= x as usize) || (y as usize != *oy)
+                (x as usize + w < *ox) || (*ox + *ow < x as usize) || (y as usize != *oy)
             }) {
                 break;
             }
@@ -419,9 +419,9 @@ fn render_pre(graph: &Graph, cluster: &Cluster) -> String {
     }
     // Mask dots hidden under node boxes.
     for (bx, by, bw, _) in &boxes {
-        for dy in (by * 4)..((by + 1) * 4).min(dh) {
-            for dx in (bx * 2)..((bx + bw) * 2).min(dw) {
-                dots[dy][dx] = false;
+        for row in dots.iter_mut().take(((by + 1) * 4).min(dh)).skip(by * 4) {
+            for dot in row.iter_mut().take(((bx + bw) * 2).min(dw)).skip(bx * 2) {
+                *dot = false;
             }
         }
     }
