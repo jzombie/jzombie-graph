@@ -4,8 +4,9 @@
 //! renders jzombie's portfolio as a 2D projection of the dependence graph:
 //! nodes that share edges pull together, unconnected nodes push apart.
 //! No buses, no stubs, no intermediate glyphs — one braille trace per real
-//! dependence edge (`manifest`/`submodule`/`registry`), so a trace always
-//! means a real edge. Every node label is a link; tags are zero-width so
+//! dependence edge (`manifest`/`submodule`/`registry`), plus a fainter dotted
+//! trace per `docs` reference (runtime coupling the manifest can't see).
+//! Every node label is a link; tags are zero-width so
 //! geometry computed on visible text stays aligned.
 //!
 //! Portfolio filter (renderer-side, mechanical — no hand lists):
@@ -37,7 +38,7 @@ pub fn render_cathedral(graph: &Graph) -> String {
     s.push_str("jzombie's portfolio as a 2D projection — proximity is edge strength.\n\n");
     let _ = writeln!(
         s,
-        "Generated from `graph.json` (schema v{}). One braille trace per real dependence edge; every label links to GitHub.\n",
+        "Generated from `graph.json` (schema v{}). Braille = cargo dependence; dotted = docs reference. Every label links to GitHub.\n",
         graph.schema_version,
     );
     let Some(draw) = select_cluster(graph) else {
@@ -58,12 +59,17 @@ repos untouched for over a year are omitted unless something current depends on 
     s
 }
 
-/// Nodes + dependence edges selected for the drawing.
+/// Nodes + edges selected for the drawing. Strong edges are cargo-level
+/// dependence (`manifest`/`submodule`/`registry`); weak edges are `docs`
+/// references (runtime coupling the manifest can't see, e.g.
+/// `windows-headless` ↔ `lab-qemu-portable`). Workflow stays out as tooling.
 struct Cluster {
     /// Cluster member ids, sorted.
     nodes: Vec<String>,
     /// Undirected dependence pairs within the cluster, deduped.
     edges: Vec<(String, String)>,
+    /// Undirected docs-reference pairs within the cluster, deduped.
+    weak: Vec<(String, String)>,
     /// Edge multiplicity (parallel dependence edges) per undirected pair.
     weight: BTreeMap<(String, String), f64>,
 }
@@ -167,7 +173,29 @@ fn select_cluster(graph: &Graph) -> Option<Cluster> {
         (b.len(), std::cmp::Reverse(b.iter().next()))
             .cmp(&(a.len(), std::cmp::Reverse(a.iter().next())))
     });
-    let core = comps.into_iter().next()?;
+    let mut core: BTreeSet<String> = comps.into_iter().next()?;
+    // Docs satellites: fresh eligible nodes with a direct docs edge to the
+    // dependence core (runtime coupling, e.g. portable QEMU builds the VM
+    // host consumes but doesn't declare as a cargo dep). Workflow stays out.
+    for e in &graph.edges {
+        if e.kind != EdgeKind::Docs {
+            continue;
+        }
+        let (s, t) = (e.source.as_str(), e.target.as_str());
+        if !eligible.contains(s) || !eligible.contains(t) {
+            continue;
+        }
+        let other = if core.contains(s) && fresh.contains(t) {
+            Some(t)
+        } else if core.contains(t) && fresh.contains(s) {
+            Some(s)
+        } else {
+            None
+        };
+        if let Some(id) = other {
+            core.insert(id.to_string());
+        }
+    }
     let nodes: Vec<String> = core.iter().cloned().collect();
     let in_core = |id: &str| core.contains(id);
     let mut edges: Vec<(String, String)> = Vec::new();
@@ -179,9 +207,28 @@ fn select_cluster(graph: &Graph) -> Option<Cluster> {
         }
     }
     edges.sort();
+    let mut weak: Vec<(String, String)> = Vec::new();
+    for e in &graph.edges {
+        if e.kind != EdgeKind::Docs {
+            continue;
+        }
+        let (mut a, mut b) = (e.source.clone(), e.target.clone());
+        if !in_core(&a) || !in_core(&b) {
+            continue;
+        }
+        if a > b {
+            std::mem::swap(&mut a, &mut b);
+        }
+        if !weak.contains(&(a.clone(), b.clone())) {
+            weak.push((a.clone(), b.clone()));
+            weight.entry((a, b)).or_insert(0.3);
+        }
+    }
+    weak.sort();
     Some(Cluster {
         nodes,
         edges,
+        weak,
         weight,
     })
 }
@@ -308,6 +355,27 @@ fn render_pre(graph: &Graph, cluster: &Cluster) -> String {
             grid[cy][cx] = braille_of(bits);
         }
     }
+    // Weak docs-reference traces as sparse dots, only where no braille
+    // trace already runs — visually distinct from cargo dependence.
+    for (a, b) in &cluster.weak {
+        let Some(&(ax, ay, aw)) = placed.get(a.as_str()) else {
+            continue;
+        };
+        let Some(&(bx, by, bw)) = placed.get(b.as_str()) else {
+            continue;
+        };
+        let (x0, y0) = (ax as isize + aw as isize / 2, ay as isize);
+        let (x1, y1) = (bx as isize + bw as isize / 2, by as isize);
+        for (x, y) in bresenham(x0, y0, x1, y1) {
+            if x < 0 || y < 0 || x >= WIDTH as isize || y >= HEIGHT as isize {
+                continue;
+            }
+            let (xu, yu) = (x as usize, y as usize);
+            if grid[yu][xu] == ' ' {
+                grid[yu][xu] = '·';
+            }
+        }
+    }
     // Nodes on top; record link spans on visible text.
     let mut links: BTreeMap<(usize, usize, usize), String> = BTreeMap::new();
     for id in &cluster.nodes {
@@ -354,9 +422,9 @@ fn layout(cluster: &Cluster) -> BTreeMap<String, (f64, f64)> {
     let area = 100.0 * 100.0;
     let k = (area / n.max(1) as f64).sqrt().max(1.0);
     let mut temp = 5.0;
-    // Adjacency with weights.
+    // Adjacency with weights (strong + weak docs references).
     let mut adj: Vec<Vec<(usize, f64)>> = vec![Vec::new(); n];
-    for (a, b) in &cluster.edges {
+    for (a, b) in cluster.edges.iter().chain(cluster.weak.iter()) {
         let (Some(&ia), Some(&ib)) = (idx.get(a.as_str()), idx.get(b.as_str())) else {
             continue;
         };

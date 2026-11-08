@@ -106,10 +106,9 @@ fn no_tables_or_tier_language() {
 }
 
 #[test]
-fn docs_edges_leave_no_trace() {
-    // app -> lib is docs-only: no dependence, so no trace may rely on it.
-    // The cluster still draws (mid edges carry it); the point is the
-    // renderer only ever draws manifest/submodule/registry pairs.
+fn docs_edges_draw_faint_reference_trace() {
+    // app -> lib is docs-only: no braille, but a faint dotted trace that
+    // attaches the satellite. Workflow-only edges attach nothing.
     let mut nodes = vec![
         node("me/a", false, false),
         node("me/b", false, false),
@@ -127,6 +126,17 @@ fn docs_edges_leave_no_trace() {
         md.contains(">a</a>") && md.contains(">c</a>"),
         "nodes drawn"
     );
+    assert!(md.contains('·'), "docs reference drawn faint");
+}
+
+#[test]
+fn workflow_edges_attach_nothing() {
+    let mut nodes = vec![node("me/a", false, false), node("me/tool", false, false)];
+    let edges = vec![edge("me/a", "me/tool", EdgeKind::Workflow)];
+    graph::apply_visibility(&mut nodes, &edges);
+    graph::apply_layers(&mut nodes, &edges);
+    let md = render_cathedral(&Graph::new(nodes, edges));
+    assert!(!md.contains("tool"), "workflow-only node stays out");
 }
 
 #[test]
