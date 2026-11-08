@@ -34,6 +34,14 @@ pub const SHARE_SVG: &str = "data/svg/portfolio-graph-share.svg";
 /// Focus ranking bars SVG. Same deal: local working copy until wired.
 pub const FOCUS_SVG: &str = "data/svg/portfolio-graph-focus.svg";
 
+/// Status-glyph strip preview SVG. Working copy until the per-repo badges
+/// land; not a published asset yet.
+pub const GLYPHS_SVG: &str = "data/svg/portfolio-graph-glyphs.svg";
+
+/// One-off badge files, one per sampled repo (`<name>.svg`).
+/// Table cells embed these; the strip above is the preview sheet.
+pub const GLYPHS_DIR: &str = "data/svg/glyphs";
+
 /// Checked-in schema expectation the drift test guards. Source, not data:
 /// changing the types means consciously copying the lane output over this.
 pub const COMMITTED_SCHEMA: &str = "json/portfolio-graph-schema.json";

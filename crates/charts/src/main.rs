@@ -32,6 +32,7 @@ struct Cli {
 enum Chart {
     Share,
     Focus,
+    Glyphs,
 }
 
 fn main() {
@@ -44,9 +45,31 @@ fn main() {
             std::process::exit(1);
         }
     };
+    // Glyphs also drop one-off badge files beside the preview strip —
+    // the strip is the look-check, the files are what tables embed.
+    if cli.chart == Chart::Glyphs && !cli.stdout && cli.output.is_none() {
+        for name in charts::glyph_names() {
+            match charts::render_glyph_svg(&name) {
+                Ok(svg) => {
+                    let dest = std::path::Path::new(jzombie_graph::paths::GLYPHS_DIR)
+                        .join(format!("{name}.svg"));
+                    if let Err(e) = jzombie_graph::output::write_file(&dest, &svg) {
+                        eprintln!("writing {}: {e:#}", dest.display());
+                        std::process::exit(1);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("render error: {e:#}");
+                    std::process::exit(1);
+                }
+            }
+        }
+        eprintln!("badges: files in {}", jzombie_graph::paths::GLYPHS_DIR);
+    }
     let svg = match cli.chart {
         Chart::Share => charts::render_share_svg(&text),
         Chart::Focus => charts::render_focus_svg(&text),
+        Chart::Glyphs => charts::render_glyphs_svg(),
     };
     let svg = match svg {
         Ok(s) => s,
@@ -57,6 +80,7 @@ fn main() {
     };
     let default = match cli.chart {
         Chart::Focus => jzombie_graph::paths::FOCUS_SVG,
+        Chart::Glyphs => jzombie_graph::paths::GLYPHS_SVG,
         Chart::Share => jzombie_graph::paths::SHARE_SVG,
     };
     if cli.stdout {

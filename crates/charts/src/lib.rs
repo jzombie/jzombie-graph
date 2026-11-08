@@ -481,7 +481,11 @@ fn engine() -> Engine {
     let mut engine = Engine::new();
     engine.register_module(HostModule {
         name: "CHARTS".to_string(),
-        funcs: vec![PieSlices::registration(), FocusBars::registration()],
+        funcs: vec![
+            PieSlices::registration(),
+            FocusBars::registration(),
+            Glyphs::registration(),
+        ],
         types: vec![],
         record_schemas: vec![],
         states: vec![],
@@ -532,15 +536,180 @@ pub fn render_share_svg(graph_json: &str) -> anyhow::Result<String> {
     Ok(resolver.read_to_string(&out).expect("read out"))
 }
 
+/// Status glyphs: small round indicators with a CSS pulse. Rust picks the
+/// sample set and precomputes color/rate; the script emits markup only.
+/// Pure SVG + embedded `<style>` — no SMIL, no scripts — so the pulse runs
+/// anywhere the file renders as an image, README embeds included.
+/// Glyphs carry no text: the table around them names the repo; `<title>`
+/// keeps a hover tooltip.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+struct GlyphRow {
+    label: String,
+    heat: String,
+    color: String,
+    core_opacity: String,
+    ring: bool,
+    period: String,
+    cx: String,
+}
+
+/// Glyph document: dots in a row, one cell each. All geometry precomputed;
+/// the script only interpolates.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+struct GlyphDoc {
+    header: String,
+    footer: String,
+    cy: String,
+    dot_r: String,
+    ring_w: String,
+    rows: Vec<GlyphRow>,
+}
+
+/// Table-sized cells: 44px, dot r8 (pulse peaks inside the cell).
+const GLYPH_CELL: f64 = 44.0;
+const GLYPH_CY: f64 = 22.0;
+const GLYPH_R: f64 = 8.0;
+
+/// Heat color, stepped on the documented `commit_heat` bands: heating green,
+/// steady blue, cooling amber (still pulses, slow), dormant faint gray.
+/// All stops from the shared palette.
+fn heat_color(h: f32) -> &'static str {
+    if h > 1.5 {
+        palette::FOCUS_POSITIVE
+    } else if h > 0.5 {
+        palette::CATEGORICAL[1]
+    } else if h > 0.05 {
+        palette::CATEGORICAL[0]
+    } else {
+        palette::OTHER
+    }
+}
+
+/// Reusable badges, one per heat band — not per repo. The table maps a
+/// repo's heat to a band; the badge files stay fixed. Canonical heats sit
+/// on the documented `commit_heat` points: heating well above, steady 1.0,
+/// cooling low, dormant zero.
+const BANDS: [(&str, f32); 4] = [
+    ("heating", 3.0),
+    ("steady", 1.0),
+    ("cooling", 0.25),
+    ("dormant", 0.0),
+];
+
+/// Band names in strip order, for the badge files.
+pub fn glyph_names() -> Vec<String> {
+    BANDS.iter().map(|(name, _)| name.to_string()).collect()
+}
+
+/// Plugin function: glyph document out. Bands are static by design —
+/// the graph arg only keeps the call shape uniform with the other charts.
+#[oxdock_func(pure, name = "GLYPHS")]
+fn glyphs(graph_json: String, only: String) -> anyhow::Result<Value> {
+    let _ = graph_json;
+    let rows: Vec<GlyphRow> = BANDS
+        .into_iter()
+        .filter(|(name, _)| only.is_empty() || *name == only.as_str())
+        .map(|(name, h)| {
+            let norm = (h / 6.0).clamp(0.0, 1.0);
+            GlyphRow {
+                label: format!("{name} {h:.2}"),
+                heat: format!("{h:.2}"),
+                color: heat_color(h).to_string(),
+                core_opacity: format!("{:.2}", 0.45 + 0.55 * norm as f64),
+                ring: h > 0.05,
+                period: format!("{:.1}s", 2.6 - norm as f64 * 1.8),
+                cx: String::new(),
+            }
+        })
+        .collect();
+    let mut doc = GlyphDoc {
+        header: String::new(),
+        footer: "</svg>".to_string(),
+        cy: f1(GLYPH_CY),
+        dot_r: f1(GLYPH_R),
+        ring_w: "2".to_string(),
+        rows,
+    };
+    for (i, r) in doc.rows.iter_mut().enumerate() {
+        r.cx = f1(i as f64 * GLYPH_CELL + GLYPH_CELL / 2.0);
+    }
+    doc.header = format!(
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"Helvetica, Arial, sans-serif\"><title>Status glyphs</title><style>.ring{{transform-box:fill-box;transform-origin:center;animation:ping 1.6s ease-out infinite}}@keyframes ping{{0%{{transform:scale(1);opacity:.7}}100%{{transform:scale(2.4);opacity:0}}}}@media (prefers-reduced-motion:reduce){{.ring{{animation:none}}}}</style>",
+        f1(doc.rows.len() as f64 * GLYPH_CELL),
+        f1(GLYPH_CELL),
+    );
+    Ok(Value::string(serde_json::to_string(&doc)?))
+}
+
+/// Render the glyph strip: all four bands in one row. Graph-free —
+/// bands are static; the strip is the look-check.
+pub fn render_glyphs_svg() -> anyhow::Result<String> {
+    render_glyph_doc("")
+}
+
+/// Render one badge by band name (`heating`/`steady`/`cooling`/`dormant`).
+/// Unknown bands are an error, not an empty file.
+pub fn render_glyph_svg(band: &str) -> anyhow::Result<String> {
+    anyhow::ensure!(
+        BANDS.iter().any(|(name, _)| *name == band),
+        "unknown glyph band: {band}"
+    );
+    render_glyph_doc(band)
+}
+
+fn render_glyph_doc(only: &str) -> anyhow::Result<String> {
+    let engine = engine();
+    let only_arg = only.to_string();
+    let graph_json = String::new();
+    let steps: Vec<oxdock_parser::Step> = oxdock! {
+        modules: [CHARTS],
+        IMPORT [STD, CHARTS]
+        LET $rows_json: STRING = CHARTS::GLYPHS(#graph_json, #only_arg)
+        WRITE rows.json $rows_json
+        LET $doc: MAP<ANY> = LOAD_JSON("rows.json")
+        WRITE out.svg $doc.header
+        FOR $r: MAP<ANY> IN $doc.rows {
+            IF $r.ring {
+                APPEND out.svg """
+                    <circle cx="{{ $r.cx }}" cy="{{ $doc.cy }}" r="{{ $doc.dot_r }}" fill="none" stroke="{{ $r.color }}" stroke-width="{{ $doc.ring_w }}" class="ring" style="animation-duration:{{ $r.period }}"><title>{{ $r.label }} {{ $r.heat }}</title></circle>
+                    """
+            } ELSE {
+                APPEND out.svg """
+                    <circle cx="{{ $r.cx }}" cy="{{ $doc.cy }}" r="{{ $doc.dot_r }}" fill="none" stroke="{{ $r.color }}" stroke-width="{{ $doc.ring_w }}"><title>{{ $r.label }} {{ $r.heat }}</title></circle>
+                    """
+            }
+            APPEND out.svg """
+                <circle cx="{{ $r.cx }}" cy="{{ $doc.cy }}" r="{{ $doc.dot_r }}" fill="{{ $r.color }}" opacity="{{ $r.core_opacity }}"><title>{{ $r.label }} {{ $r.heat }}</title></circle>
+                """
+        }
+        APPEND out.svg $doc.footer
+        LET $check: STRING = READ out.svg
+        ASSERT_CONTAINS $check "<svg"
+        ASSERT_CONTAINS $check "</svg>"
+    };
+    let temp = oxdock::GuardedPath::tempdir().expect("tempdir");
+    let root = temp.as_guarded_path().clone();
+    engine.run_steps_without_snapshot(&root, &steps)?;
+    let resolver = oxdock::PathResolver::new(root.as_path(), root.as_path()).expect("resolver");
+    let out = root.join("out.svg").expect("out path");
+    Ok(resolver.read_to_string(&out).expect("read out"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn graph_with(commits: &[(&str, u32)]) -> String {
+        let pairs: Vec<(&str, u32, u32)> = commits.iter().map(|(n, c)| (*n, *c, *c * 6)).collect();
+        graph_with_heat(&pairs)
+    }
+
+    /// Explicit (5d, 30d) windows so heat is controlled, not derived.
+    fn graph_with_heat(pairs: &[(&str, u32, u32)]) -> String {
         use jzombie_graph::graph::{Graph, Layer, Node};
-        let nodes = commits
+        let nodes = pairs
             .iter()
-            .map(|(name, c)| Node {
+            .map(|(name, c5, c30)| Node {
                 id: format!("me/{name}"),
                 owner: "me".into(),
                 name: (*name).into(),
@@ -564,8 +733,8 @@ mod tests {
                 has_llms_txt: false,
                 has_agents_md: false,
                 has_license_file: false,
-                commits_5d: *c,
-                commits_30d: *c * 6,
+                commits_5d: *c5,
+                commits_30d: *c30,
                 commit_heat: None,
                 focus: None,
                 last_commit_at: None,
@@ -712,6 +881,44 @@ mod tests {
         let labels: Vec<&str> = rows.iter().map(|r| r.label.as_str()).collect();
         assert_eq!(labels, vec!["hot", "warm", "a", "b", "c"]);
     }
+    #[test]
+    fn glyphs_pulse_with_heat_static_when_dormant() {
+        // Stepped ramp on the documented heat bands: heating green,
+        // steady blue, cooling amber (still pulses), dormant faint.
+        assert_eq!(heat_color(6.0), palette::FOCUS_POSITIVE);
+        assert_eq!(heat_color(1.0), palette::CATEGORICAL[1]);
+        assert_eq!(heat_color(0.3), palette::CATEGORICAL[0]);
+        assert_eq!(heat_color(0.0), palette::OTHER);
+    }
+
+    #[test]
+    fn glyphs_render_pure_css_pulse() {
+        let strip = render_glyphs_svg().unwrap();
+        assert!(strip.starts_with("<svg "));
+        assert!(strip.ends_with("</svg>"));
+        // Embedded CSS keyframes — no SMIL, no scripts, no text:
+        // the table around the badge names the repo.
+        assert!(strip.contains("@keyframes ping"));
+        assert!(strip.contains("animation-duration:1.7s"));
+        assert!(!strip.contains("<animate"));
+        assert!(!strip.contains("<script"));
+        assert!(!strip.contains("<text"));
+        // All four bands present, heating fastest.
+        for band in ["heating", "steady", "cooling", "dormant"] {
+            assert!(strip.contains(band), "missing {band}");
+        }
+    }
+
+    #[test]
+    fn glyphs_single_is_one_badge() {
+        let one = render_glyph_svg("steady").unwrap();
+        // Ring + core, one 44px cell, tooltip kept, unknown bands error.
+        assert_eq!(one.matches("<circle").count(), 2);
+        assert!(one.contains("viewBox=\"0 0 44.0 44.0\""));
+        assert!(one.contains("steady 1.00"));
+        assert!(render_glyph_svg("volcanic").is_err());
+    }
+
     #[test]
     fn focus_top_plus_bottom_never_duplicates() {
         let g = graph_with_focus(&[("a", Some(2.0)), ("b", Some(-1.0))]);
