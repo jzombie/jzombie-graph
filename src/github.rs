@@ -18,6 +18,16 @@ pub struct RepoMeta {
     /// Last push to the repo (API `pushed_at`). Display fact only, never scored.
     /// Free in the enumerate/get responses — zero extra calls.
     pub pushed_at: Option<DateTime<Utc>>,
+    /// Repo-about facts (API-native, free in the same responses).
+    /// Display only, never scored. Stripped with private nodes.
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub topics: Vec<String>,
+    #[serde(default)]
+    pub language: Option<String>,
+    #[serde(default)]
+    pub homepage: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -43,6 +53,14 @@ struct ApiRepo {
     default_branch: Option<String>,
     parent: Option<ApiParent>,
     pushed_at: Option<DateTime<Utc>>,
+    #[serde(default)]
+    description: Option<String>,
+    #[serde(default)]
+    topics: Option<Vec<String>>,
+    #[serde(default)]
+    language: Option<String>,
+    #[serde(default)]
+    homepage: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -195,6 +213,10 @@ impl GitHubClient {
                     default_branch: r.default_branch.unwrap_or_else(|| "main".into()),
                     parent_full_name: r.parent.map(|p| p.full_name),
                     pushed_at: r.pushed_at,
+                    description: r.description,
+                    topics: r.topics.unwrap_or_default(),
+                    language: r.language,
+                    homepage: r.homepage.filter(|h| !h.is_empty()),
                 });
             }
             if n < 100 {
@@ -218,6 +240,10 @@ impl GitHubClient {
             default_branch: r.default_branch.unwrap_or_else(|| "main".into()),
             parent_full_name: r.parent.map(|p| p.full_name),
             pushed_at: r.pushed_at,
+            description: r.description,
+            topics: r.topics.unwrap_or_default(),
+            language: r.language,
+            homepage: r.homepage.filter(|h| !h.is_empty()),
         })
     }
 

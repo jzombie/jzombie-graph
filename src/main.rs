@@ -557,7 +557,6 @@ async fn collect_live(
                 declaring_branches: branch_names.clone(),
                 recency: None,
                 version: None,
-                note: None,
             });
         }
         for t in workflow_targets {
@@ -568,7 +567,6 @@ async fn collect_live(
                 declaring_branches: branch_names.clone(),
                 recency: None,
                 version: None,
-                note: None,
             });
         }
         for t in docs_targets {
@@ -579,7 +577,6 @@ async fn collect_live(
                 declaring_branches: branch_names.clone(),
                 recency: None,
                 version: None,
-                note: None,
             });
         }
         // Registry (reverse-deps) + xrefs land in milestone 1.1 — same shape.
@@ -601,6 +598,10 @@ async fn collect_live(
             upstream: repo.parent_full_name.clone(),
             ahead_by,
             pushed_at: repo.pushed_at,
+            description: repo.description.clone(),
+            topics: repo.topics.clone(),
+            language: repo.language.clone(),
+            homepage: repo.homepage.clone(),
             branches: branch_names,
             visible: false, // computed below
             visible_reason: None,
@@ -640,6 +641,10 @@ mod tests {
                 upstream: None,
                 ahead_by: None,
                 pushed_at: None,
+                description: None,
+                topics: vec![],
+                language: None,
+                homepage: None,
                 branches: vec!["main".into()],
                 visible: true,
                 visible_reason: None,
@@ -653,6 +658,10 @@ mod tests {
                 upstream: None,
                 ahead_by: None,
                 pushed_at: None,
+                description: None,
+                topics: vec![],
+                language: None,
+                homepage: None,
                 branches: vec!["main".into()],
                 visible: false,
                 visible_reason: None,
@@ -665,7 +674,6 @@ mod tests {
             declaring_branches: vec!["main".into()],
             recency: None,
             version: None,
-            note: None,
         }];
         graph::apply_visibility(&mut nodes, &edges);
         Graph::new(nodes, edges)

@@ -99,6 +99,9 @@ diff <(jq -S . yesterday.json) <(jq -S . graph.json)
   repos depend on it). That count is the "most depended-upon" ranking.
 - Freshness: every node carries `pushed_at` (API-native, free in the list
   response). Display fact only, never scored — heartbeat/staleness signal.
+- About: every node carries `description` / `topics` / `language` / `homepage`
+  (API-native, free in the same responses). Display/classification only, never
+  scored. Stripped with private nodes.
 - `--format dump` is the debug lane: every node + every edge, all fields,
   vertical, nothing truncated. JSON stays the machine lane.
 - Use-site check: Rust via `syn` AST (`use` items incl. `pub use`; unparseable = match),

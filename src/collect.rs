@@ -508,7 +508,6 @@ pub fn build_manifest_edges(
             declaring_branches: branches.iter().map(|b| b.branch.clone()).collect(),
             recency,
             version: lock_versions.get(&pkg).cloned(),
-            note: None,
         });
     }
     // Deterministic: one edge per (source, target) — callers union branches.

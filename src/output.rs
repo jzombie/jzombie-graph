@@ -50,6 +50,13 @@ pub fn render_dump(graph: &Graph) -> String {
         ));
         s.push_str(&format!("  branches: [{}]\n", n.branches.join(", ")));
         s.push_str(&format!(
+            "  about: desc={} lang={} topics=[{}] home={}\n",
+            n.description.as_deref().unwrap_or("-"),
+            n.language.as_deref().unwrap_or("-"),
+            n.topics.join(", "),
+            n.homepage.as_deref().unwrap_or("-"),
+        ));
+        s.push_str(&format!(
             "  visible: {} ({})\n",
             n.visible,
             n.visible_reason.as_deref().unwrap_or("-"),
@@ -64,14 +71,13 @@ pub fn render_dump(graph: &Graph) -> String {
                 s.push_str("  in:\n");
                 for e in v {
                     s.push_str(&format!(
-                        "    {} -> {} [{}] branches=[{}] version={} recency={} note={}\n",
+                        "    {} -> {} [{}] branches=[{}] version={} recency={}\n",
                         e.source,
                         e.target,
                         format!("{:?}", e.kind).to_lowercase(),
                         e.declaring_branches.join(", "),
                         e.version.as_deref().unwrap_or("-"),
                         e.recency.map(|t| t.to_rfc3339()).unwrap_or("-".into()),
-                        e.note.as_deref().unwrap_or("-"),
                     ));
                 }
             }
@@ -82,14 +88,13 @@ pub fn render_dump(graph: &Graph) -> String {
                 s.push_str("  out:\n");
                 for e in v {
                     s.push_str(&format!(
-                        "    {} -> {} [{}] branches=[{}] version={} recency={} note={}\n",
+                        "    {} -> {} [{}] branches=[{}] version={} recency={}\n",
                         e.source,
                         e.target,
                         format!("{:?}", e.kind).to_lowercase(),
                         e.declaring_branches.join(", "),
                         e.version.as_deref().unwrap_or("-"),
                         e.recency.map(|t| t.to_rfc3339()).unwrap_or("-".into()),
-                        e.note.as_deref().unwrap_or("-"),
                     ));
                 }
             }
@@ -121,7 +126,6 @@ pub fn render_dump(graph: &Graph) -> String {
             "  version: {}\n",
             e.version.as_deref().unwrap_or("-")
         ));
-        s.push_str(&format!("  note: {}\n", e.note.as_deref().unwrap_or("-")));
     }
     s
 }
@@ -163,6 +167,10 @@ mod tests {
                 upstream: None,
                 ahead_by: None,
                 pushed_at: None,
+                description: Some("demo a".into()),
+                topics: vec!["rust".into()],
+                language: Some("Rust".into()),
+                homepage: None,
                 branches: vec!["main".into()],
                 visible: true,
                 visible_reason: Some("tier3: >=1 portfolio edge".into()),
@@ -176,6 +184,10 @@ mod tests {
                 upstream: None,
                 ahead_by: None,
                 pushed_at: None,
+                description: None,
+                topics: vec![],
+                language: None,
+                homepage: None,
                 branches: vec!["main".into()],
                 visible: true,
                 visible_reason: Some("tier3: >=1 portfolio edge".into()),
@@ -188,7 +200,6 @@ mod tests {
             declaring_branches: vec!["main".into()],
             recency: None,
             version: Some("1.0.0".into()),
-            note: None,
         }];
         Graph::new(nodes, edges)
     }

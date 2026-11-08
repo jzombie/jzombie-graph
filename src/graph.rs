@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Stable schema version. Bump only with a documented migration.
-pub const SCHEMA_VERSION: u32 = 3;
+pub const SCHEMA_VERSION: u32 = 4;
 
 /// Mechanically collected edge kinds. Dependence kinds count toward fan-in;
 /// association kinds display only (see plan: workflow/docs/xrefs).
@@ -46,6 +46,16 @@ pub struct Node {
     /// Last push to the repo (API `pushed_at`). Display fact only, never scored.
     /// Free in the enumerate/get responses — staleness/heartbeat signal.
     pub pushed_at: Option<DateTime<Utc>>,
+    /// Repo-about facts (API-native, free in the same responses).
+    /// Display/classification only, never scored. Stripped with private nodes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub topics: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub homepage: Option<String>,
     /// Branches observed during collection.
     pub branches: Vec<String>,
     /// Computed visibility: renderers filter blindly on this, never re-decide.
@@ -65,9 +75,6 @@ pub struct Edge {
     pub recency: Option<DateTime<Utc>>,
     /// Resolved version as briefing fact (lockfile), never scored.
     pub version: Option<String>,
-    /// Nullified phantom deps log this (which file had zero use-sites, etc.).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub note: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -226,6 +233,10 @@ mod tests {
             upstream: None,
             ahead_by,
             pushed_at: None,
+            description: None,
+            topics: vec![],
+            language: None,
+            homepage: None,
             branches: vec!["main".into()],
             visible: false,
             visible_reason: None,
@@ -240,7 +251,6 @@ mod tests {
             declaring_branches: vec!["main".into()],
             recency: None,
             version: None,
-            note: None,
         }
     }
 

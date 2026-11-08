@@ -18,6 +18,10 @@ fn node(id: &str, fork: bool, private: bool, ahead_by: Option<u32>) -> Node {
         upstream: None,
         ahead_by,
         pushed_at: None,
+        description: None,
+        topics: vec![],
+        language: None,
+        homepage: None,
         branches: vec!["main".into()],
         visible: false,
         visible_reason: None,
@@ -35,6 +39,12 @@ fn snapshot_reference_portfolio() {
         node("me/study-fork", true, false, Some(0)),
         node("me/secret", false, true, None),
     ];
+    // About-fields contract: hub carries every field so the snapshot locks
+    // their JSON shape; other nodes stay empty (topics: [] only).
+    nodes[0].description = Some("hub service".into());
+    nodes[0].topics = vec!["rust".into(), "graph".into()];
+    nodes[0].language = Some("Rust".into());
+    nodes[0].homepage = Some("https://example.com/hub".into());
     let edges = vec![
         jzombie_graph::graph::Edge {
             source: "me/hub".into(),
@@ -43,7 +53,6 @@ fn snapshot_reference_portfolio() {
             declaring_branches: vec!["main".into()],
             recency: None,
             version: Some("0.9.0".into()),
-            note: None,
         },
         jzombie_graph::graph::Edge {
             source: "me/hub".into(),
@@ -52,7 +61,6 @@ fn snapshot_reference_portfolio() {
             declaring_branches: vec!["main".into(), "next".into()],
             recency: None,
             version: None,
-            note: None,
         },
         // Private transit: hub -> secret -> simd-r-drive. True graph sees it.
         jzombie_graph::graph::Edge {
@@ -62,7 +70,6 @@ fn snapshot_reference_portfolio() {
             declaring_branches: vec!["main".into()],
             recency: None,
             version: None,
-            note: None,
         },
         jzombie_graph::graph::Edge {
             source: "me/secret".into(),
@@ -71,7 +78,6 @@ fn snapshot_reference_portfolio() {
             declaring_branches: vec!["main".into()],
             recency: None,
             version: None,
-            note: None,
         },
     ];
     graph::apply_visibility(&mut nodes, &edges);
