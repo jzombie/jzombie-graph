@@ -23,7 +23,7 @@ LET $itable: STRING = READ "preview/indicators.md"
 WRITE preview/portfolio-graph.md """
 # portfolio-graph — render proof
 
-*Generated — do not hand-edit. Regenerate with `oxdock .github/scripts/preview-indicators.oxfile`. Fragment carried verbatim; charts embedded as files.*
+*Generated — do not hand-edit. Regenerate with `oxdock scripts/preview-indicators.oxfile`. Fragment carried verbatim; charts embedded as files.*
 
 ## Map fragment
 

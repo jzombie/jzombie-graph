@@ -675,15 +675,16 @@ pub fn render_indicators_md() -> anyhow::Result<String> {
         WRITE md.md """
             # Indicator preview
 
-            *Generated — do not hand-edit. Regenerate with `oxdock .github/scripts/preview-indicators.oxfile`. Badges sit beside this file; the rows come from the same template doc as the SVGs.*
+            *Generated — do not hand-edit. Regenerate with `oxdock scripts/preview-indicators.oxfile`. Badges sit beside this file; the rows come from the same template doc as the SVGs.*
 
             | badge | band | heat |
             |---|---|---|
             """
+        APPEND md.md "\n"
         FOR $r: MAP<ANY> IN $doc.rows {
-            APPEND md.md """
-                | ![{{ $r.band }}]({{ $r.file }}) | {{ $r.band }} | {{ $r.heat }} |
-                """
+            // TODO: APPEND_LINE once the engine lands it — the explicit
+            // terminator below only exists because APPEND emits none.
+            APPEND md.md "| ![{{ $r.band }}]({{ $r.file }}) | {{ $r.band }} | {{ $r.heat }} |\n"
         }
         LET $check: STRING = READ md.md
         ASSERT_CONTAINS $check "| badge |"
@@ -946,6 +947,16 @@ mod tests {
         for band in ["heating", "steady", "cooling", "dormant"] {
             assert!(strip.contains(band), "missing {band}");
         }
+    }
+
+    #[test]
+    fn indicators_md_rows_are_newline_separated() {
+        let md = render_indicators_md().unwrap();
+        assert!(md.contains("| badge | band | heat |\n|---|---|---|\n"));
+        for band in ["heating", "steady", "cooling", "dormant"] {
+            assert!(md.contains(&format!("| ![{band}]({band}.svg) | {band} |")));
+        }
+        assert!(md.ends_with("|\n"));
     }
 
     #[test]

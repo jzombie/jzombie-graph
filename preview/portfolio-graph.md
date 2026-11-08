@@ -1,6 +1,6 @@
 # portfolio-graph — render proof
 
-*Generated — do not hand-edit. Regenerate with `oxdock .github/scripts/preview-indicators.oxfile`. Fragment carried verbatim; charts embedded as files.*
+*Generated — do not hand-edit. Regenerate with `oxdock scripts/preview-indicators.oxfile`. Fragment carried verbatim; charts embedded as files.*
 
 ## Map fragment
 # The zenOSmosis Cluster
@@ -49,7 +49,7 @@ Proximity reflects dependence strength: nodes sharing an edge attract, unconnect
 ![focus](portfolio-graph-focus.svg)
 # Indicator preview
 
-*Generated — do not hand-edit. Regenerate with `oxdock .github/scripts/preview-indicators.oxfile`. Badges sit beside this file; the rows come from the same template doc as the SVGs.*
+*Generated — do not hand-edit. Regenerate with `oxdock scripts/preview-indicators.oxfile`. Badges sit beside this file; the rows come from the same template doc as the SVGs.*
 
 | badge | band | heat |
 |---|---|---|| ![heating](heating.svg) | heating | 3.00 || ![steady](steady.svg) | steady | 1.00 || ![cooling](cooling.svg) | cooling | 0.25 || ![dormant](dormant.svg) | dormant | 0.00 |
