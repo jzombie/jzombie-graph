@@ -11,7 +11,7 @@ export JZOMBIE_GRAPH_TOKEN=ghp_...
 cargo run -- --user jzombie
 ```
 
-Defaults to `--format json` into `data/json/portfolio-graph.json` (see `src/paths.rs` — one source of truth). Needs a token for API rate limits (5000/hr vs 60/hr without). Public repos need no scopes; private repos need `repo` scope and are stripped from default output. Takes a while (~24 API calls per repo). Never run with `--include-private` output committed — that flag is local-briefing only. `--stdout` prints instead of writing the file; `--output PATH` overrides the path.
+Defaults to `--format json` into `data/json/portfolio-graph.json` (see `src/paths.rs` — one source of truth). The schema copy (`data/json/portfolio-graph-schema.json`) refreshes on the same run — one ingest, both data copies, never a stale contract. Needs a token for API rate limits (5000/hr vs 60/hr without). Public repos need no scopes; private repos need `repo` scope and are stripped from default output. Takes a while (~24 API calls per repo). Never run with `--include-private` output committed — that flag is local-briefing only. `--stdout` prints instead of writing the file; `--output PATH` overrides the path.
 
 ## Regenerate the graph
 

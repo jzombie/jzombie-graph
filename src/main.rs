@@ -159,11 +159,21 @@ async fn main() -> Result<()> {
     };
     // json is the collected artifact: default file, stdout only on request.
     // Dump/dot/focus are eyeballing lanes: stdout unless --output says file.
+    // The schema rides with json: one ingest refreshes both data copies,
+    // so the data tree never holds a stale contract. Explicit --output or
+    // --stdout means "exactly what I asked" — no side effects.
     let default = match cli.format {
         Format::Json => Some(paths::GRAPH_JSON),
         Format::Dump | Format::Dot | Format::Focus => None,
         Format::Schema => Some(paths::SCHEMA_JSON),
     };
+    if cli.format == Format::Json && !cli.stdout && cli.output.is_none() {
+        output::write_file(
+            std::path::Path::new(paths::SCHEMA_JSON),
+            &output::render_schema(),
+        )?;
+        eprintln!("schema: refreshed {}", paths::SCHEMA_JSON);
+    }
     write_out(&text, cli.output.as_deref(), default, cli.stdout)
 }
 

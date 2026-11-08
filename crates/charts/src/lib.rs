@@ -238,9 +238,42 @@ fn truncate_name(name: &str, max: usize) -> String {
     }
 }
 
-/// Top-`n_top` repos by focus plus the `n_bottom` lowest scored (dormant
-/// tail), unknown-focus repos excluded — unknowns can't sit on a scale.
+/// Elbow cut for the negative side: how many leading (closest-to-zero)
+/// negatives to keep. The largest consecutive drop cuts only when it dwarfs
+/// the rest — bigger than one heat unit and 10x the median gap — else the
+/// slope is smooth and everything stays. Fewer than 3 negatives can't elbow.
+fn elbow_keep(neg: &[f32]) -> usize {
+    if neg.len() < 3 {
+        return neg.len();
+    }
+    let gaps: Vec<f32> = neg.windows(2).map(|w| w[0] - w[1]).collect();
+    let mut sorted = gaps.clone();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let mid = sorted.len() / 2;
+    let median = if sorted.len() % 2 == 1 {
+        sorted[mid]
+    } else {
+        (sorted[mid - 1] + sorted[mid]) / 2.0
+    };
+    let (idx, max) = gaps
+        .iter()
+        .enumerate()
+        .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+        .map(|(i, m)| (i, *m))
+        .unwrap_or((0, 0.0));
+    if max > 1.0 && max > 10.0 * median.max(1e-6) {
+        idx + 1
+    } else {
+        neg.len()
+    }
+}
+
+/// Top-`n_top` repos by focus plus the next `n_bottom` below (one smooth
+/// ranking), unknown-focus repos excluded — unknowns can't sit on a scale.
 /// Own-work repos only, via the shared `is_own_work` filter.
+/// The negative side elbow-cuts: a sudden cliff (dormant abyss orders of
+/// magnitude past the near-zero cluster) is dropped, so one scale doesn't
+/// flatten the cluster that actually varies.
 /// Display order stays descending. Each side scales to its own max, so heat
 /// and dormancy depth (different processes, different magnitudes) each read
 /// fully; exact values ride in the labels.
@@ -262,16 +295,29 @@ fn focus_rows(graph_json: &str, n_top: usize, n_bottom: usize) -> anyhow::Result
             .unwrap_or(std::cmp::Ordering::Equal)
             .then_with(|| a.0.cmp(b.0))
     });
-    let mut picked: Vec<(&str, f32)> = scored.iter().take(n_top.max(1)).copied().collect();
-    let taken: std::collections::BTreeSet<&str> = picked.iter().map(|(n, _)| *n).collect();
-    let mut tail: Vec<(&str, f32)> = scored
+    // Elbow: truncate the negative suffix at the cliff, if any.
+    let neg_start = scored
         .iter()
-        .rev()
-        .filter(|(n, _)| !taken.contains(*n))
+        .position(|(_, f)| *f < 0.0)
+        .unwrap_or(scored.len());
+    let keep = neg_start
+        + elbow_keep(
+            &scored[neg_start..]
+                .iter()
+                .map(|(_, f)| *f)
+                .collect::<Vec<_>>(),
+        );
+    scored.truncate(keep);
+    let mut picked: Vec<(&str, f32)> = scored.iter().take(n_top.max(1)).copied().collect();
+    // Contiguous: the next `n_bottom` below picked, still within the elbow.
+    // Jumping to the deepest would redraw the cliff inside the chart and
+    // flatten every bar above it into invisibility.
+    let tail: Vec<(&str, f32)> = scored
+        .iter()
+        .skip(picked.len())
         .take(n_bottom)
         .copied()
         .collect();
-    tail.reverse();
     picked.extend(tail);
     if picked.is_empty() {
         return Ok(vec![]);
@@ -654,6 +700,31 @@ mod tests {
     }
 
     #[test]
+    fn elbow_cuts_cliff_keeps_smooth() {
+        // Cliff dwarfs the rest: cut.
+        assert_eq!(elbow_keep(&[-0.2, -0.23, -0.3, -57.0, -60.0]), 3);
+        // Smooth slope: no cut, even though the last gap is biggest.
+        assert_eq!(elbow_keep(&[-0.2, -0.5, -0.9, -1.5]), 4);
+        // Too few points to elbow.
+        assert_eq!(elbow_keep(&[-1.0, -2.0]), 2);
+    }
+
+    #[test]
+    fn focus_drops_abyss_below_elbow() {
+        let g = graph_with_focus(&[
+            ("hot", Some(2.9)),
+            ("warm", Some(0.36)),
+            ("a", Some(-0.2)),
+            ("b", Some(-0.25)),
+            ("c", Some(-0.3)),
+            ("abyss1", Some(-57.0)),
+            ("abyss2", Some(-60.0)),
+        ]);
+        let rows = focus_rows(&g, 12, 5).unwrap();
+        let labels: Vec<&str> = rows.iter().map(|r| r.label.as_str()).collect();
+        assert_eq!(labels, vec!["hot", "warm", "a", "b", "c"]);
+    }
+    #[test]
     fn focus_top_plus_bottom_never_duplicates() {
         let g = graph_with_focus(&[("a", Some(2.0)), ("b", Some(-1.0))]);
         // More slots than repos: every repo exactly once.
@@ -664,7 +735,7 @@ mod tests {
     }
 
     #[test]
-    fn focus_splits_top_and_dormant_tail() {
+    fn focus_continues_ranking_below_top() {
         let scores: Vec<(&str, Option<f32>)> = (0..20)
             .map(|i| {
                 let name: &'static str = Box::leak(format!("r{i:02}").into_boxed_str());
@@ -673,12 +744,12 @@ mod tests {
             .collect();
         let g = graph_with_focus(&scores);
         let rows = focus_rows(&g, 12, 5).unwrap();
-        // Top 12 by score, then the 5 lowest of the rest — no overlap.
+        // Top 12 by score, then the next 5 contiguous — one smooth ranking.
         assert_eq!(rows.len(), 17);
         assert_eq!(rows[0].label, "r00");
         assert_eq!(rows[11].label, "r11");
-        assert_eq!(rows[12].label, "r15");
-        assert_eq!(rows[16].label, "r19");
+        assert_eq!(rows[12].label, "r12");
+        assert_eq!(rows[16].label, "r16");
         let labels: Vec<&str> = rows.iter().map(|r| r.label.as_str()).collect();
         let mut sorted = labels.clone();
         sorted.sort_unstable();
