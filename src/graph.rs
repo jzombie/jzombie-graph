@@ -115,6 +115,19 @@ pub struct Graph {
 }
 
 impl Graph {
+    /// Parse JSON metrics back into a `Graph` (downstream crates use this;
+    /// same shape `render_json` emits). Rejects schema mismatches explicitly
+    /// so drift surfaces as an error, not silent misread.
+    pub fn from_json(s: &str) -> anyhow::Result<Self> {
+        let g: Self = serde_json::from_str(s)?;
+        anyhow::ensure!(
+            g.schema_version == SCHEMA_VERSION,
+            "schema v{} != crate v{SCHEMA_VERSION} (regenerate JSON)",
+            g.schema_version
+        );
+        Ok(g)
+    }
+
     pub fn new(nodes: Vec<Node>, mut edges: Vec<Edge>) -> Self {
         // Deterministic output: sort nodes by id, edges by (source, target, kind).
         let mut nodes = nodes;
