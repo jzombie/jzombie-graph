@@ -13,6 +13,9 @@ enum Format {
     /// Focus ranking from collected JSON: commit heat vs own baseline
     /// minus idle months. Offline — reads a file, no API calls.
     Focus,
+    /// JSON Schema for the graph contract, derived from the Rust types.
+    /// Static — no selector, no API, no graph data.
+    Schema,
 }
 
 #[derive(Parser, Debug)]
@@ -39,7 +42,8 @@ struct Cli {
     #[arg(long)]
     input: Option<PathBuf>,
 
-    /// Output format: json (default) | dump (full debug) | dot (dev eyeballing).
+    /// Output format: json (default) | dump (full debug) | dot (dev eyeballing)
+    /// | focus (offline ranking) | schema (JSON Schema, no selector needed).
     #[arg(long, value_enum, default_value = "json")]
     format: Format,
 
@@ -68,6 +72,15 @@ struct Cli {
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
+
+    // `--format schema` short-circuits: it is derived from the Rust types
+    // alone, so it takes no selector, no token, and no graph data — and it
+    // is byte-identical to the copy the drift test guards (see
+    // json/portfolio-graph-schema.json).
+    if cli.format == Format::Schema {
+        return write_out(&output::render_schema(), cli.output.as_ref());
+    }
+
     let has_list = cli.repos.as_ref().is_some_and(|r| !r.is_empty());
     let has_enum = cli.user.is_some() || cli.org.is_some();
     let has_input = cli.input.is_some();
@@ -109,9 +122,19 @@ async fn main() -> Result<()> {
         Format::Dump => output::render_dump(&rendered),
         Format::Dot => output::render_dot(&rendered),
         Format::Focus => output::render_focus(&rendered, &chrono::Utc::now()),
+        // Handled by the early return above; stated as a real branch rather
+        // than `unreachable!()` so the lane stays correct if that moves.
+        Format::Schema => return write_out(&output::render_schema(), cli.output.as_ref()),
     };
-    if let Some(path) = cli.output {
-        std::fs::write(&path, &text).with_context(|| format!("writing {}", path.display()))?;
+    write_out(&text, cli.output.as_ref())
+}
+
+/// One write path for every lane: `--output PATH` gets the bytes verbatim,
+/// stdout otherwise. No trailing-newline games — what a lane renders is what
+/// lands on disk, which is what the published assets depend on.
+fn write_out(text: &str, output: Option<&PathBuf>) -> Result<()> {
+    if let Some(path) = output {
+        std::fs::write(path, text).with_context(|| format!("writing {}", path.display()))?;
     } else {
         print!("{text}");
     }

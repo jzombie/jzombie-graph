@@ -15,7 +15,7 @@ name = "jzombie_graph"
 path = "src/lib.rs"
 
 [workspace]
-members = [".", "crates/cathedral"]
+members = [".", "crates/cartographer"]
 
 [dependencies]
 anyhow = "1"
@@ -26,6 +26,7 @@ regex = "1"
 reqwest = { version = "0.13", features = ["json", "rustls"] }
 reqwest-drive = "0.13.5-alpha.1"
 reqwest-middleware = "0.5"
+schemars = { version = "1", features = ["chrono04"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"

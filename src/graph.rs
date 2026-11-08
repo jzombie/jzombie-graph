@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -11,7 +12,9 @@ fn is_false(b: &bool) -> bool {
 
 /// Mechanically collected edge kinds. Dependence kinds count toward fan-in;
 /// association kinds display only (see plan: workflow/docs/xrefs).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord, JsonSchema,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum EdgeKind {
     Manifest,
@@ -46,7 +49,9 @@ impl EdgeKind {
 /// and never recomputed: identical in the briefing lane and the public
 /// file, regardless of render. Dependence edges (docs/workflow/xrefs)
 /// never count.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize, JsonSchema,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum Layer {
     Foundation,
@@ -68,7 +73,7 @@ impl std::fmt::Display for Layer {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Node {
     /// Canonical id: `owner/repo` full name.
     pub id: String,
@@ -192,7 +197,7 @@ impl Node {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Edge {
     pub source: String,
     pub target: String,
@@ -205,7 +210,7 @@ pub struct Edge {
     pub version: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Graph {
     pub schema_version: u32,
     pub generated_at: DateTime<Utc>,

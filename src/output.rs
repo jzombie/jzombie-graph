@@ -7,6 +7,23 @@ pub fn render_json(graph: &Graph) -> anyhow::Result<String> {
     Ok(serde_json::to_string_pretty(graph)?)
 }
 
+/// `--format schema`: the JSON Schema for the graph contract, derived from
+/// the Rust types themselves via `schemars` — never hand-maintained, so
+/// there is no second copy of the contract to drift. Static: no graph data,
+/// no API, no selector.
+///
+/// This is the source of the committed `json/portfolio-graph-schema.json`
+/// (see the drift test): whatever this returns is what ships. Trailing
+/// newline included — it is a file asset, and the bytes written are the
+/// bytes compared.
+pub fn render_schema() -> String {
+    let schema = schemars::schema_for!(Graph);
+    format!(
+        "{}\n",
+        serde_json::to_string_pretty(&schema).expect("schema serializes")
+    )
+}
+
 /// `--format focus`: the focus ranking, hottest first. Same `Node::focus`
 /// formula as the dump lane — commit heat vs own 30d baseline minus one
 /// point per idle month — so the number never lives in two places.

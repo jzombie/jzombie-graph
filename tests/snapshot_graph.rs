@@ -172,3 +172,19 @@ fn snapshot_reference_portfolio() {
         insta::assert_json_snapshot!("reference_portfolio_public", &pub_g);
     });
 }
+
+/// Schema drift guard: the committed `json/portfolio-graph-schema.json` is
+/// generated output, never hand-edited. Any struct change that alters the
+/// output contract fails here until the schema is consciously regenerated
+/// (`cargo run -- --format schema --output data/json/portfolio-graph-schema.json`,
+/// then copy over `json/portfolio-graph-schema.json`).
+#[test]
+fn schema_matches_committed_asset() {
+    use jzombie_graph::paths::COMMITTED_SCHEMA;
+    let rendered = jzombie_graph::output::render_schema();
+    let committed = std::fs::read_to_string(COMMITTED_SCHEMA).expect("read committed schema");
+    assert_eq!(
+        rendered, committed,
+        "schema drift: regenerate the lane output, then copy it over {COMMITTED_SCHEMA}"
+    );
+}

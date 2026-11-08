@@ -1,0 +1,37 @@
+name: publish
+on:
+  schedule:
+    # Daily, offset off the top of the hour (cron posture: never :00).
+    - cron: "17 4 * * *"
+  workflow_dispatch: {}
+permissions:
+  # CI never writes to the repo: collect → render → deploy Pages only.
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      JZOMBIE_GRAPH_TOKEN: ${{ secrets.JZOMBIE_GRAPH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release --workspace
+      # Paths mirror src/paths.rs (YAML can't import it — keep in sync).
+      # Collect: the only network step. Needs the fine-grained PAT
+      # (GITHUB_TOKEN can't enumerate other repos).
+      - run: cargo run --release -- --user jzombie --format json --output data/json/portfolio-graph.json
+      # Schema: static, derived from the types alone — no API, no graph data.
+      - run: cargo run --release -- --format schema --output data/json/portfolio-graph-schema.json
+      # Render: cartographer re-validates the staged JSON through
+      # Graph::from_json, so what ships is schema-checked. Byte-for-byte
+      # transport — the pipeline never edits the output.
+      - run: cargo run --release -p jzombie-graph-cartographer -- data/json/portfolio-graph.json --output data/markdown/fragments/portfolio-graph.md
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: data
+      - uses: actions/deploy-pages@v4

@@ -1,0 +1,291 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Graph",
+  "type": "object",
+  "properties": {
+    "edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Edge"
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Node"
+      }
+    },
+    "schema_version": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "schema_version",
+    "generated_at",
+    "nodes",
+    "edges"
+  ],
+  "$defs": {
+    "Edge": {
+      "type": "object",
+      "properties": {
+        "declaring_branches": {
+          "description": "Every branch whose manifest (or equivalent) declares this edge.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "kind": {
+          "$ref": "#/$defs/EdgeKind"
+        },
+        "recency": {
+          "description": "Recency of the most recent declaring branch (RFC3339), if known.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "source": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "version": {
+          "description": "Resolved version as briefing fact (lockfile), never scored.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "source",
+        "target",
+        "kind",
+        "declaring_branches"
+      ]
+    },
+    "EdgeKind": {
+      "description": "Mechanically collected edge kinds. Dependence kinds count toward fan-in;\nassociation kinds display only (see plan: workflow/docs/xrefs).",
+      "type": "string",
+      "enum": [
+        "manifest",
+        "submodule",
+        "registry",
+        "workflow",
+        "docs",
+        "xrefs"
+      ]
+    },
+    "Layer": {
+      "description": "Structural role from *dependence* fan-in/fan-out\n(`EdgeKind::is_dependence`: manifest/submodule/registry).\n\n- `Foundation`: depended upon, depends on nothing (`in > 0, out == 0`).\n- `Middleware`: both used and using (`in > 0, out > 0`).\n- `Application`: top of its chain (`in == 0, out > 0`).\n- `Isolated`: no dependence edges either way.\n\nThe contract is the stored `Node.layer`, set once by `apply_layers`\nand never recomputed: identical in the briefing lane and the public\nfile, regardless of render. Dependence edges (docs/workflow/xrefs)\nnever count.",
+      "type": "string",
+      "enum": [
+        "foundation",
+        "middleware",
+        "application",
+        "isolated"
+      ]
+    },
+    "Node": {
+      "type": "object",
+      "properties": {
+        "ahead_by": {
+          "description": "Commits ahead of upstream (`compare` API). Rule (a): divergence re-admits forks.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
+        "archived": {
+          "type": "boolean"
+        },
+        "branches": {
+          "description": "Branches observed during collection.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "commit_heat": {
+          "description": "Captured commit heat as of `generated_at` (same formula as\n`commit_heat()`). Stored so the JSON carries the gauge directly;\nfrozen at collection — recompute live for today.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "float"
+        },
+        "commits_30d": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "commits_5d": {
+          "description": "Commit velocity: commits to the default branch in the trailing 5\ndays (heat) and trailing 30 days (baseline). 2 extra API calls per\nrepo; fail-open 0. `commit_heat()` compares the two so naturally-busy\nrepos don't auto-win — a repo is judged against itself.",
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "description": {
+          "description": "Repo-about facts (API-native, free in the same responses).\nDisplay/classification only, never scored. Stripped with private nodes.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "focus": {
+          "description": "Captured focus as of `generated_at` (same formula as `focus()`).\nFrozen at collection; the offline `--format focus` path recomputes\nit live from the inputs above.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "float"
+        },
+        "fork": {
+          "description": "API-native fork flag. Rides along as fact, not verdict.",
+          "type": "boolean"
+        },
+        "forks_count": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "has_agents_md": {
+          "type": "boolean"
+        },
+        "has_license_file": {
+          "type": "boolean"
+        },
+        "has_llms_txt": {
+          "type": "boolean"
+        },
+        "has_readme": {
+          "description": "Agent-parseability audit from the default-branch tree (free).",
+          "type": "boolean"
+        },
+        "homepage": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "description": "Canonical id: `owner/repo` full name.",
+          "type": "string"
+        },
+        "language": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "last_commit_at": {
+          "description": "Latest default-branch commit date (from the velocity probes; one\nunbounded probe only when the 30d window is empty). Idle and focus\nmeasure from here — repo-level `pushed_at` moves on any branch push\nand would read 0 idle while main sat still.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "layer": {
+          "description": "Structural role, set once at ingestion by `apply_layers` on the\ntrue graph (private transit included) and preserved verbatim by\n`public_subgraph` — so the value is identical in the briefing\nlane and the committed file, regardless of render. Persisted so\nlayers are minable straight from the JSON (`jq` on `.layer`).\nStated cost: a public `application -> middleware` value can reflect\na private dependent (never which one, no counts).",
+          "$ref": "#/$defs/Layer",
+          "default": "isolated"
+        },
+        "license": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "open_issues": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "owner": {
+          "type": "string"
+        },
+        "private": {
+          "type": "boolean"
+        },
+        "pushed_at": {
+          "description": "Last push to the repo (API `pushed_at`). Display fact only, never scored.\nFree in the enumerate/get responses — staleness/heartbeat signal.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "size_kb": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "stars": {
+          "description": "Tier-0 magnet signals: free in enumerate/get (+ tree for has_*).\nDisplay/classification only, never scored. Stripped with private nodes.",
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "topics": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "upstream": {
+          "description": "Upstream full name when `fork == true` (if known).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "visible": {
+          "description": "Computed visibility: renderers filter blindly on this, never re-decide.",
+          "type": "boolean"
+        },
+        "visible_reason": {
+          "description": "Why visible / hidden — machine-readable for the briefing digest.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "owner",
+        "name",
+        "fork",
+        "private",
+        "branches",
+        "visible"
+      ]
+    }
+  }
+}

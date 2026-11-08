@@ -1,14 +1,14 @@
-//! `cathedral` binary: `graph.json` in, Markdown doc out.
+//! `cartographer` binary: collected JSON in, Markdown doc out.
 
 use std::path::PathBuf;
 
 fn usage() -> String {
-    "usage: cathedral [INPUT] [--output PATH]\n\
+    "usage: cartographer [INPUT] [--output PATH]\n\
      \n\
      Reads collector JSON (schema-checked) from INPUT or stdin and writes\n\
      the architecture Markdown to stdout or --output PATH.\n\
      \n\
-     example: cathedral graph.json --output ARCHITECTURE.md"
+     example: cartographer data/json/portfolio-graph.json --output data/markdown/fragments/portfolio-graph.md"
         .to_string()
 }
 
@@ -63,7 +63,7 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let md = cathedral::render_cathedral(&graph);
+    let md = cartographer::render_cartographer(&graph);
     match &output {
         Some(p) => {
             if let Err(e) = std::fs::write(p, &md) {

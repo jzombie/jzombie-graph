@@ -1,7 +1,7 @@
 //! Cluster tests: proximity from real edges, links intact, portfolio
 //! filter (own-work forks only, no stale), no tables or tier language.
 
-use cathedral::render_cathedral;
+use cartographer::render_cartographer;
 use chrono::{TimeZone, Utc};
 use jzombie_graph::graph::{self, EdgeKind, Graph, Layer, Node};
 
@@ -74,7 +74,7 @@ fn fixture() -> Graph {
 
 #[test]
 fn cluster_draws_linked_nodes_with_braille_traces() {
-    let md = render_cathedral(&fixture());
+    let md = render_cartographer(&fixture());
     assert!(md.contains("zenOSmosis"), "correct branding");
     assert!(!md.contains("Zenosmosis"), "old casing gone");
     assert!(
@@ -100,7 +100,7 @@ fn cluster_draws_linked_nodes_with_braille_traces() {
 
 #[test]
 fn no_tables_or_tier_language() {
-    let md = render_cathedral(&fixture());
+    let md = render_cartographer(&fixture());
     assert!(!md.contains("| Level |"), "no elevation table");
     assert!(!md.contains("Spires"), "no tier names");
     assert!(!md.contains("Vaults"), "no tier names");
@@ -126,7 +126,7 @@ fn docs_edges_draw_same_braille_trace() {
     ];
     graph::apply_visibility(&mut nodes, &edges);
     graph::apply_layers(&mut nodes, &edges);
-    let md = render_cathedral(&Graph::new(nodes, edges));
+    let md = render_cartographer(&Graph::new(nodes, edges));
     assert!(
         md.contains(">a</a>") && md.contains(">c</a>"),
         "nodes drawn"
@@ -156,7 +156,7 @@ fn docs_satellite_with_prose_but_no_language_stays_out() {
     ];
     graph::apply_visibility(&mut nodes, &edges);
     graph::apply_layers(&mut nodes, &edges);
-    let md = render_cathedral(&Graph::new(nodes, edges));
+    let md = render_cartographer(&Graph::new(nodes, edges));
     assert!(!md.contains("blobs"), "prose-only bucket stays out");
 }
 
@@ -173,7 +173,7 @@ fn docs_satellite_with_language_is_kept() {
     ];
     graph::apply_visibility(&mut nodes, &edges);
     graph::apply_layers(&mut nodes, &edges);
-    let md = render_cathedral(&Graph::new(nodes, edges));
+    let md = render_cartographer(&Graph::new(nodes, edges));
     assert!(md.contains("tool"), "code satellite kept");
 }
 
@@ -183,7 +183,7 @@ fn workflow_edges_attach_nothing() {
     let edges = vec![edge("me/a", "me/tool", EdgeKind::Workflow)];
     graph::apply_visibility(&mut nodes, &edges);
     graph::apply_layers(&mut nodes, &edges);
-    let md = render_cathedral(&Graph::new(nodes, edges));
+    let md = render_cartographer(&Graph::new(nodes, edges));
     assert!(!md.contains("tool"), "workflow-only node stays out");
 }
 
@@ -208,7 +208,7 @@ fn docs_satellite_without_project_signals_stays_out() {
     ];
     graph::apply_visibility(&mut nodes, &edges);
     graph::apply_layers(&mut nodes, &edges);
-    let md = render_cathedral(&Graph::new(nodes, edges));
+    let md = render_cartographer(&Graph::new(nodes, edges));
     assert!(!md.contains("blobs"), "asset bucket stays out");
 }
 
@@ -230,7 +230,7 @@ fn fork_without_work_is_excluded() {
     ];
     graph::apply_visibility(&mut nodes, &edges);
     graph::apply_layers(&mut nodes, &edges);
-    let md = render_cathedral(&Graph::new(nodes, edges));
+    let md = render_cartographer(&Graph::new(nodes, edges));
     assert!(!md.contains("vendor"), "plain fork omitted");
 }
 
@@ -247,7 +247,7 @@ fn fork_with_a_commit_is_kept() {
     let edges = vec![edge("me/app", "me/vendor", EdgeKind::Manifest)];
     graph::apply_visibility(&mut nodes, &edges);
     graph::apply_layers(&mut nodes, &edges);
-    let md = render_cathedral(&Graph::new(nodes, edges));
+    let md = render_cartographer(&Graph::new(nodes, edges));
     assert!(md.contains("vendor"), "one commit keeps the fork");
 }
 
@@ -264,7 +264,7 @@ fn renamed_fork_is_kept() {
     let edges = vec![edge("me/app", "me/term-wm-vt100", EdgeKind::Manifest)];
     graph::apply_visibility(&mut nodes, &edges);
     graph::apply_layers(&mut nodes, &edges);
-    let md = render_cathedral(&Graph::new(nodes, edges));
+    let md = render_cartographer(&Graph::new(nodes, edges));
     assert!(md.contains("term-wm-vt100"), "renamed fork kept");
 }
 
@@ -278,7 +278,7 @@ fn stale_dependent_is_omitted() {
     graph::apply_layers(&mut nodes, &edges);
     let mut g = Graph::new(nodes, edges);
     g.generated_at = Utc.with_ymd_and_hms(2026, 11, 8, 0, 0, 0).single().unwrap();
-    let md = render_cathedral(&g);
+    let md = render_cartographer(&g);
     assert!(!md.contains("old"), "stale dependent omitted");
 }
 
@@ -292,7 +292,7 @@ fn stale_dependency_is_kept() {
     graph::apply_layers(&mut nodes, &edges);
     let mut g = Graph::new(nodes, edges);
     g.generated_at = Utc.with_ymd_and_hms(2026, 11, 8, 0, 0, 0).single().unwrap();
-    let md = render_cathedral(&g);
+    let md = render_cartographer(&g);
     assert!(md.contains("old"), "stale dependency kept");
 }
 
@@ -315,7 +315,7 @@ fn stale_dependency_chain_is_kept_recursively() {
     graph::apply_layers(&mut nodes, &edges);
     let mut g = Graph::new(nodes, edges);
     g.generated_at = Utc.with_ymd_and_hms(2026, 11, 8, 0, 0, 0).single().unwrap();
-    let md = render_cathedral(&g);
+    let md = render_cartographer(&g);
     assert!(md.contains("mid"), "stale direct dependency kept");
     assert!(md.contains("old"), "stale transitive dependency kept");
 }
@@ -329,7 +329,7 @@ fn labels_abbreviate_rust_prefix() {
     let edges = vec![edge("me/rust-widget", "me/lib", EdgeKind::Manifest)];
     graph::apply_visibility(&mut nodes, &edges);
     graph::apply_layers(&mut nodes, &edges);
-    let md = render_cathedral(&Graph::new(nodes, edges));
+    let md = render_cartographer(&Graph::new(nodes, edges));
     assert!(md.contains(">widget</a>"), "abbreviated label linked");
     assert!(!md.contains("rust-widget</a>"), "no long labels");
 }
@@ -337,7 +337,7 @@ fn labels_abbreviate_rust_prefix() {
 #[test]
 fn empty_graph_renders() {
     let g = Graph::new(vec![], vec![]);
-    let md = render_cathedral(&g);
+    let md = render_cartographer(&g);
     assert!(md.contains("zenOSmosis"));
     assert!(md.contains("(no connected cluster)"));
 }

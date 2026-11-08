@@ -34,7 +34,7 @@ const HEIGHT: usize = 26;
 const STALE_DAYS: i64 = 365;
 
 /// Render the cluster doc for a collected graph.
-pub fn render_cathedral(graph: &Graph) -> String {
+pub fn render_cartographer(graph: &Graph) -> String {
     let mut s = String::new();
     s.push_str("# The zenOSmosis Cluster\n\n");
     s.push_str("jzombie's portfolio as a 2D projection — proximity is edge strength.\n\n");
