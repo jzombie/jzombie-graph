@@ -45,8 +45,9 @@ fn main() {
             std::process::exit(1);
         }
     };
-    // Indicators also drop one-off badge files beside the preview strip —
-    // the strip is the look-check, the files are what tables embed.
+    // Indicators also drop one-off badge files beside the preview strip
+    // plus the committed render proof (table + badge copies) — the strip
+    // is the look-check, the files are what tables embed.
     if cli.chart == Chart::Indicators && !cli.stdout && cli.output.is_none() {
         for name in charts::indicator_names() {
             match charts::render_indicator_svg(&name) {
@@ -57,11 +58,31 @@ fn main() {
                         eprintln!("writing {}: {e:#}", dest.display());
                         std::process::exit(1);
                     }
+                    let preview =
+                        std::path::Path::new(jzombie_graph::paths::PREVIEW_INDICATORS_DIR)
+                            .join(format!("{name}.svg"));
+                    if let Err(e) = jzombie_graph::output::write_file(&preview, &svg) {
+                        eprintln!("writing {}: {e:#}", preview.display());
+                        std::process::exit(1);
+                    }
                 }
                 Err(e) => {
                     eprintln!("render error: {e:#}");
                     std::process::exit(1);
                 }
+            }
+        }
+        match charts::render_indicators_md() {
+            Ok(md) => {
+                let dest = std::path::Path::new(jzombie_graph::paths::PREVIEW_INDICATORS_MD);
+                if let Err(e) = jzombie_graph::output::write_file(dest, &md) {
+                    eprintln!("writing {}: {e:#}", dest.display());
+                    std::process::exit(1);
+                }
+            }
+            Err(e) => {
+                eprintln!("render error: {e:#}");
+                std::process::exit(1);
             }
         }
         eprintln!("badges: files in {}", jzombie_graph::paths::INDICATORS_DIR);

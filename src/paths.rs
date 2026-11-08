@@ -38,9 +38,17 @@ pub const FOCUS_SVG: &str = "data/svg/portfolio-graph-focus.svg";
 /// land; not a published asset yet.
 pub const INDICATORS_SVG: &str = "data/svg/portfolio-graph-indicators.svg";
 
-/// One-off badge files, one per sampled repo (`<name>.svg`).
+/// One-off badge files, one per heat band (`<band>.svg`).
 /// Table cells embed these; the strip above is the preview sheet.
 pub const INDICATORS_DIR: &str = "data/svg/indicators";
+
+/// Committed render proof: OxDock-templated table embedding the badges,
+/// so github.com shows exactly what readers see. Regenerate, never edit.
+pub const PREVIEW_INDICATORS_MD: &str = "preview/indicators.md";
+
+/// Committed badge copies the preview table embeds. Same bytes as the
+/// working copies; copied at preview time, never hand-placed.
+pub const PREVIEW_INDICATORS_DIR: &str = "preview/indicators";
 
 /// Checked-in schema expectation the drift test guards. Source, not data:
 /// changing the types means consciously copying the lane output over this.

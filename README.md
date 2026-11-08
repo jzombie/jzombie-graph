@@ -42,6 +42,14 @@ cargo run -- --format focus
 
 Same `focus` the dump lane shows — commit heat vs own 30d baseline minus idle months, hottest first. Needs a recent ingest; counts freeze at collection time.
 
+## Render proof (what GitHub actually shows)
+
+```bash
+oxdock .github/scripts/preview-indicators.oxfile
+```
+
+Collects fresh, renders every lane, and assembles the committed `preview/portfolio-graph.md` — map fragment verbatim, all charts embedded, indicator table with badges. That page is the visual proof; `preview/` is generated, never hand-edited.
+
 ## Regenerate the schema
 
 ```bash

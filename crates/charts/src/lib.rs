@@ -544,6 +544,8 @@ pub fn render_share_svg(graph_json: &str) -> anyhow::Result<String> {
 /// keeps a hover tooltip.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 struct IndicatorRow {
+    band: String,
+    file: String,
     label: String,
     heat: String,
     color: String,
@@ -612,6 +614,8 @@ fn indicators(graph_json: String, only: String) -> anyhow::Result<Value> {
         .map(|(name, h)| {
             let norm = (h / 6.0).clamp(0.0, 1.0);
             IndicatorRow {
+                band: name.to_string(),
+                file: format!("{name}.svg"),
                 label: format!("{name} {h:.2}"),
                 heat: format!("{h:.2}"),
                 color: heat_color(h).to_string(),
@@ -655,6 +659,41 @@ pub fn render_indicator_svg(band: &str) -> anyhow::Result<String> {
         "unknown indicator band: {band}"
     );
     render_indicator_doc(band)
+}
+
+/// Render the preview table: badge embeds + band + heat, one row per band.
+/// Same doc as the SVGs, markdown template — the committed render proof.
+/// Static header in Rust; only the rows ride the template.
+pub fn render_indicators_md() -> anyhow::Result<String> {
+    let engine = engine();
+    let steps: Vec<oxdock_parser::Step> = oxdock! {
+        modules: [CHARTS],
+        IMPORT [STD, CHARTS]
+        LET $rows_json: STRING = CHARTS::INDICATORS("", "")
+        WRITE rows.json $rows_json
+        LET $doc: MAP<ANY> = LOAD_JSON("rows.json")
+        WRITE md.md """
+            # Indicator preview
+
+            *Generated — do not hand-edit. Regenerate with `oxdock .github/scripts/preview-indicators.oxfile`. Badges sit beside this file; the rows come from the same template doc as the SVGs.*
+
+            | badge | band | heat |
+            |---|---|---|
+            """
+        FOR $r: MAP<ANY> IN $doc.rows {
+            APPEND md.md """
+                | ![{{ $r.band }}]({{ $r.file }}) | {{ $r.band }} | {{ $r.heat }} |
+                """
+        }
+        LET $check: STRING = READ md.md
+        ASSERT_CONTAINS $check "| badge |"
+    };
+    let temp = oxdock::GuardedPath::tempdir().expect("tempdir");
+    let root = temp.as_guarded_path().clone();
+    engine.run_steps_without_snapshot(&root, &steps)?;
+    let resolver = oxdock::PathResolver::new(root.as_path(), root.as_path()).expect("resolver");
+    let out = root.join("md.md").expect("md path");
+    Ok(resolver.read_to_string(&out).expect("read md"))
 }
 
 fn render_indicator_doc(only: &str) -> anyhow::Result<String> {
