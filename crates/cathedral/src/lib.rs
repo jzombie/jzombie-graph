@@ -176,7 +176,9 @@ fn select_cluster(graph: &Graph) -> Option<Cluster> {
     let mut core: BTreeSet<String> = comps.into_iter().next()?;
     // Docs satellites: fresh eligible nodes with a direct docs edge to the
     // dependence core (runtime coupling, e.g. portable QEMU builds the VM
-    // host consumes but doesn't declare as a cargo dep). Workflow stays out.
+    // host consumes but doesn't declare as a cargo dep). The satellite must
+    // look like a project (description, language, or topics) — asset
+    // buckets with none of those stay out. Workflow stays out as tooling.
     for e in &graph.edges {
         if e.kind != EdgeKind::Docs {
             continue;
@@ -193,7 +195,16 @@ fn select_cluster(graph: &Graph) -> Option<Cluster> {
             None
         };
         if let Some(id) = other {
-            core.insert(id.to_string());
+            let looks_like_project = graph.nodes.iter().find(|n| n.id == id).is_some_and(|n| {
+                n.description
+                    .as_deref()
+                    .is_some_and(|d| !d.trim().is_empty())
+                    || n.language.is_some()
+                    || !n.topics.is_empty()
+            });
+            if looks_like_project {
+                core.insert(id.to_string());
+            }
         }
     }
     let nodes: Vec<String> = core.iter().cloned().collect();

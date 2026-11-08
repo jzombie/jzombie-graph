@@ -140,6 +140,31 @@ fn workflow_edges_attach_nothing() {
 }
 
 #[test]
+fn docs_satellite_without_project_signals_stays_out() {
+    // Asset bucket: no description, language, or topics — not graphed even
+    // with a direct docs edge to the core.
+    let asset = Node {
+        description: None,
+        language: None,
+        topics: vec![],
+        ..node("me/blobs", false, false)
+    };
+    let mut nodes = vec![
+        node("me/a", false, false),
+        node("me/b", false, false),
+        asset,
+    ];
+    let edges = vec![
+        edge("me/a", "me/b", EdgeKind::Manifest),
+        edge("me/a", "me/blobs", EdgeKind::Docs),
+    ];
+    graph::apply_visibility(&mut nodes, &edges);
+    graph::apply_layers(&mut nodes, &edges);
+    let md = render_cathedral(&Graph::new(nodes, edges));
+    assert!(!md.contains("blobs"), "asset bucket stays out");
+}
+
+#[test]
 fn fork_without_work_is_excluded() {
     let mut nodes = vec![
         node("me/app", false, false),
