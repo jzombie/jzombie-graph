@@ -1,0 +1,3124 @@
+{
+  "schema_version": 4,
+  "generated_at": "2026-11-08T02:46:14.516520Z",
+  "nodes": [
+    {
+      "id": "jzombie/Calculator",
+      "owner": "jzombie",
+      "name": "Calculator",
+      "fork": true,
+      "private": false,
+      "upstream": "amalary/Calculator",
+      "ahead_by": 0,
+      "pushed_at": "2022-05-07T14:18:22Z",
+      "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "size_kb": 211,
+      "has_readme": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/CloverISO",
+      "owner": "jzombie",
+      "name": "CloverISO",
+      "fork": true,
+      "private": false,
+      "upstream": "aynX-skii/CloverISO",
+      "ahead_by": 0,
+      "pushed_at": "2019-10-02T07:54:38Z",
+      "description": "Clover UEFI Bootloader Mirror",
+      "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "size_kb": 14738,
+      "has_readme": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/EmulatorJS",
+      "owner": "jzombie",
+      "name": "EmulatorJS",
+      "fork": true,
+      "private": false,
+      "upstream": "EmulatorJS/EmulatorJS",
+      "ahead_by": null,
+      "pushed_at": "2023-03-18T16:42:00Z",
+      "description": "The official home of the EmulatorJS project",
+      "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "GPL-3.0",
+      "size_kb": 314720,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/VboxInsideDocker",
+      "owner": "jzombie",
+      "name": "VboxInsideDocker",
+      "fork": true,
+      "private": false,
+      "upstream": "esben/VboxInsideDocker",
+      "ahead_by": 8,
+      "pushed_at": "2017-11-23T21:23:52Z",
+      "description": "This project should allow any user to successfully install VirtualBox inside a docker container allowing you to intall any OS virtually inside a virtual containers! Sounds cool right?",
+      "topics": [],
+      "language": "Shell",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "GPL-2.0",
+      "size_kb": 21,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    },
+    {
+      "id": "jzombie/adapter",
+      "owner": "jzombie",
+      "name": "adapter",
+      "fork": true,
+      "private": false,
+      "upstream": "webrtcHacks/adapter",
+      "ahead_by": 0,
+      "pushed_at": "2022-12-10T22:05:08Z",
+      "description": "Shim to insulate apps from spec changes and prefix differences. Latest adapter.js release:",
+      "topics": [],
+      "homepage": "https://webrtcHacks.github.io/adapter/adapter-latest.js",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "BSD-3-Clause",
+      "size_kb": 6191,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/airtap",
+      "owner": "jzombie",
+      "name": "airtap",
+      "fork": true,
+      "private": false,
+      "upstream": "airtap/airtap",
+      "ahead_by": 0,
+      "pushed_at": "2021-05-28T00:44:36Z",
+      "description": "Run TAP unit tests in 1789+ browsers.",
+      "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 1284,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/aws-lambda-developer-guide",
+      "owner": "jzombie",
+      "name": "aws-lambda-developer-guide",
+      "fork": true,
+      "private": false,
+      "upstream": "awsdocs/aws-lambda-developer-guide",
+      "ahead_by": 0,
+      "pushed_at": "2021-08-17T23:44:16Z",
+      "description": "The AWS Lambda Developer Guide",
+      "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "size_kb": 8159,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/bitcode",
+      "owner": "jzombie",
+      "name": "bitcode",
+      "fork": true,
+      "private": false,
+      "upstream": "SoftbearStudios/bitcode",
+      "ahead_by": 0,
+      "pushed_at": "2026-06-29T23:34:41Z",
+      "description": "A binary encoder/decoder for Rust",
+      "topics": [],
+      "homepage": "https://crates.io/crates/bitcode/",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 398,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "fork: load-bearing fan-in, has portfolio edge"
+    },
+    {
+      "id": "jzombie/bm25",
+      "owner": "jzombie",
+      "name": "bm25",
+      "fork": true,
+      "private": false,
+      "upstream": "Michael-JB/bm25",
+      "ahead_by": 0,
+      "pushed_at": "2026-05-21T19:57:46Z",
+      "description": "A BM25 embedder, scorer, and search engine, written in Rust.",
+      "topics": [],
+      "homepage": "https://crates.io/crates/bm25",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 1,
+      "license": "MIT",
+      "size_kb": 230,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "fork: load-bearing fan-in, has portfolio edge"
+    },
+    {
+      "id": "jzombie/cargo-samply",
+      "owner": "jzombie",
+      "name": "cargo-samply",
+      "fork": true,
+      "private": false,
+      "upstream": "PhilippPolterauer/cargo-samply",
+      "ahead_by": 0,
+      "pushed_at": "2025-12-12T09:14:07Z",
+      "description": "A cargo subcommand to automate the process of profiling with samply.",
+      "topics": [],
+      "homepage": "https://crates.io/crates/cargo-samply",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 1,
+      "license": "MIT",
+      "size_kb": 201,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/chroma",
+      "owner": "jzombie",
+      "name": "chroma",
+      "fork": true,
+      "private": false,
+      "upstream": "chroma-core/chroma",
+      "ahead_by": 0,
+      "pushed_at": "2023-09-01T22:42:07Z",
+      "description": "the AI-native open-source embedding database",
+      "topics": [],
+      "homepage": "https://www.trychroma.com/",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "Apache-2.0",
+      "size_kb": 177662,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/code-complexity",
+      "owner": "jzombie",
+      "name": "code-complexity",
+      "fork": true,
+      "private": false,
+      "upstream": "simonrenoult/code-complexity",
+      "ahead_by": 0,
+      "pushed_at": "2022-02-11T05:34:32Z",
+      "description": "Measure the churn/complexity ratio. Higher values mean hotspots where refactorings should happen.",
+      "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 902,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/codspeed-runner",
+      "owner": "jzombie",
+      "name": "codspeed-runner",
+      "fork": true,
+      "private": false,
+      "upstream": "CodSpeedHQ/codspeed",
+      "ahead_by": 0,
+      "pushed_at": "2025-10-07T01:08:02Z",
+      "description": "CodSpeed runner, gathering performance data from CI environments",
+      "topics": [],
+      "language": "Rust",
+      "homepage": "https://codspeed.io",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 2,
+      "license": "Apache-2.0",
+      "size_kb": 803,
+      "has_readme": true,
+      "has_agents_md": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/codspeed-rust",
+      "owner": "jzombie",
+      "name": "codspeed-rust",
+      "fork": true,
+      "private": false,
+      "upstream": "CodSpeedHQ/codspeed-rust",
+      "ahead_by": 0,
+      "pushed_at": "2025-10-06T05:52:32Z",
+      "description": "Crates to benchmark your Rust code",
+      "topics": [],
+      "homepage": "https://codspeed.io/docs/reference/codspeed-rust",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 1,
+      "license": "Apache-2.0",
+      "size_kb": 1300,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/cognitive-services-speech-sdk",
+      "owner": "jzombie",
+      "name": "cognitive-services-speech-sdk",
+      "fork": true,
+      "private": false,
+      "upstream": "Azure-Samples/cognitive-services-speech-sdk",
+      "ahead_by": 0,
+      "pushed_at": "2022-02-25T03:10:01Z",
+      "description": "Sample code for the Microsoft Cognitive Services Speech SDK",
+      "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 155504,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/datafusion",
+      "owner": "jzombie",
+      "name": "datafusion",
+      "fork": true,
+      "private": false,
+      "upstream": "apache/datafusion",
+      "ahead_by": 0,
+      "pushed_at": "2025-11-18T23:37:07Z",
+      "description": "Apache DataFusion SQL Query Engine",
+      "topics": [],
+      "homepage": "https://datafusion.apache.org/",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "Apache-2.0",
+      "size_kb": 172304,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/deepwiki-to-mdbook",
+      "owner": "jzombie",
+      "name": "deepwiki-to-mdbook",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2025-11-24T23:48:41Z",
+      "description": "Convert DeepWiki pages into polished HTML docs using mdBook.",
+      "topics": [
+        "deepwiki",
+        "docker",
+        "mdbook"
+      ],
+      "language": "Python",
+      "homepage": "https://docs.deepwiki-to-mdbook.zenosmosis.com/",
+      "stars": 2,
+      "forks_count": 0,
+      "open_issues": 2,
+      "size_kb": 99,
+      "has_readme": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/docker-coturn",
+      "owner": "jzombie",
+      "name": "docker-coturn",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2024-07-28T02:34:31Z",
+      "description": "Coturn in Docker.",
+      "topics": [
+        "coturn",
+        "stun-server",
+        "turn-server",
+        "webrtc",
+        "webrtc-signaling"
+      ],
+      "language": "Shell",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 21,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    },
+    {
+      "id": "jzombie/docker-lynx",
+      "owner": "jzombie",
+      "name": "docker-lynx",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2024-01-05T22:08:13Z",
+      "description": "A Docker container for Lynx, a highly configurable text-based web browser.",
+      "topics": [],
+      "language": "Dockerfile",
+      "stars": 22,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 95,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    },
+    {
+      "id": "jzombie/docker-mqtt-mosquitto-cloudflare-tunnel",
+      "owner": "jzombie",
+      "name": "docker-mqtt-mosquitto-cloudflare-tunnel",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2026-11-01T01:12:27Z",
+      "description": "MQTT Broker via Cloudflare Tunnels, using Docker.",
+      "topics": [
+        "cloudflared",
+        "docker",
+        "docker-compose",
+        "mosquitto-mqtt-broker",
+        "mqtt-broker"
+      ],
+      "homepage": "https://docs.docker-mqtt-mosquitto-cloudflare-tunnel.zenosmosis.com/",
+      "stars": 31,
+      "forks_count": 6,
+      "open_issues": 2,
+      "size_kb": 946,
+      "has_readme": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/docker-orbstack-openvpn",
+      "owner": "jzombie",
+      "name": "docker-orbstack-openvpn",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2026-04-14T14:42:48Z",
+      "description": "Serve OpenVPN via Mac through Docker.",
+      "topics": [
+        "docker",
+        "macos",
+        "openvpn",
+        "orbstack"
+      ],
+      "language": "Shell",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 1,
+      "size_kb": 5,
+      "has_readme": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    },
+    {
+      "id": "jzombie/dockview",
+      "owner": "jzombie",
+      "name": "dockview",
+      "fork": true,
+      "private": false,
+      "upstream": "dockview/dockview",
+      "ahead_by": 0,
+      "pushed_at": "2024-10-09T21:23:04Z",
+      "description": "Zero dependency Docking Layout Manager. Supports Vanilla TypeScript, React and Vue.",
+      "topics": [],
+      "homepage": "https://dockview.dev",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 147263,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/duckdb-pong-in-sql",
+      "owner": "jzombie",
+      "name": "duckdb-pong-in-sql",
+      "fork": true,
+      "private": false,
+      "upstream": "Zeutschler/duckdb-pong-in-sql",
+      "ahead_by": 0,
+      "pushed_at": "2025-10-30T07:42:32Z",
+      "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "size_kb": 16,
+      "has_readme": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/etf-matcher-data-encoder",
+      "owner": "jzombie",
+      "name": "etf-matcher-data-encoder",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2024-07-26T02:17:58Z",
+      "topics": [],
+      "language": "Rust",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "size_kb": 19,
+      "has_readme": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    },
+    {
+      "id": "jzombie/etf-matcher-pub",
+      "owner": "jzombie",
+      "name": "etf-matcher-pub",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2025-03-04T21:55:42Z",
+      "description": "Build artifacts for ETFMatcher.com (https://github.com/jzombie/etf-matcher)",
+      "topics": [],
+      "language": "HTML",
+      "homepage": "https://etfmatcher.com/",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "size_kb": 1027313,
+      "has_readme": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    },
+    {
+      "id": "jzombie/fastembed-rs",
+      "owner": "jzombie",
+      "name": "fastembed-rs",
+      "fork": true,
+      "private": false,
+      "upstream": "anush008/fastembed-rs",
+      "ahead_by": 0,
+      "pushed_at": "2025-08-10T19:33:05Z",
+      "description": "Rust library for generating vector embeddings, reranking.",
+      "topics": [],
+      "homepage": "https://docs.rs/fastembed",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "Apache-2.0",
+      "size_kb": 600,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/fontman",
+      "owner": "jzombie",
+      "name": "fontman",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2023-01-04T09:41:20Z",
+      "topics": [],
+      "language": "JavaScript",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 27,
+      "size_kb": 2069,
+      "has_readme": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    },
+    {
+      "id": "jzombie/fortran-hello-world",
+      "owner": "jzombie",
+      "name": "fortran-hello-world",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2024-01-01T01:14:21Z",
+      "topics": [],
+      "language": "Dockerfile",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "size_kb": 1,
+      "has_readme": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    },
+    {
+      "id": "jzombie/globcat.sh",
+      "owner": "jzombie",
+      "name": "globcat.sh",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2024-07-19T01:31:37Z",
+      "description": "Unix shell script to concatenate files, with prepended file paths (to feed them to ChatGPT, and the like).",
+      "topics": [
+        "bash",
+        "command-line",
+        "concatenate",
+        "file-display",
+        "files",
+        "glob",
+        "globcat",
+        "linux",
+        "macos",
+        "patterns",
+        "shell-script",
+        "unix"
+      ],
+      "language": "Shell",
+      "stars": 5,
+      "forks_count": 0,
+      "open_issues": 3,
+      "license": "MIT",
+      "size_kb": 417,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    },
+    {
+      "id": "jzombie/insanely-fast-whisper",
+      "owner": "jzombie",
+      "name": "insanely-fast-whisper",
+      "fork": true,
+      "private": false,
+      "upstream": "Vaibhavs10/insanely-fast-whisper",
+      "ahead_by": 0,
+      "pushed_at": "2023-11-30T17:54:21Z",
+      "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "Apache-2.0",
+      "size_kb": 330,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/install-barrier",
+      "owner": "jzombie",
+      "name": "install-barrier",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2020-01-26T01:26:02Z",
+      "topics": [],
+      "language": "Shell",
+      "stars": 1,
+      "forks_count": 1,
+      "open_issues": 0,
+      "size_kb": 0,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    },
+    {
+      "id": "jzombie/karma-jasmine-typescript-boilerplate",
+      "owner": "jzombie",
+      "name": "karma-jasmine-typescript-boilerplate",
+      "fork": true,
+      "private": false,
+      "upstream": "coinsmart/karma-jasmine-typescript-boilerplate",
+      "ahead_by": 0,
+      "pushed_at": "2022-11-07T13:59:32Z",
+      "description": "Boilerplate for unit testing w/ Karma, Jasmine, and TypeScript in Node.js and browser environments.  Provides ability to execute the same unit tests in Node.js and in the browser; ideal for algorithms that run cross-platform.",
+      "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 262,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/karma-sinon",
+      "owner": "jzombie",
+      "name": "karma-sinon",
+      "fork": true,
+      "private": false,
+      "upstream": "yanoosh/karma-sinon",
+      "ahead_by": 0,
+      "pushed_at": "2018-05-24T11:21:15Z",
+      "description": "Sinon for karma",
+      "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "size_kb": 7,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/lab-qemu-portable",
+      "owner": "jzombie",
+      "name": "lab-qemu-portable",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2026-11-02T07:06:11Z",
+      "description": "Portable, zero-install builds of QEMU and wimlib for Windows, Linux, and macOS, plus a mirrored virtio-win driver pack for Windows guests.",
+      "topics": [
+        "portable-executables",
+        "qemu",
+        "virtio-win",
+        "virtualization",
+        "wimlib-imagex"
+      ],
+      "language": "Shell",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 2,
+      "size_kb": 65,
+      "has_readme": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/libtest-mimic",
+      "owner": "jzombie",
+      "name": "libtest-mimic",
+      "fork": true,
+      "private": false,
+      "upstream": "LukasKalbertodt/libtest-mimic",
+      "ahead_by": 0,
+      "pushed_at": "2024-10-05T11:57:01Z",
+      "description": "A small test framework to write your own test harness that looks and behaves like the built-in test harness used by `rustc --test`",
+      "topics": [],
+      "homepage": "https://docs.rs/libtest-mimic",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "Apache-2.0",
+      "size_kb": 474,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": true,
+      "visible_reason": "fork: load-bearing fan-in, has portfolio edge"
+    },
+    {
+      "id": "jzombie/live-assets",
+      "owner": "jzombie",
+      "name": "live-assets",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2026-08-18T21:23:42Z",
+      "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 1,
+      "size_kb": 26394,
+      "has_readme": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/matrixmultiply",
+      "owner": "jzombie",
+      "name": "matrixmultiply",
+      "fork": true,
+      "private": false,
+      "upstream": "bluss/matrixmultiply",
+      "ahead_by": 0,
+      "pushed_at": "2026-01-07T11:47:49Z",
+      "description": "General matrix multiplication of f32 and f64 matrices in Rust. Supports matrices with general strides.",
+      "topics": [],
+      "homepage": "https://docs.rs/matrixmultiply/",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "Apache-2.0",
+      "size_kb": 953,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/ml-ferret",
+      "owner": "jzombie",
+      "name": "ml-ferret",
+      "fork": true,
+      "private": false,
+      "upstream": "apple-aiml-research/ml-ferret",
+      "ahead_by": 0,
+      "pushed_at": "2023-12-23T09:30:09Z",
+      "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "size_kb": 5016,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/msgpack-lite",
+      "owner": "jzombie",
+      "name": "msgpack-lite",
+      "fork": true,
+      "private": false,
+      "upstream": "kawanet/msgpack-lite",
+      "ahead_by": 0,
+      "pushed_at": "2022-12-02T12:23:38Z",
+      "description": "Fast Pure JavaScript MessagePack Encoder and Decoder / msgpack.org[JavaScript]",
+      "topics": [],
+      "homepage": "https://www.npmjs.com/package/msgpack-lite",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 481,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/nbcommands",
+      "owner": "jzombie",
+      "name": "nbcommands",
+      "fork": true,
+      "private": false,
+      "upstream": "vinayak-mehta/nbcommands",
+      "ahead_by": 0,
+      "pushed_at": "2021-09-20T13:55:28Z",
+      "description": "Unix commands for Jupyter notebooks.",
+      "topics": [],
+      "homepage": "https://nbcommands.readthedocs.io",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "Apache-2.0",
+      "size_kb": 1582,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/node-ViGEmClient",
+      "owner": "jzombie",
+      "name": "node-ViGEmClient",
+      "fork": true,
+      "private": false,
+      "upstream": "jangxx/node-ViGEmClient",
+      "ahead_by": 0,
+      "pushed_at": "2023-01-10T21:02:10Z",
+      "description": "Native Node.js bindings for the ViGEm virtual gamepad driver",
+      "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 665,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/node-avatar-builder",
+      "owner": "jzombie",
+      "name": "node-avatar-builder",
+      "fork": true,
+      "private": false,
+      "upstream": "gabrie-allaigre/node-avatar-builder",
+      "ahead_by": 0,
+      "pushed_at": "2021-03-24T15:15:43Z",
+      "description": "Avatar builder for nodejs, build multi avatar (cat, github, 8bit, square, identicon, etc) or compose avatar",
+      "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "size_kb": 8702,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/npm-expansions",
+      "owner": "jzombie",
+      "name": "npm-expansions",
+      "fork": true,
+      "private": false,
+      "upstream": "npm/npm-expansions",
+      "ahead_by": 0,
+      "pushed_at": "2021-08-23T18:49:54Z",
+      "description": "Send us a pull request by editing expansions.txt",
+      "topics": [],
+      "homepage": "http://npm.im/npm-expansions",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "size_kb": 923,
+      "has_readme": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/pagefind",
+      "owner": "jzombie",
+      "name": "pagefind",
+      "fork": true,
+      "private": false,
+      "upstream": "Pagefind/pagefind",
+      "ahead_by": 0,
+      "pushed_at": "2024-02-05T22:28:02Z",
+      "description": "Static low-bandwidth search at scale",
+      "topics": [],
+      "homepage": "https://pagefind.app",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 1720,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/pandarallel",
+      "owner": "jzombie",
+      "name": "pandarallel",
+      "fork": true,
+      "private": false,
+      "upstream": "nalepae/pandarallel",
+      "ahead_by": 0,
+      "pushed_at": "2024-02-04T19:25:39Z",
+      "description": "A simple and efficient tool to parallelize Pandas operations on all available CPUs",
+      "topics": [],
+      "homepage": "https://nalepae.github.io/pandarallel",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "BSD-3-Clause",
+      "size_kb": 1129,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/pipper",
+      "owner": "jzombie",
+      "name": "pipper",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2025-02-11T20:40:53Z",
+      "description": "Pipper makes working with pip and virtual environments easier.",
+      "topics": [
+        "conda",
+        "pip",
+        "poetry",
+        "pyenv-virtualenv",
+        "python",
+        "python-package-management",
+        "python-requirements",
+        "unittest",
+        "virtual-environments"
+      ],
+      "language": "Shell",
+      "stars": 4,
+      "forks_count": 0,
+      "open_issues": 2,
+      "license": "MIT",
+      "size_kb": 57,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    },
+    {
+      "id": "jzombie/posix-shell-tests",
+      "owner": "jzombie",
+      "name": "posix-shell-tests",
+      "fork": true,
+      "private": false,
+      "upstream": "posix-shell-tests/posix-shell-tests",
+      "ahead_by": 0,
+      "pushed_at": "2022-10-08T12:40:26Z",
+      "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "GPL-2.0",
+      "size_kb": 102,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/potrace-wasm",
+      "owner": "jzombie",
+      "name": "potrace-wasm",
+      "fork": true,
+      "private": false,
+      "upstream": "IguteChung/potrace-wasm",
+      "ahead_by": 0,
+      "pushed_at": "2022-08-16T03:40:28Z",
+      "description": "Potrace Porting in Web Assembly",
+      "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "GPL-2.0",
+      "size_kb": 1086,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/py-enum-with-dict",
+      "owner": "jzombie",
+      "name": "py-enum-with-dict",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2024-04-05T19:10:09Z",
+      "description": "Python Enum extended with dictionary handling",
+      "topics": [
+        "dictionary",
+        "enum",
+        "enum2array",
+        "enum2dict",
+        "python3"
+      ],
+      "language": "Python",
+      "homepage": "https://pypi.org/project/enum-with-dict/",
+      "stars": 2,
+      "forks_count": 0,
+      "open_issues": 1,
+      "license": "MIT",
+      "size_kb": 42,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    },
+    {
+      "id": "jzombie/qr-code-styling",
+      "owner": "jzombie",
+      "name": "qr-code-styling",
+      "fork": true,
+      "private": false,
+      "upstream": "kozakdenys/qr-code-styling",
+      "ahead_by": 0,
+      "pushed_at": "2022-11-13T12:13:35Z",
+      "description": "Automaticly generate your styled QR code in your web app.",
+      "topics": [],
+      "homepage": "https://qr-code-styling.com",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 947,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/ratatui",
+      "owner": "jzombie",
+      "name": "ratatui",
+      "fork": true,
+      "private": false,
+      "upstream": "ratatui/ratatui",
+      "ahead_by": 0,
+      "pushed_at": "2026-10-27T16:59:16Z",
+      "description": "A Rust crate for cooking up terminal user interfaces (TUIs) 👨‍🍳🐀 https://ratatui.rs",
+      "topics": [],
+      "language": "Rust",
+      "homepage": "https://ratatui.rs",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 10376,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "fork: load-bearing fan-in, has portfolio edge"
+    },
+    {
+      "id": "jzombie/react-mosaic",
+      "owner": "jzombie",
+      "name": "react-mosaic",
+      "fork": true,
+      "private": false,
+      "upstream": "nomcopter/react-mosaic",
+      "ahead_by": 0,
+      "pushed_at": "2024-07-18T17:23:06Z",
+      "description": "A React tiling window manager",
+      "topics": [],
+      "homepage": "https://nomcopter.github.io/react-mosaic/",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "size_kb": 21898,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/react-ts-tradingview-widgets",
+      "owner": "jzombie",
+      "name": "react-ts-tradingview-widgets",
+      "fork": true,
+      "private": false,
+      "upstream": "JorrinKievit/react-ts-tradingview-widgets",
+      "ahead_by": 0,
+      "pushed_at": "2024-10-09T17:42:22Z",
+      "description": "This is a React component library for TradingView Widgets",
+      "topics": [],
+      "homepage": "https://tradingview-widgets.jorrinkievit.xyz/",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 3053,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/request-skippable-animation-frame",
+      "owner": "jzombie",
+      "name": "request-skippable-animation-frame",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2022-02-25T17:18:01Z",
+      "description": "WIP",
+      "topics": [],
+      "language": "JavaScript",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 2,
+      "size_kb": 152,
+      "has_readme": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    },
+    {
+      "id": "jzombie/rust-abs-file-macro",
+      "owner": "jzombie",
+      "name": "rust-abs-file-macro",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2025-03-03T19:38:36Z",
+      "description": "A Rust macro that returns the absolute file path of the Rust source file in which it is invoked.",
+      "topics": [
+        "abs-file-macro",
+        "abs-file-path",
+        "file-path-macro",
+        "file-path-resolution",
+        "rust"
+      ],
+      "language": "Rust",
+      "homepage": "https://crates.io/crates/abs-file-macro",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 10,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    },
+    {
+      "id": "jzombie/rust-argtuner",
+      "owner": "jzombie",
+      "name": "rust-argtuner",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2026-11-08T02:13:25Z",
+      "description": "A language-agnostic CLI tool for black-box hyperparameter optimization.",
+      "topics": [
+        "black-box-optimization",
+        "cli",
+        "hyperparameter-optimization",
+        "particle-swarm-optimization",
+        "rust",
+        "successive-halving",
+        "tui"
+      ],
+      "language": "Rust",
+      "homepage": "https://crates.io/crates/argtuner",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 6,
+      "license": "Apache-2.0",
+      "size_kb": 366,
+      "has_readme": true,
+      "has_agents_md": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/rust-cache-manager",
+      "owner": "jzombie",
+      "name": "rust-cache-manager",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2026-10-08T05:58:28Z",
+      "description": "Managed caches, with optional eviction, for Rust project artifacts.",
+      "topics": [
+        "artifact-cache",
+        "cache",
+        "caching",
+        "development-tools",
+        "eviction-policy",
+        "filesystem",
+        "workspace"
+      ],
+      "language": "Rust",
+      "homepage": "https://crates.io/crates/cache-manager",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 2,
+      "license": "Apache-2.0",
+      "size_kb": 74,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/rust-cargo-pkg-info-struct-builder",
+      "owner": "jzombie",
+      "name": "rust-cargo-pkg-info-struct-builder",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2025-02-19T04:19:15Z",
+      "description": "A Rust build-time dependency injector that provides structured access to Cargo package metadata at runtime.",
+      "topics": [
+        "cargo-build",
+        "cargo-pkg-info",
+        "rust"
+      ],
+      "language": "Rust",
+      "homepage": "https://crates.io/crates/cargo-pkg-info-struct-builder",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 1,
+      "license": "MIT",
+      "size_kb": 68,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/rust-embed-bytes",
+      "owner": "jzombie",
+      "name": "rust-embed-bytes",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2025-02-23T03:58:08Z",
+      "topics": [],
+      "language": "Rust",
+      "homepage": "https://crates.io/crates/embed-bytes",
+      "stars": 1,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 46,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/rust-etf-matcher-vector-config-loader",
+      "owner": "jzombie",
+      "name": "rust-etf-matcher-vector-config-loader",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2025-02-06T22:31:49Z",
+      "description": "Download and parse ETF Matcher ticker vector configurations for similarity search downstream tasks.",
+      "topics": [
+        "etfs",
+        "rust",
+        "stock-analysis-machine-learning-finance"
+      ],
+      "language": "Rust",
+      "homepage": "https://etfmatcher.com/",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 19,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    },
+    {
+      "id": "jzombie/rust-line-ending",
+      "owner": "jzombie",
+      "name": "rust-line-ending",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2026-10-28T16:04:11Z",
+      "description": "A Rust crate to detect, normalize, and convert line endings across platforms. Ensures consistent handling of LF, CRLF, and CR line endings in text processing.",
+      "topics": [
+        "line-ending-conversion",
+        "line-ending-normalization",
+        "line-endings",
+        "rust"
+      ],
+      "language": "Rust",
+      "homepage": "https://crates.io/crates/line-ending",
+      "stars": 5,
+      "forks_count": 1,
+      "open_issues": 1,
+      "license": "Apache-2.0",
+      "size_kb": 44,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/rust-llkv",
+      "owner": "jzombie",
+      "name": "rust-llkv",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2026-03-02T11:45:35Z",
+      "description": "An Apache Arrow columnar storage layer with SQL for key-value storage systems in Rust.",
+      "topics": [
+        "apache-arrow",
+        "database-systems",
+        "embedded-sql-database",
+        "rust",
+        "sqllogictest"
+      ],
+      "language": "Rust",
+      "homepage": "https://docs.llkv.zenosmosis.com/",
+      "stars": 8,
+      "forks_count": 1,
+      "open_issues": 43,
+      "license": "Apache-2.0",
+      "size_kb": 4063,
+      "has_readme": true,
+      "has_agents_md": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/rust-muxio",
+      "owner": "jzombie",
+      "name": "rust-muxio",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2026-11-01T00:17:34Z",
+      "description": "Rust toolkit for layered stream multiplexing and schemaless RPC communication.",
+      "topics": [
+        "rpc-framework",
+        "wasm-rpc",
+        "websocket-client",
+        "websocket-server"
+      ],
+      "language": "Rust",
+      "homepage": "https://crates.io/crates/muxio",
+      "stars": 37,
+      "forks_count": 2,
+      "open_issues": 6,
+      "license": "Apache-2.0",
+      "size_kb": 327,
+      "has_readme": true,
+      "has_agents_md": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/rust-oxdock",
+      "owner": "jzombie",
+      "name": "rust-oxdock",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2026-11-08T02:16:01Z",
+      "description": "An experimental DSL used for building embeddable artifacts and orchestrating pipelines.",
+      "topics": [
+        "build-tools",
+        "containerless-build",
+        "dockerfile-syntax",
+        "dsl",
+        "mcp-server",
+        "process-orchestration",
+        "rust-macro"
+      ],
+      "language": "Rust",
+      "homepage": "https://crates.io/crates/oxdock",
+      "stars": 1,
+      "forks_count": 0,
+      "open_issues": 60,
+      "license": "Apache-2.0",
+      "size_kb": 5513,
+      "has_readme": true,
+      "has_agents_md": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/rust-ratatui-example-counter-app",
+      "owner": "jzombie",
+      "name": "rust-ratatui-example-counter-app",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2025-02-02T20:55:29Z",
+      "topics": [],
+      "language": "Rust",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "size_kb": 9,
+      "has_readme": true,
+      "branches": [
+        "master"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/rust-ratatui-example-json-editor-app",
+      "owner": "jzombie",
+      "name": "rust-ratatui-example-json-editor-app",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2025-02-02T20:58:52Z",
+      "topics": [],
+      "language": "Rust",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "size_kb": 8,
+      "has_readme": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/rust-reqwest-drive",
+      "owner": "jzombie",
+      "name": "rust-reqwest-drive",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2026-11-01T21:38:48Z",
+      "description": "Middleware for the Rust `reqwest` crate that provides fast, SIMD-accelerated caching, throttling, and backoff control within a single-file container.",
+      "topics": [
+        "cache-storage",
+        "caching-library",
+        "http-cache",
+        "reqwest-middleware",
+        "rust-http",
+        "rust-reqwest",
+        "storage-container"
+      ],
+      "language": "Rust",
+      "homepage": "https://crates.io/crates/reqwest-drive",
+      "stars": 2,
+      "forks_count": 0,
+      "open_issues": 3,
+      "license": "Apache-2.0",
+      "size_kb": 99,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/rust-sec-fetcher",
+      "owner": "jzombie",
+      "name": "rust-sec-fetcher",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2026-09-18T17:02:27Z",
+      "description": "Async Rust client for SEC EDGAR: fetch filings, fund holdings, XBRL data, and IPO registrations with compliant rate limiting.",
+      "topics": [
+        "api-bindings",
+        "edgar-api",
+        "filings",
+        "finance",
+        "sec",
+        "stocks"
+      ],
+      "language": "Rust",
+      "homepage": "https://crates.io/crates/sec-fetcher",
+      "stars": 1,
+      "forks_count": 0,
+      "open_issues": 8,
+      "size_kb": 11846,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/rust-simd-r-drive",
+      "owner": "jzombie",
+      "name": "rust-simd-r-drive",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2026-11-02T10:14:00Z",
+      "description": "Zero-copy access, schema-less, append-only, SIMD-optimized binary storage engine for Rust.",
+      "topics": [
+        "append-only",
+        "binary-storage",
+        "key-value-store",
+        "mmap",
+        "simd-optimized",
+        "storage-backend",
+        "storage-container",
+        "storage-engine",
+        "zero-copy"
+      ],
+      "language": "Rust",
+      "homepage": "https://crates.io/crates/simd-r-drive",
+      "stars": 12,
+      "forks_count": 0,
+      "open_issues": 9,
+      "license": "Apache-2.0",
+      "size_kb": 502,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/rust-simple-virtual-dom",
+      "owner": "jzombie",
+      "name": "rust-simple-virtual-dom",
+      "fork": true,
+      "private": false,
+      "upstream": "richardanaya/rust-simple-virtual-dom",
+      "ahead_by": 0,
+      "pushed_at": "2018-12-23T20:38:09Z",
+      "description": "A very simple virtual dom implementation in Rust and Web Assembly",
+      "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "size_kb": 78,
+      "has_readme": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/rust-stdin-nonblocking",
+      "owner": "jzombie",
+      "name": "rust-stdin-nonblocking",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2025-03-13T04:54:17Z",
+      "description": "Dependency-less non-blocking stdin reader for Rust using background threads. Supports streaming and immediate fallback defaults.",
+      "topics": [
+        "rust-lang",
+        "stdin-inputs",
+        "stdin-nonblocking",
+        "stdin-stream"
+      ],
+      "language": "Rust",
+      "homepage": "https://crates.io/crates/stdin-nonblocking",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 31,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    },
+    {
+      "id": "jzombie/rust-string-auto-indent",
+      "owner": "jzombie",
+      "name": "rust-string-auto-indent",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2025-03-03T19:22:58Z",
+      "description": "A Rust utility for automatically normalizing multi-line string indentation while preserving platform-specific line endings.",
+      "topics": [
+        "auto-indent",
+        "multi-line-string",
+        "rust",
+        "string-utils"
+      ],
+      "language": "Rust",
+      "homepage": "https://crates.io/crates/string-auto-indent",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 1,
+      "license": "MIT",
+      "size_kb": 14,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/rust-string-replace-all",
+      "owner": "jzombie",
+      "name": "rust-string-replace-all",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2025-03-03T19:34:01Z",
+      "description": "A Rust crate which efficiently replaces all occurrences of a pattern in a string with a specified replacement, supporting both exact matches and regex-based replacements.",
+      "topics": [],
+      "language": "Rust",
+      "homepage": "https://crates.io/crates/string-replace-all",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 11,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    },
+    {
+      "id": "jzombie/rust-ticker-sniffer",
+      "owner": "jzombie",
+      "name": "rust-ticker-sniffer",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2025-03-04T21:39:30Z",
+      "description": "Rust crate to extract stock tickers from news documents.",
+      "topics": [
+        "rust",
+        "stock-symbol-detection",
+        "stock-ticker-extractor",
+        "stock-ticker-parser",
+        "wasm-capable"
+      ],
+      "language": "Rust",
+      "homepage": "https://crates.io/crates/ticker-sniffer",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 2267,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/rust-triplets",
+      "owner": "jzombie",
+      "name": "rust-triplets",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2026-11-02T08:45:11Z",
+      "description": "Composable data sampling primitives for deterministic multi-source ML/AI training-data orchestration.",
+      "topics": [
+        "algorithms",
+        "artificial-intelligence",
+        "bm25",
+        "dataset-sampling",
+        "science",
+        "text-processing",
+        "train-test-split",
+        "training-data",
+        "triplet-mining"
+      ],
+      "language": "Rust",
+      "homepage": "https://crates.io/crates/triplets",
+      "stars": 1,
+      "forks_count": 0,
+      "open_issues": 19,
+      "license": "Apache-2.0",
+      "size_kb": 1669,
+      "has_readme": true,
+      "has_agents_md": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/sauce",
+      "owner": "jzombie",
+      "name": "sauce",
+      "fork": true,
+      "private": false,
+      "upstream": "airtap/sauce",
+      "ahead_by": 0,
+      "pushed_at": "2021-04-23T17:00:08Z",
+      "description": "A temporary fork of the Sauce Labs browser provider to fix GitHub Actions build number reporting.",
+      "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 26,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/sdp-transform",
+      "owner": "jzombie",
+      "name": "sdp-transform",
+      "fork": true,
+      "private": false,
+      "upstream": "clux/sdp-transform",
+      "ahead_by": 0,
+      "pushed_at": "2021-07-15T21:40:34Z",
+      "description": "A simple parser/writer for the Session Description Protocol",
+      "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 268,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/simple-peer",
+      "owner": "jzombie",
+      "name": "simple-peer",
+      "fork": true,
+      "private": false,
+      "upstream": "feross/simple-peer",
+      "ahead_by": 0,
+      "pushed_at": "2021-04-26T02:56:23Z",
+      "description": "📡 Simple WebRTC video, voice, and data channels",
+      "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 2700,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/spacy-nlp",
+      "owner": "jzombie",
+      "name": "spacy-nlp",
+      "fork": true,
+      "private": false,
+      "upstream": "kengz/spacy-nlp",
+      "ahead_by": 0,
+      "pushed_at": "2019-03-26T05:48:13Z",
+      "description": "Expose Spacy nlp text parsing to Nodejs (and other languages) via socketIO",
+      "topics": [],
+      "language": "JavaScript",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 134,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/sqlite-sqllogictest-corpus",
+      "owner": "jzombie",
+      "name": "sqlite-sqllogictest-corpus",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2025-11-09T12:20:26Z",
+      "description": "SQLite SQLLogicTest corpus (Fossil export)",
+      "topics": [
+        "docker",
+        "sql",
+        "sql-testing",
+        "sqllogictest"
+      ],
+      "language": "Dockerfile",
+      "homepage": "https://docs.sqlite-sqllogictest-corpus.zenosmosis.com/overview.html",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "size_kb": 143420,
+      "has_readme": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/sqlsmith-sqllogictest-corpus-generator",
+      "owner": "jzombie",
+      "name": "sqlsmith-sqllogictest-corpus-generator",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2025-10-18T18:31:06Z",
+      "description": "SQLLogicTest corpus generator using SQLsmith.",
+      "topics": [
+        "sql",
+        "sql-testing",
+        "sqllogictest",
+        "sqlsmith"
+      ],
+      "language": "Python",
+      "stars": 1,
+      "forks_count": 0,
+      "open_issues": 0,
+      "size_kb": 9,
+      "has_readme": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    },
+    {
+      "id": "jzombie/sshfs-mac-docker",
+      "owner": "jzombie",
+      "name": "sshfs-mac-docker",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2025-11-09T12:52:03Z",
+      "description": "SSHFS on macOS without macFUSE or kernel extensions.",
+      "topics": [
+        "docker",
+        "macos",
+        "sshfs-mounting"
+      ],
+      "language": "Dockerfile",
+      "homepage": "https://docs.sshfs-mac-docker.zenosmosis.com/",
+      "stars": 9,
+      "forks_count": 0,
+      "open_issues": 0,
+      "size_kb": 20,
+      "has_readme": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/str0m",
+      "owner": "jzombie",
+      "name": "str0m",
+      "fork": true,
+      "private": false,
+      "upstream": "algesten/str0m",
+      "ahead_by": 0,
+      "pushed_at": "2026-10-04T20:33:17Z",
+      "description": "A Sans I/O WebRTC implementation in Rust.",
+      "topics": [],
+      "language": "Rust",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 10154,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/temp-zombie-procreator",
+      "owner": "jzombie",
+      "name": "temp-zombie-procreator",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2021-08-27T15:15:51Z",
+      "topics": [],
+      "language": "JavaScript",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 3,
+      "license": "MIT",
+      "size_kb": 80,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    },
+    {
+      "id": "jzombie/tensorflow-addons",
+      "owner": "jzombie",
+      "name": "tensorflow-addons",
+      "fork": true,
+      "private": false,
+      "upstream": "tensorflow/addons",
+      "ahead_by": 0,
+      "pushed_at": "2023-12-13T04:29:28Z",
+      "description": "Useful extra functionality for TensorFlow 2.x maintained by SIG-addons",
+      "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "Apache-2.0",
+      "size_kb": 6168,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/term-icon-lab",
+      "owner": "jzombie",
+      "name": "term-icon-lab",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2026-08-25T16:24:52Z",
+      "description": "Short-term experiment repo.",
+      "topics": [],
+      "language": "Rust",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 1,
+      "size_kb": 1196,
+      "has_readme": true,
+      "branches": [
+        "dev--draft"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/term-wm",
+      "owner": "jzombie",
+      "name": "term-wm",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2026-11-01T02:08:06Z",
+      "description": "Spatial Terminal Desktop Environment for Remote Workspaces",
+      "topics": [
+        "gui",
+        "spatial-desktop",
+        "ssh",
+        "terminal-ui",
+        "window-managers",
+        "workspace"
+      ],
+      "language": "Rust",
+      "homepage": "https://crates.io/crates/term-wm",
+      "stars": 7,
+      "forks_count": 2,
+      "open_issues": 76,
+      "license": "Apache-2.0",
+      "size_kb": 6327,
+      "has_readme": true,
+      "has_agents_md": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/term-wm-vt100",
+      "owner": "jzombie",
+      "name": "term-wm-vt100",
+      "fork": true,
+      "private": false,
+      "upstream": "doy/vt100-rust",
+      "ahead_by": 9,
+      "pushed_at": "2026-11-05T05:35:17Z",
+      "description": "A fork of vt100 specifically for usage in term-wm.",
+      "topics": [
+        "terminal",
+        "vt100"
+      ],
+      "language": "Rust",
+      "homepage": "https://crates.io/crates/term-wm-vt100",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 3,
+      "license": "MIT",
+      "size_kb": 1553,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "fork: diverged (ahead of upstream), has portfolio edge"
+    },
+    {
+      "id": "jzombie/termtosvg",
+      "owner": "jzombie",
+      "name": "termtosvg",
+      "fork": true,
+      "private": false,
+      "upstream": "nbedos/termtosvg",
+      "ahead_by": 1,
+      "pushed_at": "2025-12-27T03:57:29Z",
+      "description": "Record terminal sessions as SVG animations",
+      "topics": [],
+      "language": "Rust",
+      "homepage": "https://crates.io/crates/termtosvg",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 1,
+      "size_kb": 1798,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "develop"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    },
+    {
+      "id": "jzombie/trystero",
+      "owner": "jzombie",
+      "name": "trystero",
+      "fork": true,
+      "private": false,
+      "upstream": "dmotz/trystero",
+      "ahead_by": 0,
+      "pushed_at": "2024-07-27T21:25:07Z",
+      "description": "✨🤝✨ Build instant multiplayer webapps, no server required — Magic WebRTC matchmaking over BitTorrent, Nostr, MQTT, IPFS, Supabase, and Firebase",
+      "topics": [],
+      "homepage": "https://oxism.com/trystero",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 1261,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/ts-lorem-ipsum-word-frequencies",
+      "owner": "jzombie",
+      "name": "ts-lorem-ipsum-word-frequencies",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2021-12-01T14:22:13Z",
+      "topics": [],
+      "language": "TypeScript",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "size_kb": 57,
+      "has_readme": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    },
+    {
+      "id": "jzombie/umap-rs",
+      "owner": "jzombie",
+      "name": "umap-rs",
+      "fork": true,
+      "private": false,
+      "upstream": "wilsonzlin/umap-rs",
+      "ahead_by": 0,
+      "pushed_at": "2025-12-02T03:50:50Z",
+      "description": "Fast, parallel, memory-efficient Rust implementation of UMAP",
+      "topics": [],
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "BSD-3-Clause",
+      "size_kb": 301,
+      "has_readme": true,
+      "has_agents_md": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/unlocker",
+      "owner": "jzombie",
+      "name": "unlocker",
+      "fork": true,
+      "private": false,
+      "upstream": "coolrepo99/unlocker",
+      "ahead_by": 46,
+      "pushed_at": "2017-12-01T03:01:15Z",
+      "topics": [],
+      "language": "Python",
+      "stars": 1,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 22711,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    },
+    {
+      "id": "jzombie/vectorizer",
+      "owner": "jzombie",
+      "name": "vectorizer",
+      "fork": true,
+      "private": false,
+      "upstream": "btk/vectorizer",
+      "ahead_by": 0,
+      "pushed_at": "2022-11-30T13:09:11Z",
+      "description": "Potrace based multi-colored raster to vector tracer. Inputs PNG/JPG returns SVG",
+      "topics": [],
+      "homepage": "https://vectormaker.co/",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 0,
+      "license": "MIT",
+      "size_kb": 6425,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "master"
+      ],
+      "visible": false,
+      "visible_reason": "fork: neither diverged nor load-bearing"
+    },
+    {
+      "id": "jzombie/windows-headless",
+      "owner": "jzombie",
+      "name": "windows-headless",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2026-11-02T10:37:07Z",
+      "description": "Turn a Microsoft ISO into an SSH-ready Windows 11 VM in one command. Unattended installation.",
+      "topics": [
+        "command-line-utilities",
+        "headless",
+        "provisioning",
+        "ssh",
+        "unattended-installation",
+        "virtualization",
+        "windows-11",
+        "windows-headless"
+      ],
+      "language": "Rust",
+      "homepage": "https://crates.io/crates/windows-headless",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 3,
+      "license": "Apache-2.0",
+      "size_kb": 5584,
+      "has_readme": true,
+      "has_license_file": true,
+      "branches": [
+        "main"
+      ],
+      "visible": true,
+      "visible_reason": "tier3: >=1 portfolio edge"
+    },
+    {
+      "id": "jzombie/zenosmosis-blog",
+      "owner": "jzombie",
+      "name": "zenosmosis-blog",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2025-12-31T23:43:26Z",
+      "topics": [],
+      "language": "CSS",
+      "homepage": "https://blog.zenosmosis.com/",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 3,
+      "size_kb": 568,
+      "has_readme": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    },
+    {
+      "id": "jzombie/zenosmosis-website",
+      "owner": "jzombie",
+      "name": "zenosmosis-website",
+      "fork": false,
+      "private": false,
+      "upstream": null,
+      "ahead_by": null,
+      "pushed_at": "2026-10-31T21:39:52Z",
+      "topics": [],
+      "language": "TypeScript",
+      "homepage": "https://zenosmosis.com",
+      "stars": 0,
+      "forks_count": 0,
+      "open_issues": 2,
+      "size_kb": 1146,
+      "has_readme": true,
+      "branches": [
+        "main"
+      ],
+      "visible": false,
+      "visible_reason": "tier3: isolated, no portfolio edge"
+    }
+  ],
+  "edges": [
+    {
+      "source": "jzombie/docker-mqtt-mosquitto-cloudflare-tunnel",
+      "target": "jzombie/deepwiki-to-mdbook",
+      "kind": "workflow",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": null,
+      "version": null
+    },
+    {
+      "source": "jzombie/lab-qemu-portable",
+      "target": "jzombie/windows-headless",
+      "kind": "docs",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": null,
+      "version": null
+    },
+    {
+      "source": "jzombie/live-assets",
+      "target": "jzombie/term-wm",
+      "kind": "docs",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": null,
+      "version": null
+    },
+    {
+      "source": "jzombie/node-avatar-builder",
+      "target": "jzombie/ratatui",
+      "kind": "manifest",
+      "declaring_branches": [
+        "master"
+      ],
+      "recency": "2021-03-24T15:15:43Z",
+      "version": "2.2.0"
+    },
+    {
+      "source": "jzombie/rust-argtuner",
+      "target": "jzombie/ratatui",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-08T02:13:25Z",
+      "version": "0.30.2"
+    },
+    {
+      "source": "jzombie/rust-argtuner",
+      "target": "jzombie/rust-line-ending",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-08T02:13:25Z",
+      "version": "1.5.1"
+    },
+    {
+      "source": "jzombie/rust-argtuner",
+      "target": "jzombie/term-wm",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-08T02:13:25Z",
+      "version": "0.10.15-alpha"
+    },
+    {
+      "source": "jzombie/rust-cargo-pkg-info-struct-builder",
+      "target": "jzombie/rust-string-auto-indent",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2025-02-19T04:19:15Z",
+      "version": "0.1.0-alpha"
+    },
+    {
+      "source": "jzombie/rust-llkv",
+      "target": "jzombie/deepwiki-to-mdbook",
+      "kind": "workflow",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": null,
+      "version": null
+    },
+    {
+      "source": "jzombie/rust-llkv",
+      "target": "jzombie/ratatui",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-03-02T11:45:35Z",
+      "version": "0.1.41"
+    },
+    {
+      "source": "jzombie/rust-llkv",
+      "target": "jzombie/rust-simd-r-drive",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-03-02T11:45:35Z",
+      "version": "0.15.5-alpha"
+    },
+    {
+      "source": "jzombie/rust-muxio",
+      "target": "jzombie/bitcode",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-01T00:17:34Z",
+      "version": "0.6.9"
+    },
+    {
+      "source": "jzombie/rust-muxio",
+      "target": "jzombie/deepwiki-to-mdbook",
+      "kind": "workflow",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": null,
+      "version": null
+    },
+    {
+      "source": "jzombie/rust-muxio",
+      "target": "jzombie/ratatui",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-01T00:17:34Z",
+      "version": "0.1.44"
+    },
+    {
+      "source": "jzombie/rust-oxdock",
+      "target": "jzombie/libtest-mimic",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-08T02:16:01Z",
+      "version": "0.8.2"
+    },
+    {
+      "source": "jzombie/rust-oxdock",
+      "target": "jzombie/rust-line-ending",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-08T02:16:01Z",
+      "version": "1.6.0"
+    },
+    {
+      "source": "jzombie/rust-oxdock",
+      "target": "jzombie/rust-muxio",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-08T02:16:01Z",
+      "version": "0.17.0-alpha"
+    },
+    {
+      "source": "jzombie/rust-ratatui-example-counter-app",
+      "target": "jzombie/ratatui",
+      "kind": "manifest",
+      "declaring_branches": [
+        "master"
+      ],
+      "recency": "2025-02-02T20:55:29Z",
+      "version": "0.29.0"
+    },
+    {
+      "source": "jzombie/rust-ratatui-example-json-editor-app",
+      "target": "jzombie/ratatui",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2025-02-02T20:58:52Z",
+      "version": "0.29.0"
+    },
+    {
+      "source": "jzombie/rust-reqwest-drive",
+      "target": "jzombie/bitcode",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-01T21:38:48Z",
+      "version": "0.6.9"
+    },
+    {
+      "source": "jzombie/rust-reqwest-drive",
+      "target": "jzombie/ratatui",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-01T21:38:48Z",
+      "version": "0.1.44"
+    },
+    {
+      "source": "jzombie/rust-reqwest-drive",
+      "target": "jzombie/rust-cache-manager",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-01T21:38:48Z",
+      "version": "0.6.0"
+    },
+    {
+      "source": "jzombie/rust-reqwest-drive",
+      "target": "jzombie/rust-simd-r-drive",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-01T21:38:48Z",
+      "version": "0.17.3-alpha"
+    },
+    {
+      "source": "jzombie/rust-sec-fetcher",
+      "target": "jzombie/bitcode",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-09-18T17:02:27Z",
+      "version": "0.6.9"
+    },
+    {
+      "source": "jzombie/rust-sec-fetcher",
+      "target": "jzombie/deepwiki-to-mdbook",
+      "kind": "workflow",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": null,
+      "version": null
+    },
+    {
+      "source": "jzombie/rust-sec-fetcher",
+      "target": "jzombie/ratatui",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-09-18T17:02:27Z",
+      "version": "0.1.44"
+    },
+    {
+      "source": "jzombie/rust-sec-fetcher",
+      "target": "jzombie/rust-reqwest-drive",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-09-18T17:02:27Z",
+      "version": "0.13.2-alpha.2"
+    },
+    {
+      "source": "jzombie/rust-sec-fetcher",
+      "target": "jzombie/rust-simd-r-drive",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-09-18T17:02:27Z",
+      "version": "0.16.0-alpha"
+    },
+    {
+      "source": "jzombie/rust-simd-r-drive",
+      "target": "jzombie/bitcode",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-02T10:14:00Z",
+      "version": "0.6.9"
+    },
+    {
+      "source": "jzombie/rust-simd-r-drive",
+      "target": "jzombie/deepwiki-to-mdbook",
+      "kind": "workflow",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": null,
+      "version": null
+    },
+    {
+      "source": "jzombie/rust-simd-r-drive",
+      "target": "jzombie/ratatui",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-02T10:14:00Z",
+      "version": "0.1.44"
+    },
+    {
+      "source": "jzombie/rust-simd-r-drive",
+      "target": "jzombie/rust-muxio",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-02T10:14:00Z",
+      "version": "0.17.2-alpha"
+    },
+    {
+      "source": "jzombie/rust-string-auto-indent",
+      "target": "jzombie/rust-line-ending",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2025-03-03T19:22:58Z",
+      "version": "1.2.0"
+    },
+    {
+      "source": "jzombie/rust-ticker-sniffer",
+      "target": "jzombie/rust-embed-bytes",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2025-03-04T21:39:30Z",
+      "version": "0.1.0-alpha6"
+    },
+    {
+      "source": "jzombie/rust-triplets",
+      "target": "jzombie/bitcode",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-02T08:45:11Z",
+      "version": "0.6.9"
+    },
+    {
+      "source": "jzombie/rust-triplets",
+      "target": "jzombie/bm25",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-02T08:45:11Z",
+      "version": "2.3.2"
+    },
+    {
+      "source": "jzombie/rust-triplets",
+      "target": "jzombie/ratatui",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-02T08:45:11Z",
+      "version": "0.1.44"
+    },
+    {
+      "source": "jzombie/rust-triplets",
+      "target": "jzombie/rust-cache-manager",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-02T08:45:11Z",
+      "version": "0.6.0"
+    },
+    {
+      "source": "jzombie/rust-triplets",
+      "target": "jzombie/rust-line-ending",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-02T08:45:11Z",
+      "version": "1.5.1"
+    },
+    {
+      "source": "jzombie/rust-triplets",
+      "target": "jzombie/rust-reqwest-drive",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-02T08:45:11Z",
+      "version": "0.13.5-alpha.1"
+    },
+    {
+      "source": "jzombie/rust-triplets",
+      "target": "jzombie/rust-simd-r-drive",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-02T08:45:11Z",
+      "version": "0.17.3-alpha"
+    },
+    {
+      "source": "jzombie/sqlite-sqllogictest-corpus",
+      "target": "jzombie/deepwiki-to-mdbook",
+      "kind": "workflow",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": null,
+      "version": null
+    },
+    {
+      "source": "jzombie/sshfs-mac-docker",
+      "target": "jzombie/deepwiki-to-mdbook",
+      "kind": "workflow",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": null,
+      "version": null
+    },
+    {
+      "source": "jzombie/str0m",
+      "target": "jzombie/ratatui",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-10-04T20:33:17Z",
+      "version": "0.1.44"
+    },
+    {
+      "source": "jzombie/term-icon-lab",
+      "target": "jzombie/ratatui",
+      "kind": "manifest",
+      "declaring_branches": [
+        "dev--draft"
+      ],
+      "recency": "2026-08-25T16:24:52Z",
+      "version": "0.30.2"
+    },
+    {
+      "source": "jzombie/term-wm",
+      "target": "jzombie/bitcode",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-01T02:08:06Z",
+      "version": "0.6.9"
+    },
+    {
+      "source": "jzombie/term-wm",
+      "target": "jzombie/live-assets",
+      "kind": "docs",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": null,
+      "version": null
+    },
+    {
+      "source": "jzombie/term-wm",
+      "target": "jzombie/ratatui",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-01T02:08:06Z",
+      "version": "0.30.2"
+    },
+    {
+      "source": "jzombie/term-wm",
+      "target": "jzombie/rust-line-ending",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-01T02:08:06Z",
+      "version": "1.5.1"
+    },
+    {
+      "source": "jzombie/term-wm",
+      "target": "jzombie/rust-muxio",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-01T02:08:06Z",
+      "version": "0.17.0-alpha"
+    },
+    {
+      "source": "jzombie/term-wm",
+      "target": "jzombie/rust-oxdock",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-01T02:08:06Z",
+      "version": "0.21.0-alpha"
+    },
+    {
+      "source": "jzombie/term-wm",
+      "target": "jzombie/term-wm-vt100",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-01T02:08:06Z",
+      "version": "0.16.2-patch4"
+    },
+    {
+      "source": "jzombie/umap-rs",
+      "target": "jzombie/ratatui",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2025-12-02T03:50:50Z",
+      "version": null
+    },
+    {
+      "source": "jzombie/windows-headless",
+      "target": "jzombie/lab-qemu-portable",
+      "kind": "docs",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": null,
+      "version": null
+    },
+    {
+      "source": "jzombie/windows-headless",
+      "target": "jzombie/ratatui",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-02T10:37:07Z",
+      "version": "0.1.44"
+    },
+    {
+      "source": "jzombie/windows-headless",
+      "target": "jzombie/rust-cache-manager",
+      "kind": "manifest",
+      "declaring_branches": [
+        "main"
+      ],
+      "recency": "2026-11-02T10:37:07Z",
+      "version": "0.6.0"
+    }
+  ]
+}
