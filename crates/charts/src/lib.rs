@@ -187,9 +187,9 @@ fn share_rows(graph_json: &str, n: usize) -> anyhow::Result<Vec<SliceRow>> {
 
 /// One focus bar: everything preformatted — the script interpolates only.
 /// `bx`/`bw` place the bar against the zero axis; name and value live in
-/// fixed left columns (right-anchored). Each text element carries its own
-/// ink: page-gray normally, dark when its bar crosses underneath it (the
-/// bar is opaque, so dark-on-fill reads in either page theme).
+/// fixed left columns (right-anchored). Ink splits per pixel, not per
+/// element: gray text throughout, dark re-drawn clipped to the bar rect —
+/// a label straddling the bar edge reads correctly on both sides.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 struct FocusRow {
     label: String,
@@ -202,8 +202,7 @@ struct FocusRow {
     ty: String,
     vx: String,
     vanchor: String,
-    name_ink: String,
-    value_ink: String,
+    clip: String,
 }
 
 /// Chart document: diverging bars from a zero axis. Same contract as PieDoc
@@ -218,6 +217,7 @@ struct FocusDoc {
     bar_h: String,
     fs: String,
     ink: String,
+    bar_ink: String,
     muted: String,
     mx: String,
     my: String,
@@ -356,20 +356,6 @@ fn focus_rows(graph_json: &str, n_top: usize, n_bottom: usize) -> anyhow::Result
             };
             let bx = if f >= 0.0 { zero_x } else { zero_x - len };
             let ty = title_h + i as f64 * row_h + 18.0;
-            // Ink per element: the value column ends at 200 and names at
-            // 130, so a negative bar crossing those x-lines sits under the
-            // text. Dark-on-fill reads in either page theme; gray is for
-            // text over the page itself. Positive bars never reach left.
-            let value_ink = if f < 0.0 && len > 60.0 {
-                palette::INK_ON_BAR
-            } else {
-                palette::INK
-            };
-            let name_ink = if f < 0.0 && len > 130.0 {
-                palette::INK_ON_BAR
-            } else {
-                palette::INK
-            };
             FocusRow {
                 label: xml_escape(&truncate_name(label, LABEL_MAX)),
                 value: format!("{f:.2}"),
@@ -385,8 +371,7 @@ fn focus_rows(graph_json: &str, n_top: usize, n_bottom: usize) -> anyhow::Result
                 ty: f1(ty),
                 vx: f1(value_x),
                 vanchor: "end".to_string(),
-                name_ink: name_ink.to_string(),
-                value_ink: value_ink.to_string(),
+                clip: format!("fc{i}"),
             }
         })
         .collect();
@@ -412,6 +397,7 @@ fn focus_bars(graph_json: String, n_top: i64, n_bottom: i64) -> anyhow::Result<V
         bar_h: "14".to_string(),
         fs: "14".to_string(),
         ink: palette::INK.to_string(),
+        bar_ink: palette::INK_ON_BAR.to_string(),
         muted: palette::MUTED.to_string(),
         mx: f1(240.0),
         my: f1(44.0 + 40.0),
@@ -440,9 +426,11 @@ pub fn render_focus_svg(graph_json: &str) -> anyhow::Result<String> {
         } ELSE {
             FOR $r: MAP<ANY> IN $doc.rows {
                 APPEND out.svg """
+                    <clipPath id="{{ $r.clip }}"><rect x="{{ $r.bx }}" y="{{ $r.by }}" width="{{ $r.bw }}" height="{{ $doc.bar_h }}"/></clipPath>
                     <rect x="{{ $r.bx }}" y="{{ $r.by }}" width="{{ $r.bw }}" height="{{ $doc.bar_h }}" fill="{{ $r.color }}"><title>{{ $r.label }} {{ $r.value }}</title></rect>
                     """
-                APPEND out.svg "<text x=\"{{ $r.tx }}\" y=\"{{ $r.ty }}\" text-anchor=\"end\" font-size=\"{{ $doc.fs }}\" fill=\"{{ $r.name_ink }}\">{{ $r.label }}</text><text x=\"{{ $r.vx }}\" y=\"{{ $r.ty }}\" text-anchor=\"end\" font-size=\"{{ $doc.fs }}\" fill=\"{{ $r.value_ink }}\">{{ $r.value }}</text>"
+                APPEND out.svg "<text x=\"{{ $r.tx }}\" y=\"{{ $r.ty }}\" text-anchor=\"end\" font-size=\"{{ $doc.fs }}\" fill=\"{{ $doc.ink }}\">{{ $r.label }}</text><text x=\"{{ $r.vx }}\" y=\"{{ $r.ty }}\" text-anchor=\"end\" font-size=\"{{ $doc.fs }}\" fill=\"{{ $doc.ink }}\">{{ $r.value }}</text>"
+                APPEND out.svg "<text x=\"{{ $r.tx }}\" y=\"{{ $r.ty }}\" text-anchor=\"end\" font-size=\"{{ $doc.fs }}\" fill=\"{{ $doc.bar_ink }}\" clip-path=\"url(#{{ $r.clip }})\">{{ $r.label }}</text><text x=\"{{ $r.vx }}\" y=\"{{ $r.ty }}\" text-anchor=\"end\" font-size=\"{{ $doc.fs }}\" fill=\"{{ $doc.bar_ink }}\" clip-path=\"url(#{{ $r.clip }})\">{{ $r.value }}</text>"
             }
         }
         APPEND out.svg $doc.footer
@@ -783,12 +771,6 @@ mod tests {
         // the full half-width despite |−4| ≠ |2|.
         assert!((up_bw - 200.0).abs() < 1e-6);
         assert!((down_bw - 200.0).abs() < 1e-6);
-        // Short bars touch no text: page-gray throughout.
-        assert_eq!(up.name_ink, palette::INK);
-        assert_eq!(up.value_ink, palette::INK);
-        // Long negative bar crosses both columns: dark-on-fill.
-        assert_eq!(down.name_ink, palette::INK_ON_BAR);
-        assert_eq!(down.value_ink, palette::INK_ON_BAR);
         // Long names truncate; short ones pass through.
         assert_eq!(truncate_name("short", LABEL_MAX), "short");
         assert!(truncate_name(&"x".repeat(40), LABEL_MAX).ends_with('…'));
@@ -796,21 +778,25 @@ mod tests {
 
     #[test]
     fn focus_ink_splits_by_crossing() {
-        // neg_max = 10: mid (-2) spans 40px — crosses neither the value
-        // column (200) nor names (130), so both stay gray. low (-10)
-        // spans the full half and crosses both, so both go dark.
+        // Two-pass ink: gray text throughout, dark re-drawn clipped to each
+        // bar rect — clip ids unique per row, both passes present in markup.
         let g = graph_with_focus(&[
             ("top", Some(10.0)),
             ("mid", Some(-2.0)),
             ("low", Some(-10.0)),
         ]);
         let rows = focus_rows(&g, 12, 5).unwrap();
-        let mid = rows.iter().find(|r| r.label == "mid").unwrap();
-        assert_eq!(mid.value_ink, palette::INK);
-        assert_eq!(mid.name_ink, palette::INK);
-        let low = rows.iter().find(|r| r.label == "low").unwrap();
-        assert_eq!(low.value_ink, palette::INK_ON_BAR);
-        assert_eq!(low.name_ink, palette::INK_ON_BAR);
+        let mut clips: Vec<&str> = rows.iter().map(|r| r.clip.as_str()).collect();
+        clips.sort_unstable();
+        clips.dedup();
+        assert_eq!(clips.len(), rows.len());
+        let svg = render_focus_svg(&g).unwrap();
+        assert!(svg.contains("<clipPath"));
+        for r in &rows {
+            assert!(svg.contains(&format!("url(#{})", r.clip)));
+        }
+        assert!(svg.contains(palette::INK));
+        assert!(svg.contains(palette::INK_ON_BAR));
     }
 
     fn mixed_ownership_graph() -> String {
