@@ -615,7 +615,7 @@ fn indicators(graph_json: String, only: String) -> anyhow::Result<Value> {
             let norm = (h / 6.0).clamp(0.0, 1.0);
             IndicatorRow {
                 band: name.to_string(),
-                file: format!("{name}.svg"),
+                file: format!("indicators/{name}.svg"),
                 label: format!("{name} {h:.2}"),
                 heat: format!("{h:.2}"),
                 color: heat_color(h).to_string(),
@@ -954,7 +954,7 @@ mod tests {
         let md = render_indicators_md().unwrap();
         assert!(md.contains("| badge | band | heat |\n|---|---|---|\n"));
         for band in ["heating", "steady", "cooling", "dormant"] {
-            assert!(md.contains(&format!("| ![{band}]({band}.svg) | {band} |")));
+            assert!(md.contains(&format!("| ![{band}](indicators/{band}.svg) | {band} |")));
         }
         assert!(md.ends_with("|\n"));
     }

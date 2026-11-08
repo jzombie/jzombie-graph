@@ -4,7 +4,7 @@
 
 | badge | band | heat |
 |---|---|---|
-| ![heating](heating.svg) | heating | 3.00 |
-| ![steady](steady.svg) | steady | 1.00 |
-| ![cooling](cooling.svg) | cooling | 0.25 |
-| ![dormant](dormant.svg) | dormant | 0.00 |
+| ![heating](indicators/heating.svg) | heating | 3.00 |
+| ![steady](indicators/steady.svg) | steady | 1.00 |
+| ![cooling](indicators/cooling.svg) | cooling | 0.25 |
+| ![dormant](indicators/dormant.svg) | dormant | 0.00 |
