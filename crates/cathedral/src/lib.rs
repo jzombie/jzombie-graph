@@ -378,17 +378,30 @@ fn render_pre(graph: &Graph, cluster: &Cluster) -> String {
         let mut y = (fy * (HEIGHT as f64 - 3.0) + 1.0).round() as isize;
         x = x.clamp(0, WIDTH as isize - w as isize);
         y = y.clamp(0, HEIGHT as isize - 1);
-        // Nudge down/right until free (deterministic, bounded).
-        for _ in 0..HEIGHT {
-            if boxes.iter().all(|(ox, oy, ow, _)| {
-                (x as usize + w < *ox) || (*ox + *ow < x as usize) || (y as usize != *oy)
-            }) {
-                break;
-            }
-            y += 1;
-            if y as usize >= HEIGHT {
-                y = 0;
-                x = (x + 3).min(WIDTH as isize - w as isize);
+        // Least-displacement nudge: nearest free cell in every direction
+        // (deterministic spiral), not down/right only — one-directional
+        // nudging stacks leaves into columns and inverts the visual
+        // hierarchy (leaf reads as hub).
+        let (ix, iy) = (x, y);
+        'place: for r in 0..(WIDTH + HEIGHT) as isize {
+            for dy in -r..=r {
+                for dx in -r..=r {
+                    if dy.abs().max(dx.abs()) != r {
+                        continue;
+                    }
+                    let (nx, ny) = (ix + dx, iy + dy);
+                    if nx < 0 || ny < 0 || nx > WIDTH as isize - w as isize || ny >= HEIGHT as isize
+                    {
+                        continue;
+                    }
+                    if boxes.iter().all(|(ox, oy, ow, _)| {
+                        (nx as usize + w < *ox) || (*ox + *ow < nx as usize) || (ny as usize != *oy)
+                    }) {
+                        x = nx;
+                        y = ny;
+                        break 'place;
+                    }
+                }
             }
         }
         let (xu, yu) = (x as usize, y as usize);
@@ -401,6 +414,10 @@ fn render_pre(graph: &Graph, cluster: &Cluster) -> String {
     let dw = WIDTH * 2;
     let dh = HEIGHT * 4;
     let mut dots: Vec<Vec<bool>> = vec![vec![false; dw]; dh];
+    // Routed traces: one path per real edge, never through a node box
+    // it isn't incident to. Boxes are obstacles for every edge except
+    // their own two endpoints; BFS on the dot grid finds the way around.
+    // Straight-line fallback only if enclosed (never observed).
     for (a, b) in cluster.edges.iter().chain(cluster.weak.iter()) {
         let Some(&(ax, ay, aw)) = placed.get(a.as_str()) else {
             continue;
@@ -408,9 +425,8 @@ fn render_pre(graph: &Graph, cluster: &Cluster) -> String {
         let Some(&(bx, by, bw)) = placed.get(b.as_str()) else {
             continue;
         };
-        let (x0, y0) = (ax as isize * 2 + aw as isize, ay as isize * 4 + 2);
-        let (x1, y1) = (bx as isize * 2 + bw as isize, by as isize * 4 + 2);
-        for (x, y) in bresenham(x0, y0, x1, y1) {
+        let path = route_around_boxes(dw, dh, &boxes, (ax, ay, aw), (bx, by, bw));
+        for (x, y) in path {
             if x < 0 || y < 0 || x >= dw as isize || y >= dh as isize {
                 continue;
             }
@@ -573,6 +589,97 @@ fn layout(cluster: &Cluster) -> BTreeMap<String, (f64, f64)> {
         .collect()
 }
 
+/// BFS route from source-box center to target-box center that never
+/// enters a third-party node box. Third-party boxes are obstacles;
+/// source/target interiors are passable (masking clears them after).
+/// 8-directional, deterministic neighbor order. Falls back to a straight
+/// line only when enclosed.
+fn route_around_boxes(
+    dw: usize,
+    dh: usize,
+    boxes: &[(usize, usize, usize, usize)],
+    src: (usize, usize, usize),
+    tgt: (usize, usize, usize),
+) -> Vec<(isize, isize)> {
+    use std::collections::VecDeque;
+    let (ax, ay, aw) = src;
+    let (bx, by, bw) = tgt;
+    let start = (ax as isize * 2 + aw as isize, ay as isize * 4 + 2);
+    let goal = (bx as isize * 2 + bw as isize, by as isize * 4 + 2);
+    let inside = |x: isize, y: isize, b: &(usize, usize, usize, usize)| {
+        x >= b.0 as isize * 2
+            && x < (b.0 + b.2) as isize * 2
+            && y >= b.1 as isize * 4
+            && y < (b.1 + 1) as isize * 4
+    };
+    let src_box = boxes.iter().find(|b| b.0 == ax && b.1 == ay && b.2 == aw);
+    let tgt_box = boxes.iter().find(|b| b.0 == bx && b.1 == by && b.2 == bw);
+    let passable = |x: isize, y: isize| {
+        if x < 0 || y < 0 || x >= dw as isize || y >= dh as isize {
+            return false;
+        }
+        for b in boxes {
+            let is_endpoint = Some(b) == src_box || Some(b) == tgt_box;
+            if !is_endpoint && inside(x, y, b) {
+                return false;
+            }
+        }
+        true
+    };
+    if !passable(start.0, start.1) || !passable(goal.0, goal.1) {
+        return bresenham(start.0, start.1, goal.0, goal.1);
+    }
+    // Neighbor order is fixed so the same graph always draws the same way.
+    const DIRS: [(isize, isize); 8] = [
+        (1, 0),
+        (1, 1),
+        (0, 1),
+        (-1, 1),
+        (-1, 0),
+        (-1, -1),
+        (0, -1),
+        (1, -1),
+    ];
+    let flat = |x: isize, y: isize| y as usize * dw + x as usize;
+    let mut parent: Vec<i32> = vec![-2; dw * dh];
+    let mut q = VecDeque::new();
+    parent[flat(start.0, start.1)] = -1;
+    q.push_back(start);
+    while let Some((x, y)) = q.pop_front() {
+        if (x, y) == goal {
+            break;
+        }
+        for (dx, dy) in DIRS {
+            let (nx, ny) = (x + dx, y + dy);
+            if !passable(nx, ny) {
+                continue;
+            }
+            let f = flat(nx, ny);
+            if parent[f] != -2 {
+                continue;
+            }
+            parent[f] = flat(x, y) as i32;
+            q.push_back((nx, ny));
+        }
+    }
+    if parent[flat(goal.0, goal.1)] == -2 {
+        return bresenham(start.0, start.1, goal.0, goal.1);
+    }
+    let mut path = vec![goal];
+    let mut cur = goal;
+    while cur != start {
+        let p = parent[flat(cur.0, cur.1)];
+        debug_assert!(p >= 0);
+        if p < 0 {
+            break;
+        }
+        cur = ((p as usize % dw) as isize, (p as usize / dw) as isize);
+        path.push(cur);
+    }
+    path.reverse();
+    path
+}
+
 fn bresenham(x0: isize, y0: isize, x1: isize, y1: isize) -> Vec<(isize, isize)> {
     let mut out = Vec::new();
     let (mut x, mut y) = (x0, y0);
@@ -644,6 +751,38 @@ fn push_esc(s: &mut String, c: char) {
 
 fn esc_attr(s: &str) -> String {
     s.replace('&', "&amp;").replace('"', "&quot;")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn inside_dot(x: isize, y: isize, b: &(usize, usize, usize, usize)) -> bool {
+        x >= b.0 as isize * 2
+            && x < (b.0 + b.2) as isize * 2
+            && y >= b.1 as isize * 4
+            && y < (b.1 + 1) as isize * 4
+    }
+
+    #[test]
+    fn routed_traces_never_enter_third_party_boxes() {
+        // Source left, target right, blocker dead center on the straight
+        // line: a straight trace would cross it; the route must go around.
+        let boxes = vec![(2, 2, 4, 1), (10, 2, 4, 1), (6, 2, 4, 1)];
+        let path = route_around_boxes(32, 12, &boxes, (2, 2, 4), (10, 2, 4));
+        assert!(!path.is_empty(), "a way around exists");
+        for (x, y) in &path {
+            assert!(
+                !inside_dot(*x, *y, &boxes[2]),
+                "trace enters unconnected box at ({x}, {y})"
+            );
+        }
+        // Endpoints still terminate inside their own boxes.
+        let first = path[0];
+        let last = path[path.len() - 1];
+        assert!(inside_dot(first.0, first.1, &boxes[0]));
+        assert!(inside_dot(last.0, last.1, &boxes[1]));
+    }
 }
 
 fn abbreviations<'a>(graph: &'a Graph, wanted: &[String]) -> BTreeMap<&'a str, String> {
