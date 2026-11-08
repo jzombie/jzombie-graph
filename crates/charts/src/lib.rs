@@ -12,6 +12,8 @@
 
 use oxdock::{Engine, HostModule, OxDockFn, Value, oxdock, oxdock_func, oxdock_parser};
 
+pub mod palette;
+
 /// One pie slice: everything preformatted — the script interpolates only.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 struct SliceRow {
@@ -98,19 +100,10 @@ fn f1(x: f64) -> String {
     format!("{x:.1}")
 }
 
-/// Okabe-Ito categorical palette (colorblind-safe); `Other` is gray.
-const PALETTE: [&str; 8] = [
-    "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999",
-];
-const OTHER_COLOR: &str = "#BBBBBB";
-/// Text ink: #767676 passes WCAG AA on white (4.54) AND black (4.62) —
-// the chart must read in GitHub light and dark mode from one static file.
-const INK: &str = "#767676";
-const MUTED: &str = "#767676";
-
 /// Top-`n` repos by trailing-5d commits plus an `Other` bucket, with pie
 /// geometry precomputed. Zero-commit repos never slice. Empty when nothing
 /// committed in window (script emits a labeled empty canvas instead).
+/// Colors come from the shared [`palette`] module — same values every chart.
 fn share_rows(graph_json: &str, n: usize) -> anyhow::Result<Vec<SliceRow>> {
     let graph = jzombie_graph::graph::Graph::from_json(graph_json)?;
     let mut repos: Vec<(&str, u32)> = graph
@@ -146,12 +139,14 @@ fn share_rows(graph_json: &str, n: usize) -> anyhow::Result<Vec<SliceRow>> {
             let a0 = -90.0 + acc * 360.0;
             acc += share;
             let color = if label == "Other" {
-                OTHER_COLOR.to_string()
+                palette::OTHER.to_string()
             } else {
-                PALETTE[i % PALETTE.len()].to_string()
+                palette::categorical(i).to_string()
             };
-            let ty =
-                lay.title_h + (lay.body_h - kept_len as f64 * lay.row_h) / 2.0 + i as f64 * lay.row_h + 18.0;
+            let ty = lay.title_h
+                + (lay.body_h - kept_len as f64 * lay.row_h) / 2.0
+                + i as f64 * lay.row_h
+                + 18.0;
             SliceRow {
                 label: xml_escape(&label),
                 pct: format!("{:.1}%", share * 100.0),
@@ -196,9 +191,10 @@ fn pie_slices(graph_json: String, n: i64) -> anyhow::Result<Value> {
     let lay = layout(rows.len());
     let doc = PieDoc {
         header: format!(
-            "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"Helvetica, Arial, sans-serif\"><title>Trailing-5d commit share</title><text x=\"16\" y=\"30\" font-size=\"20\" fill=\"{INK}\">Trailing-5d commit share</text>",
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"Helvetica, Arial, sans-serif\"><title>Trailing-5d commit share</title><text x=\"16\" y=\"30\" font-size=\"20\" fill=\"{ink}\">Trailing-5d commit share</text>",
             f1(lay.w),
-            f1(lay.h)
+            f1(lay.h),
+            ink = palette::INK
         ),
         footer: "</svg>".to_string(),
         cx: f1(lay.cx),
@@ -206,8 +202,8 @@ fn pie_slices(graph_json: String, n: i64) -> anyhow::Result<Value> {
         r: f1(lay.r),
         cell: "14".to_string(),
         fs: "14".to_string(),
-        ink: INK.to_string(),
-        muted: MUTED.to_string(),
+        ink: palette::INK.to_string(),
+        muted: palette::MUTED.to_string(),
         mx: f1(lay.w / 2.0),
         my: f1(lay.title_h + 40.0),
         msg: "No commits in trailing 5d".to_string(),

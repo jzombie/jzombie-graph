@@ -21,6 +21,14 @@ cargo run -p jzombie-graph-cartographer -- data/json/portfolio-graph.json --outp
 
 Local only, no API calls. Reads the fresh JSON, writes the clickable `<pre>` fragment. Working copies stay in `data/` — never commit them; Pages serves them after publish.
 
+## Regenerate the charts
+
+```bash
+cargo run -p jzombie-graph-charts -- --output data/svg/portfolio-graph-share.svg
+```
+
+Local only, no API calls. Reads the fresh JSON, writes the commit-share pie. Colors come from the shared `charts::palette` module so every chart reads as one family; bytes pinned by snapshot tests.
+
 ## Focus ranking (offline, no API calls)
 
 ```bash
@@ -39,7 +47,7 @@ Static, no API calls and no selector — derived from the Rust types. To bless a
 
 ## Daily publish (CI only)
 
-`.github/workflows/publish.yml` builds the workspace, installs the oxdock CLI (tracks latest), and runs `.github/scripts/pipeline.oxfile` (collect → schema → render, fail-closed), then deploys `data/` to Pages. Trigger: daily cron + manual `workflow_dispatch`.
+`.github/workflows/publish.yml` builds the workspace, installs the oxdock CLI (tracks latest), and runs `.github/scripts/pipeline.oxfile` (collect → schema → render → charts, fail-closed), then deploys `data/` to Pages. Trigger: daily cron + manual `workflow_dispatch`.
 
 ## License
 

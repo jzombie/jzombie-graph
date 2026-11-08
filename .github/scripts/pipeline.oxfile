@@ -1,4 +1,4 @@
-# Nightly publish: build, collect the graph, write the schema, render the fragment.
+# Nightly publish: build, collect the graph, write the schema, render the fragment and charts.
 # Called from publish.yml. If any step fails the run stops and the old site stays up.
 
 INHERIT_ENV [JZOMBIE_GRAPH_TOKEN, CARGO_TARGET_DIR]
@@ -16,5 +16,8 @@ RUN ["./target/release/jzombie-graph", "--format", "schema", "--output", "data/j
 
 ECHO "render: staged JSON -> data/markdown/fragments/portfolio-graph.md"
 RUN ["./target/release/cartographer", "data/json/portfolio-graph.json", "--output", "data/markdown/fragments/portfolio-graph.md"]
+
+ECHO "charts: staged JSON -> data/svg/portfolio-graph-share.svg"
+RUN ["./target/release/charts", "--output", "data/svg/portfolio-graph-share.svg"]
 
 ECHO "pipeline complete"

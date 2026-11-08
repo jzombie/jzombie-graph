@@ -1,6 +1,0 @@
----
-source: crates/charts/tests/render_share.rs
-assertion_line: 80
-expression: svg
----
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 444.0 256.0" role="img" font-family="Helvetica, Arial, sans-serif"><title>Trailing-5d commit share</title><text x="16" y="30" font-size="20" fill="#767676">Trailing-5d commit share</text><circle cx="106.0" cy="150.0" r="90.0" fill="#E69F00"><title>solo 100.0%</title></circle><rect x="224.0" y="142.0" width="14" height="14" fill="#E69F00"/><text x="246.0" y="155.0" font-size="14" fill="#767676">solo 100.0%</text></svg>
