@@ -1,0 +1,23 @@
+# Daily publish pipeline: collect → schema → render.
+# Run by .github/workflows/publish.yml AFTER the toolchain + release
+# build steps: `oxdock .github/scripts/pipeline.oxfile`.
+# Paths mirror src/paths.rs (the DSL can't import it — keep in sync).
+# Fail-closed: a failing RUN stops the pipeline immediately, so any
+# stage failure means no deploy and Pages keeps serving the last good
+# site. No graph edge comes from this file: the workflow scanner only
+# reads `uses:` tokens, and these are RUN steps.
+
+INHERIT_ENV [JZOMBIE_GRAPH_TOKEN]
+
+WORKSPACE LOCAL
+
+ECHO "collect: sweep -> data/json/portfolio-graph.json"
+RUN ["./target/release/jzombie-graph", "--user", "jzombie", "--format", "json", "--output", "data/json/portfolio-graph.json"]
+
+ECHO "schema: types -> data/json/portfolio-graph-schema.json"
+RUN ["./target/release/jzombie-graph", "--format", "schema", "--output", "data/json/portfolio-graph-schema.json"]
+
+ECHO "render: staged JSON -> data/markdown/fragments/portfolio-graph.md"
+RUN ["./target/release/cartographer", "data/json/portfolio-graph.json", "--output", "data/markdown/fragments/portfolio-graph.md"]
+
+ECHO "pipeline complete"

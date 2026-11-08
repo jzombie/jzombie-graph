@@ -24,16 +24,16 @@ jobs:
       # minutes. Cache-only — no extra workflows, permissions, or binaries.
       - uses: Swatinem/rust-cache@v2
       - run: cargo build --release --workspace
-      # Paths mirror src/paths.rs (YAML can't import it — keep in sync).
-      # Collect: the only network step. Needs the fine-grained PAT
-      # (GITHUB_TOKEN can't enumerate other repos).
-      - run: cargo run --release -- --user jzombie --format json --output data/json/portfolio-graph.json
-      # Schema: static, derived from the types alone — no API, no graph data.
-      - run: cargo run --release -- --format schema --output data/json/portfolio-graph-schema.json
-      # Render: cartographer re-validates the staged JSON through
-      # Graph::from_json, so what ships is schema-checked. Byte-for-byte
-      # transport — the pipeline never edits the output.
-      - run: cargo run --release -p jzombie-graph-cartographer -- data/json/portfolio-graph.json --output data/markdown/fragments/portfolio-graph.md
+      # OxDock owns the pipeline steps (collect → schema → render) via
+      # .github/scripts/pipeline.oxfile. Setup tracks latest (action @main,
+      # engine `latest` by default) — we own both ends, and a bad oxdock
+      # release fails closed (no deploy, last good site keeps serving).
+      # Note: this `uses:` token points in-portfolio, so the sweep records
+      # a Workflow-kind edge (JSON-only, never drawn — associations don't
+      # render). Dogfooding, working as designed.
+      - uses: jzombie/rust-oxdock/.github/actions/setup-oxdock@main
+      # The PAT bridges into the script via INHERIT_ENV (see pipeline.oxfile).
+      - run: oxdock .github/scripts/pipeline.oxfile
       - uses: actions/upload-pages-artifact@v4
         with:
           path: data

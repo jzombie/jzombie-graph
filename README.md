@@ -37,6 +37,10 @@ cargo run -- --format schema --output data/json/portfolio-graph-schema.json
 
 Static, no API calls and no selector — derived from the Rust types. To bless a contract change, copy the lane output over the committed `json/portfolio-graph-schema.json`; the drift test fails CI if the types and the file disagree.
 
+## Daily publish (CI only)
+
+`.github/workflows/publish.yml` builds the workspace, installs the oxdock CLI (tracks latest), and runs `.github/scripts/pipeline.oxfile` (collect → schema → render, fail-closed), then deploys `data/` to Pages. Trigger: daily cron + manual `workflow_dispatch`.
+
 ## License
 
 MIT OR Apache-2.0. See [`LICENSE-MIT`](LICENSE-MIT), [`LICENSE-APACHE`](LICENSE-APACHE).
