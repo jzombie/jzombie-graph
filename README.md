@@ -23,4 +23,4 @@ Local only, no API calls. Reads the fresh `graph.json`, writes the clickable `<p
 
 ## License
 
-MIT OR Apache-2.0. See `LICENSE-MIT`, `LICENSE-APACHE`.
+MIT OR Apache-2.0. See [`LICENSE-MIT`](LICENSE-MIT), [`LICENSE-APACHE`](LICENSE-APACHE).
