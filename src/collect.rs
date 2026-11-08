@@ -187,13 +187,31 @@ pub fn manifest_kind_for_root(path: &str) -> Option<&'static ManifestKind> {
 }
 
 /// Member manifest of a walked kind (`<dir>/Cargo.toml`, never the root)?
+/// Auxiliary manifests are never members: anything under `examples/`,
+/// `tests/`, `benches/`, or `fixtures/` is a demo, harness, or fixture —
+/// never a library another repo links against, and its deps are never the
+/// repo's own. (Without this, e.g. an example app named `tracing` claims
+/// to *provide* the `tracing` crate, and every portfolio repo that really
+/// depends on `tracing` gains a phantom edge to it.)
 pub fn manifest_kind_for_member(path: &str) -> Option<&'static ManifestKind> {
+    if is_auxiliary_manifest(path) {
+        return None;
+    }
     MANIFEST_KINDS.iter().find(|k| {
         k.walk_members
             && path
                 .strip_suffix(k.file)
                 .is_some_and(|pre| pre.ends_with('/'))
     })
+}
+
+/// True when a manifest path lives under a conventional non-library dir.
+/// Cargo never links these as dependencies: they are demos (`examples/`),
+/// harnesses (`tests/`, `benches/`), or data (`fixtures/`).
+pub fn is_auxiliary_manifest(path: &str) -> bool {
+    let mut segs = path.split('/');
+    segs.next_back();
+    segs.any(|s| matches!(s, "examples" | "tests" | "benches" | "fixtures"))
 }
 
 /// package.json: `dependencies` + peer + optional, all uniform presence.
@@ -613,6 +631,24 @@ cc = "1"
         );
         assert!(!m.deps.contains_key("criterion"), "dev-deps excluded");
         assert!(m.deps.contains_key("cc"));
+    }
+
+    #[test]
+    fn auxiliary_manifests_are_not_members() {
+        // The tracing-example case: examples/apps/tracing/Cargo.toml must
+        // not count as a workspace member, or its package name claims to
+        // provide a crate every portfolio repo really depends on.
+        assert!(manifest_kind_for_member("examples/apps/tracing/Cargo.toml").is_none());
+        assert!(manifest_kind_for_member("benches/big/Cargo.toml").is_none());
+        assert!(manifest_kind_for_member("tests/vectors/Cargo.toml").is_none());
+        // A real member that happens to share a name still walks —
+        // ambiguity is reported, never silently resolved.
+        assert!(manifest_kind_for_member("crates/tracing/Cargo.toml").is_some());
+        // Real members still walk.
+        assert!(manifest_kind_for_member("ratatui-core/Cargo.toml").is_some());
+        assert!(manifest_kind_for_member("crates/llkv/Cargo.toml").is_some());
+        // Root is never a member.
+        assert!(manifest_kind_for_member("Cargo.toml").is_none());
     }
 
     #[test]
