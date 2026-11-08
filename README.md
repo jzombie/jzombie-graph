@@ -48,7 +48,7 @@ Same `focus` the dump lane shows — commit heat vs own 30d baseline minus idle 
 oxdock scripts/preview-indicators.oxfile
 ```
 
-Collects fresh, renders every lane, and assembles the committed `preview/portfolio-graph.md` — map fragment verbatim, all charts embedded, indicator table with badges. That page is the visual proof; `preview/` is generated, never hand-edited.
+Collects fresh, renders every lane, and assembles the committed `preview/portfolio-graph.md` — map fragment verbatim, all charts embedded, indicator table with badges. That page is the visual proof; `preview/` is generated, never hand-edited. All markup emission is [OxDock](https://github.com/jzombie/rust-oxdock)-templated; the script only orders the lanes.
 
 ## Regenerate the schema
 

@@ -3,6 +3,7 @@
 *Generated — do not hand-edit. Regenerate with `oxdock scripts/preview-indicators.oxfile`. Fragment carried verbatim; charts embedded as files.*
 
 ## Map fragment
+
 # The zenOSmosis Cluster
 
 jzombie's portfolio as a 2D projection — proximity is edge strength.
@@ -47,6 +48,7 @@ Proximity reflects dependence strength: nodes sharing an edge attract, unconnect
 ## Focus ranking
 
 ![focus](portfolio-graph-focus.svg)
+
 # Indicator preview
 
 *Generated — do not hand-edit. Regenerate with `oxdock scripts/preview-indicators.oxfile`. Badges sit beside this file; the rows come from the same template doc as the SVGs.*

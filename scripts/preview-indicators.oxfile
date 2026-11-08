@@ -1,44 +1,15 @@
-# Full render proof: every visual artifact on one committed page, exactly
-# as github.com renders it. Regenerate, never hand-edit the outputs.
-# Local only (needs the data/ working copies); CI never runs this.
+# Full render proof, one command. All paths live in the binaries
+# (src/paths.rs); this script only orders the lanes. Local only.
 
 WORKSPACE LOCAL
 
-ECHO "collect: live sweep first — the proof renders fresh data, not leftovers"
+ECHO "preview: collect fresh"
 RUN ["cargo", "run", "--quiet", "--release", "--", "--user", "jzombie", "--format", "json"]
 
-ECHO "lanes: render everything to data/"
-RUN ["cargo", "run", "--quiet", "--release", "-p", "jzombie-graph-cartographer", "--"]
-RUN ["cargo", "run", "--quiet", "--release", "-p", "jzombie-graph-charts", "--"]
-RUN ["cargo", "run", "--quiet", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "focus"]
-RUN ["cargo", "run", "--quiet", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "indicators"]
+ECHO "preview: render the fragment"
+RUN ["cargo", "run", "--quiet", "--release", "-p", "jzombie-graph-cartographer"]
 
-ECHO "preview: stage image copies"
-RUN ["mkdir", "-p", "preview/indicators"]
-RUN ["cp", "data/svg/portfolio-graph-share.svg", "data/svg/portfolio-graph-focus.svg", "data/svg/portfolio-graph-indicators.svg", "preview/"]
-
-ECHO "preview: assemble the proof page"
-LET $frag: STRING = READ "data/markdown/fragments/portfolio-graph.md"
-LET $itable: STRING = READ "preview/indicators.md"
-WRITE preview/portfolio-graph.md """
-# portfolio-graph — render proof
-
-*Generated — do not hand-edit. Regenerate with `oxdock scripts/preview-indicators.oxfile`. Fragment carried verbatim; charts embedded as files.*
-
-## Map fragment
-
-"""
-APPEND preview/portfolio-graph.md $frag
-APPEND preview/portfolio-graph.md """
-    ## Commit share
-    
-    ![share](portfolio-graph-share.svg)
-    
-    ## Focus ranking
-    
-    ![focus](portfolio-graph-focus.svg)
-    
-    """
-APPEND preview/portfolio-graph.md $itable
+ECHO "preview: render everything and assemble the proof page"
+RUN ["cargo", "run", "--quiet", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "preview"]
 
 ECHO "preview complete"

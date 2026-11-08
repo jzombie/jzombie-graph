@@ -485,6 +485,7 @@ fn engine() -> Engine {
             PieSlices::registration(),
             FocusBars::registration(),
             Indicators::registration(),
+            Portfolio::registration(),
         ],
         types: vec![],
         record_schemas: vec![],
@@ -603,14 +604,10 @@ pub fn indicator_names() -> Vec<String> {
     BANDS.iter().map(|(name, _)| name.to_string()).collect()
 }
 
-/// Plugin function: indicator document out. Bands are static by design —
-/// the graph arg only keeps the call shape uniform with the other charts.
-#[oxdock_func(pure, name = "INDICATORS")]
-fn indicators(graph_json: String, only: String) -> anyhow::Result<Value> {
-    let _ = graph_json;
-    let rows: Vec<IndicatorRow> = BANDS
+/// Shared row builder: one row per band, strip order.
+fn indicator_rows() -> Vec<IndicatorRow> {
+    BANDS
         .into_iter()
-        .filter(|(name, _)| only.is_empty() || *name == only.as_str())
         .map(|(name, h)| {
             let norm = (h / 6.0).clamp(0.0, 1.0);
             IndicatorRow {
@@ -625,6 +622,17 @@ fn indicators(graph_json: String, only: String) -> anyhow::Result<Value> {
                 cx: String::new(),
             }
         })
+        .collect()
+}
+
+/// Plugin function: indicator document out. Bands are static by design —
+/// the graph arg only keeps the call shape uniform with the other charts.
+#[oxdock_func(pure, name = "INDICATORS")]
+fn indicators(graph_json: String, only: String) -> anyhow::Result<Value> {
+    let _ = graph_json;
+    let rows: Vec<IndicatorRow> = indicator_rows()
+        .into_iter()
+        .filter(|r| only.is_empty() || r.band == only)
         .collect();
     let mut doc = IndicatorDoc {
         header: String::new(),
@@ -642,6 +650,33 @@ fn indicators(graph_json: String, only: String) -> anyhow::Result<Value> {
         f1(doc.rows.len() as f64 * INDICATOR_CELL),
         f1(INDICATOR_CELL),
     );
+    Ok(Value::string(serde_json::to_string(&doc)?))
+}
+
+/// Portfolio page document: fragment + chart embeds + the indicator table
+/// (rendered by its own template, passed in — one row-template total).
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+struct PortfolioDoc {
+    header: String,
+    table: String,
+    footer: String,
+}
+
+/// Plugin function: portfolio page out. Static bands, caller-supplied
+/// fragment and image names — no paths live in any template or script.
+#[oxdock_func(pure, name = "PORTFOLIO")]
+fn portfolio(frag: String, share: String, focus: String, table: String) -> anyhow::Result<Value> {
+    let header = format!(
+        "# portfolio-graph — render proof\n\n*Generated — do not hand-edit. Regenerate with `oxdock scripts/preview-indicators.oxfile`. Fragment carried verbatim; charts embedded as files.*\n\n## Map fragment\n\n{frag}\n## Commit share\n\n![share]({share})\n\n## Focus ranking\n\n![focus]({focus})\n\n",
+        frag = frag.trim_end(),
+        share = share,
+        focus = focus,
+    );
+    let doc = PortfolioDoc {
+        header,
+        table,
+        footer: String::new(),
+    };
     Ok(Value::string(serde_json::to_string(&doc)?))
 }
 
@@ -686,6 +721,40 @@ pub fn render_indicators_md() -> anyhow::Result<String> {
             // terminator below only exists because APPEND emits none.
             APPEND md.md "| ![{{ $r.band }}]({{ $r.file }}) | {{ $r.band }} | {{ $r.heat }} |\n"
         }
+        LET $check: STRING = READ md.md
+        ASSERT_CONTAINS $check "| badge |"
+    };
+    let temp = oxdock::GuardedPath::tempdir().expect("tempdir");
+    let root = temp.as_guarded_path().clone();
+    engine.run_steps_without_snapshot(&root, &steps)?;
+    let resolver = oxdock::PathResolver::new(root.as_path(), root.as_path()).expect("resolver");
+    let out = root.join("md.md").expect("md path");
+    Ok(resolver.read_to_string(&out).expect("read md"))
+}
+
+/// Render the full proof page: fragment + embeds + indicator table.
+/// One OxDock template, zero path literals — names arrive as arguments.
+pub fn render_preview_md(
+    frag: &str,
+    share: &str,
+    focus: &str,
+    table: &str,
+) -> anyhow::Result<String> {
+    let engine = engine();
+    let (frag_arg, share_arg, focus_arg, table_arg) = (
+        frag.to_string(),
+        share.to_string(),
+        focus.to_string(),
+        table.to_string(),
+    );
+    let steps: Vec<oxdock_parser::Step> = oxdock! {
+        modules: [CHARTS],
+        IMPORT [STD, CHARTS]
+        LET $page_json: STRING = CHARTS::PORTFOLIO(#frag_arg, #share_arg, #focus_arg, #table_arg)
+        WRITE rows.json $page_json
+        LET $doc: MAP<ANY> = LOAD_JSON("rows.json")
+        WRITE md.md $doc.header
+        APPEND md.md $doc.table
         LET $check: STRING = READ md.md
         ASSERT_CONTAINS $check "| badge |"
     };
@@ -956,6 +1025,19 @@ mod tests {
         for band in ["heating", "steady", "cooling", "dormant"] {
             assert!(md.contains(&format!("| ![{band}](indicators/{band}.svg) | {band} |")));
         }
+        assert!(md.ends_with("|\n"));
+    }
+
+    #[test]
+    fn preview_page_carries_everything_verbatim() {
+        let table = render_indicators_md().unwrap();
+        let md = render_preview_md("# Frag\n", "s.svg", "f.svg", &table).unwrap();
+        // Fragment verbatim, embeds by file name, indicator rows inlined.
+        assert!(md.contains("# Frag\n"));
+        assert!(md.contains("![share](s.svg)"));
+        assert!(md.contains("![focus](f.svg)"));
+        assert!(md.contains("| ![heating](indicators/heating.svg) | heating | 3.00 |"));
+        assert!(md.contains("oxdock scripts/preview-indicators.oxfile"));
         assert!(md.ends_with("|\n"));
     }
 

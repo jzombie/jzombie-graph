@@ -50,6 +50,10 @@ pub const PREVIEW_INDICATORS_MD: &str = "preview/indicators.md";
 /// working copies; copied at preview time, never hand-placed.
 pub const PREVIEW_INDICATORS_DIR: &str = "preview/indicators";
 
+/// Committed proof page: every visual artifact on one page, as github.com
+/// renders it. Assembled by the preview lane, never hand-edited.
+pub const PREVIEW_PORTFOLIO_MD: &str = "preview/portfolio-graph.md";
+
 /// Checked-in schema expectation the drift test guards. Source, not data:
 /// changing the types means consciously copying the lane output over this.
 pub const COMMITTED_SCHEMA: &str = "json/portfolio-graph-schema.json";
