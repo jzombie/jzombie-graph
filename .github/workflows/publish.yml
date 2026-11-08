@@ -20,6 +20,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      # Warm-cache rebuilds: same checked-in source, seconds instead of
+      # minutes. Cache-only — no extra workflows, permissions, or binaries.
+      - uses: Swatinem/rust-cache@v2
       - run: cargo build --release --workspace
       # Paths mirror src/paths.rs (YAML can't import it — keep in sync).
       # Collect: the only network step. Needs the fine-grained PAT
