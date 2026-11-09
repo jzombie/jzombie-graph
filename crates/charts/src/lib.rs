@@ -1169,12 +1169,6 @@ fn heat_cell(band: &str) -> String {
     format!("<div align=\"center\">![{band}](indicators/{band}.svg)<br><sub>{band}</sub></div>")
 }
 
-/// Published path: local `data/` working copies mirror the Pages layout,
-/// so strip the root to name the contract other projects link.
-fn published(path: &str) -> &str {
-    path.strip_prefix("data/").unwrap_or(path)
-}
-
 /// Topic links for an about cell: tiny `#tag` links to a user-scoped repo
 /// search, capped so one repo can't flood the table. Owner rides the
 /// node — never a baked-in login.
@@ -1261,8 +1255,8 @@ fn data_rows(graph_json: &str) -> anyhow::Result<DataDoc> {
         mid,
         app,
         iso,
-        published(jzombie_graph::paths::GRAPH_JSON),
-        published(jzombie_graph::paths::SCHEMA_JSON),
+        jzombie_graph::paths::GRAPH_JSON,
+        jzombie_graph::paths::SCHEMA_JSON,
     );
     if repos.is_empty() {
         return Ok(DataDoc {

@@ -9,8 +9,7 @@ pub fn render_json(graph: &Graph) -> anyhow::Result<String> {
 }
 
 /// One write path for file assets: creates missing parent directories
-/// (`mkdir -p` semantics — fresh checkouts never have `data/` since it's
-/// gitignored), then writes the bytes verbatim.
+/// (`mkdir -p` semantics), then writes the bytes verbatim.
 pub fn write_file(path: &std::path::Path, contents: &str) -> anyhow::Result<()> {
     if let Some(parent) = path.parent()
         && !parent.as_os_str().is_empty()
@@ -444,7 +443,7 @@ mod tests {
 
     #[test]
     fn write_file_creates_missing_parents() {
-        // Fresh checkouts never have `data/` (gitignored): the write path
+        // Fresh checkouts may lack the generated dirs: the write path
         // must create parents itself. Regression test for the CI failure
         // where collect died with "No such file or directory" on a clean
         // runner (publish run 42516260566).

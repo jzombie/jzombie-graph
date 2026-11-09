@@ -1,4 +1,4 @@
-# Render proof. Tokenless: renders whatever data/ holds.
+# Render proof. Tokenless: renders whatever json/ holds.
 # Re-collect first when stale: oxdock scripts/collect.oxfile, then this.
 WORKSPACE LOCAL
 

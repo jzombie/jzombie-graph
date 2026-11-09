@@ -52,18 +52,19 @@ FUNC PREVIEW() {
     RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "preview"]
 }
 
-# CommitPreview: land the rebuilt proof page. Commits only on change —
-# a quiet sweep pushes nothing. Shell form because the commit is
-# conditional; a bare `git commit` would fail the lane on quiet nights.
-# Schema stays a conscious manual commit; data/ is gitignored by design.
-FUNC COMMIT_PREVIEW() {
+# CommitProof: land the rebuilt proof page, data, and schema (all
+# committed paths — no gitignored working copies anymore). Commits only
+# on change — a quiet sweep pushes nothing. Shell form because the
+# commit is conditional; a bare `git commit` would fail the lane on
+# quiet nights.
+FUNC COMMIT_PROOF() {
     WORKSPACE LOCAL
-    ECHO "lanes: commit rebuilt preview"
+    ECHO "lanes: commit rebuilt proof + data + schema"
     RUN ["git", "config", "user.name", "github-actions[bot]"]
     RUN ["git", "config", "user.email", "github-actions[bot]@users.noreply.github.com"]
-    RUN ["git", "add", "preview"]
-    RUN ["sh", "-c", "git diff --cached --quiet || git commit -m 'nightly preview rebuild'"]
+    RUN ["git", "add", "preview", "json", "svg", "markdown"]
+    RUN ["sh", "-c", "git diff --cached --quiet || git commit -m 'nightly rebuild'"]
     RUN ["git", "push"]
 }
 
-EXPORT [FUNC COLLECT, FUNC FRAGMENT, FUNC CHART_SHARE, FUNC CHART_FOCUS, FUNC CHART_FLAME, FUNC CHART_INDICATORS, FUNC PREVIEW, FUNC COMMIT_PREVIEW]
+EXPORT [FUNC COLLECT, FUNC FRAGMENT, FUNC CHART_SHARE, FUNC CHART_FOCUS, FUNC CHART_FLAME, FUNC CHART_INDICATORS, FUNC PREVIEW, FUNC COMMIT_PROOF]

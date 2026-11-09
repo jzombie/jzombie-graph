@@ -11,7 +11,7 @@ FUNC COLLECT() {
     STEPS::COLLECT()
 }
 
-# RenderProof: tokenless proof page from whatever data/ holds.
+# RenderProof: tokenless proof page from whatever json/ holds.
 FUNC RENDER_PROOF() {
     WORKSPACE LOCAL
     STEPS::FRAGMENT()
@@ -31,7 +31,7 @@ FUNC PIPELINE($collect: BOOL) {
     STEPS::CHART_FLAME()
     STEPS::CHART_INDICATORS()
     STEPS::PREVIEW()
-    STEPS::COMMIT_PREVIEW()
+    STEPS::COMMIT_PROOF()
     ECHO "pipeline complete"
 }
 
