@@ -717,8 +717,8 @@ pub fn render_indicators_md() -> anyhow::Result<String> {
             """
         APPEND md.md "\n"
         FOR $r: MAP<ANY> IN $doc.rows {
-            // TODO: APPEND_LINE once the engine lands it — the explicit
-            // terminator below only exists because APPEND emits none.
+            // TODO: APPEND_LINE adds exactly one LF (verified absent from
+            // engine 0.35.0-alpha) — switch when we track past it.
             APPEND md.md "| ![{{ $r.band }}]({{ $r.file }}) | {{ $r.band }} | {{ $r.heat }} |\n"
         }
         LET $check: STRING = READ md.md

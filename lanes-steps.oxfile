@@ -1,0 +1,48 @@
+# Granular RUN lanes.
+
+INHERIT_ENV [JZOMBIE_GRAPH_TOKEN]
+WORKSPACE LOCAL
+
+# Collect: live sweep, schema rides along.
+FUNC COLLECT() {
+    WORKSPACE LOCAL
+    ECHO "lanes: collect fresh (schema rides along)"
+    RUN ["cargo", "run", "--release", "--", "--user", "jzombie", "--format", "json"]
+}
+
+# Fragment: staged JSON to markdown.
+FUNC FRAGMENT() {
+    WORKSPACE LOCAL
+    ECHO "lanes: render the fragment"
+    RUN ["cargo", "run", "--release", "-p", "jzombie-graph-cartographer"]
+}
+
+# Share: commit-share pie.
+FUNC CHART_SHARE() {
+    WORKSPACE LOCAL
+    ECHO "lanes: share (binary default paths)"
+    RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts"]
+}
+
+# Focus: focus ranking bars.
+FUNC CHART_FOCUS() {
+    WORKSPACE LOCAL
+    ECHO "lanes: focus (binary default paths)"
+    RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "focus"]
+}
+
+# Indicators: status badges.
+FUNC CHART_INDICATORS() {
+    WORKSPACE LOCAL
+    ECHO "lanes: indicators (binary default paths)"
+    RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "indicators"]
+}
+
+# Preview: full proof page assembly.
+FUNC PREVIEW() {
+    WORKSPACE LOCAL
+    ECHO "lanes: render everything and assemble the proof page"
+    RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "preview"]
+}
+
+EXPORT [FUNC COLLECT, FUNC FRAGMENT, FUNC CHART_SHARE, FUNC CHART_FOCUS, FUNC CHART_INDICATORS, FUNC PREVIEW]

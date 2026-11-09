@@ -1,15 +1,7 @@
-# Full render proof, one command. All paths live in the binaries
-# (src/paths.rs); this script only orders the lanes. Local only.
-
+# Render proof. Tokenless: renders whatever data/ holds.
+# Re-collect first when stale: oxdock scripts/collect.oxfile, then this.
 WORKSPACE LOCAL
 
-ECHO "preview: collect fresh"
-RUN ["cargo", "run", "--quiet", "--release", "--", "--user", "jzombie", "--format", "json"]
+IMPORT ["./lanes.oxfile" AS LANES]
 
-ECHO "preview: render the fragment"
-RUN ["cargo", "run", "--quiet", "--release", "-p", "jzombie-graph-cartographer"]
-
-ECHO "preview: render everything and assemble the proof page"
-RUN ["cargo", "run", "--quiet", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "preview"]
-
-ECHO "preview complete"
+LANES::RENDER_PROOF()

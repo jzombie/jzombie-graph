@@ -1,26 +1,6 @@
-# Nightly publish: build, collect the graph, write the schema, render the fragment and charts.
-# Called from publish.yml. If any step fails the run stops and the old site stays up.
-
-INHERIT_ENV [JZOMBIE_GRAPH_TOKEN, CARGO_TARGET_DIR]
-
+# Nightly publish. Any step fails, the run stops, old site stays up.
 WORKSPACE LOCAL
 
-ECHO "build: workspace -> target/release"
-RUN ["cargo", "build", "--release", "--workspace"]
+IMPORT ["../../scripts/lanes.oxfile" AS LANES]
 
-ECHO "collect: live sweep (binary default paths, schema rides along)"
-RUN ["./target/release/jzombie-graph", "--user", "jzombie", "--format", "json"]
-
-ECHO "render: staged JSON (binary default paths)"
-RUN ["./target/release/cartographer"]
-
-ECHO "charts: share (binary default paths)"
-RUN ["./target/release/charts"]
-
-ECHO "charts: focus (binary default paths)"
-RUN ["./target/release/charts", "--chart", "focus"]
-
-ECHO "charts: indicators (binary default paths)"
-RUN ["./target/release/charts", "--chart", "indicators"]
-
-ECHO "pipeline complete"
+LANES::PIPELINE(true)

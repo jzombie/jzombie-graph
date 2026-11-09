@@ -1,0 +1,6 @@
+# Live sweep. Needs JZOMBIE_GRAPH_TOKEN.
+WORKSPACE LOCAL
+
+IMPORT ["./lanes.oxfile" AS LANES]
+
+LANES::COLLECT()
