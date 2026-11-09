@@ -1,0 +1,539 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Graph",
+  "type": "object",
+  "properties": {
+    "edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Edge"
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Node"
+      }
+    },
+    "schema_version": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
+    "velocity_owner": {
+      "description": "Whose authorship the velocity gauges count. `Some(login)` when the\nsweep resolved the owner's user id and filtered every `history`\ncall by it; `None` means all authors counted (org scope or an\nunresolvable id — the briefing digest names which).",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "velocity_scope": {
+      "description": "Gauge scope the headlines were summed under. Always recorded so\naudits know whether `commits_*` cover all branches or the default.",
+      "$ref": "#/$defs/VelocityScope",
+      "default": "all"
+    }
+  },
+  "required": [
+    "schema_version",
+    "generated_at",
+    "nodes",
+    "edges"
+  ],
+  "$defs": {
+    "BranchHeat": {
+      "description": "Per-branch velocity, hottest first. Stored raw counts (same rule as\nthe top-level gauges: inputs frozen, heat derivable on read).",
+      "type": "object",
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "commits_15d": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "commits_1d": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "commits_30d": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "commits_5d": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "is_default": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "branch",
+        "is_default",
+        "commits_1d",
+        "commits_5d",
+        "commits_15d",
+        "commits_30d"
+      ]
+    },
+    "Edge": {
+      "type": "object",
+      "properties": {
+        "declaring_branches": {
+          "description": "Every branch whose manifest (or equivalent) declares this edge.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "kind": {
+          "$ref": "#/$defs/EdgeKind"
+        },
+        "recency": {
+          "description": "Recency of the most recent declaring branch (RFC3339), if known.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "source": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "version": {
+          "description": "Resolved version as briefing fact (lockfile), never scored.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "source",
+        "target",
+        "kind",
+        "declaring_branches"
+      ]
+    },
+    "EdgeKind": {
+      "description": "Mechanically collected edge kinds. Dependence kinds count toward fan-in;\nassociation kinds display only (see plan: workflow/docs/xrefs).",
+      "type": "string",
+      "enum": [
+        "manifest",
+        "submodule",
+        "registry",
+        "workflow",
+        "docs",
+        "xrefs"
+      ]
+    },
+    "Layer": {
+      "description": "Structural roles from *dependence* fan-in/fan-out\n(`EdgeKind::is_dependence`: manifest/submodule/registry) plus the\ndefault-binary tag. A node holds every tag it earns — position and\nproduct are independent, so `term-wm` is both middleware (transit\npositionally) and application (has a default binary).\n\n- `Foundation`: depended upon, depends on nothing.\n- `Middleware`: both used and using (`in > 0, out > 0`).\n- `Application`: has a default binary — nothing else earns it.\n- `Isolated`: no dependence edges.\n- A consuming endpoint with no default binary and no dependents here\n  falls back to middleware (assumed transit — the private graph may\n  depend on it where this data cannot see).\n\nThe contract is the stored `Node.layer` tag set, set once by\n`apply_layers` and never recomputed: identical in the briefing lane\nand the public file, regardless of render. Dependence edges\n(docs/workflow/xrefs) never count.",
+      "type": "string",
+      "enum": [
+        "foundation",
+        "middleware",
+        "application",
+        "isolated"
+      ]
+    },
+    "Node": {
+      "type": "object",
+      "properties": {
+        "ahead_by": {
+          "description": "Commits ahead of upstream authored by you (`compare` API + authorship\nfilter). Rule (a): divergence re-admits forks. Raw ahead counts lie:\na fork frozen while upstream rewrote history shows ahead commits\nauthored entirely by upstream — those count as pristine, not diverged.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
+        "archived": {
+          "type": "boolean"
+        },
+        "branch_heat": {
+          "description": "Per-branch velocity, hottest first. The headline gauges below sum\nacross branches (feature work counts — a weeks-long branch is real\nvelocity); this breakdown shows where it landed and flags the\ndefault branch. Replaces the old branch-name list. Sums double-count\nmerged commits (reachable from two refs); it reads activity, not\nunique work.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/BranchHeat"
+          }
+        },
+        "commit_heat": {
+          "description": "Captured commit heat as of `generated_at` (same formula as\n`commit_heat()`). Stored so the JSON carries the gauge directly;\nfrozen at collection — recompute live for today.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "float"
+        },
+        "commits_15d": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "commits_1d": {
+          "description": "Commit velocity: 1d/5d/15d/30d commit counts summed across\nin-scope branches in one GraphQL call; fail-open 0. Owner-authored\nwhen `Graph::velocity_owner` is set, all authors otherwise.\n`commit_heat()` means the three sub-window pro-rata heats against\nthe 30d baseline, so a flat repo reads 1.0 in every window.",
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "commits_30d": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "commits_5d": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "description": {
+          "description": "Repo-about facts (API-native, free in the same responses).\nDisplay/classification only, never scored. Stripped with private nodes.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "focus": {
+          "description": "Captured focus as of `generated_at` (same formula as `focus()`).\nFrozen at collection; the offline `--format focus` path recomputes\nit live from the inputs above.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "float"
+        },
+        "fork": {
+          "description": "API-native fork flag. Rides along as fact, not verdict.",
+          "type": "boolean"
+        },
+        "forks_count": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "has_agents_md": {
+          "type": "boolean"
+        },
+        "has_default_binary": {
+          "description": "Whether the repo has a default binary: explicit bin/script targets\nin a manifest, or Cargo autobin layout (`src/main.rs`, `src/bin/`),\nor a Go `package main`. Helper-only binaries (name matches neither\nthe package nor `default-run`) do NOT count. Set at ingestion from\nmanifest text plus the default tree (no extra calls except\ntree-gated Go candidates); unioned across workspace members.\nIndependent application tag: rendered with the layer cell\n(`· application`) — it never moves the positional word.",
+          "type": "boolean",
+          "default": false
+        },
+        "has_license_file": {
+          "type": "boolean"
+        },
+        "has_llms_txt": {
+          "type": "boolean"
+        },
+        "has_readme": {
+          "description": "Agent-parseability audit from the default-branch tree (free).",
+          "type": "boolean"
+        },
+        "homepage": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "description": "Canonical id: `owner/repo` full name.",
+          "type": "string"
+        },
+        "issue_comments_15d": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "issue_comments_1d": {
+          "description": "Owner-authored issue comments per window (counted in the pipeline\nfrom the sampled threads; caps in the query). This is the volume\nthe issue score reads — opening an issue plus commenting on it is\nfocus; an untouched thread is just backlog.",
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "issue_comments_30d": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "issue_comments_5d": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "issue_heat": {
+          "description": "Captured issue heat as of `generated_at` (same pro-rata shape as\n`commit_heat`, over open+closed touches). Stored so the JSON\ncarries the gauge directly; frozen at collection.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "float"
+        },
+        "issue_labels": {
+          "description": "Label census over the sampled recent threads (`enhancement: 3`).\nLogged so scheduling mix (bugs vs features vs research) is minable\nfrom the JSON; never scored, never weighted.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0
+          },
+          "default": {}
+        },
+        "issues_closed_15d": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "issues_closed_1d": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "issues_closed_30d": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "issues_closed_5d": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "issues_open_15d": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "issues_open_1d": {
+          "description": "Issue touches: open/closed thread updates per window, repo-level\n(same GraphQL call as velocity, no new requests). Open vs closed\nride separately — resolution traffic never hides as backlog\nattention. Owner-authored when `Graph::velocity_owner` is set only\ninsofar as the sweep owner works the threads; bots that only bump\nPRs never land here (`issues` excludes pull requests).",
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "issues_open_30d": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "issues_open_5d": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "language": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "last_commit_at": {
+          "description": "Latest commit date under the sweep's authorship rule (newest 30d\ndate, else the overall newest). Idle and focus measure from here —\nfeature work counts, so a live branch keeps the repo warm while\nmain sits still. A bot-only push never warms an owner-filtered repo.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "layer": {
+          "description": "Structural tags, set once at ingestion by `apply_layers` on the\ntrue graph (private transit included) and preserved verbatim by\n`public_subgraph` — so the values are identical in the briefing\nlane and the committed file, regardless of render. Persisted so\ntags are minable straight from the JSON (`jq` on `.layer[]`).\nStated cost: a public tag can reflect a private dependent\n(never which one, no counts).",
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Layer"
+          },
+          "uniqueItems": true
+        },
+        "license": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "open_issues": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "owner": {
+          "type": "string"
+        },
+        "private": {
+          "type": "boolean"
+        },
+        "pushed_at": {
+          "description": "Last push to the repo (API `pushed_at`). Display fact only, never scored.\nFree in the enumerate/get responses — staleness/heartbeat signal.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "recent_issues": {
+          "description": "Sampled planning threads (GraphQL, updated-desc, capped at 10).\nTitles plus labels plus state say what is being planned, prepped,\nor scheduled outside the code — bugs vs enhancements vs research\nat a glance. Display plus agent roadmap signal, never scored.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/RecentIssue"
+          }
+        },
+        "recent_prs": {
+          "description": "Recent PRs (GraphQL, updated-desc, capped). Branch association\nrides `branch` (head ref); titles are work descriptions.\nDisplay only, never scored.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/RecentPr"
+          }
+        },
+        "size_kb": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "stars": {
+          "description": "Tier-0 magnet signals: free in enumerate/get (+ tree for has_*).\nDisplay/classification only, never scored. Stripped with private nodes.",
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "topics": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "upstream": {
+          "description": "Upstream full name when `fork == true` (if known).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "visible": {
+          "description": "Computed visibility: renderers filter blindly on this, never re-decide.",
+          "type": "boolean"
+        },
+        "visible_reason": {
+          "description": "Why visible / hidden — machine-readable for the briefing digest.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "owner",
+        "name",
+        "fork",
+        "private",
+        "visible"
+      ]
+    },
+    "RecentIssue": {
+      "description": "A sampled planning thread: what it is, where it stands, how tagged\nand how discussed. Display plus agent roadmap signal — the plan\noutside the code, minable straight from the JSON. Never scored.",
+      "type": "object",
+      "properties": {
+        "comments": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "labels": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "number": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "state": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "number",
+        "title",
+        "state"
+      ]
+    },
+    "RecentPr": {
+      "description": "A recent pull request, branch-associated via the head ref name.\nDisplay only, never scored.",
+      "type": "object",
+      "properties": {
+        "base": {
+          "type": "string"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "branch",
+        "base",
+        "state"
+      ]
+    },
+    "VelocityScope": {
+      "description": "Gauge scope: all branches or default-branch-only. CLI-selectable;\nfrozen into the JSON so audits know what the headlines sum.\n`branch_heat` always carries every branch either way.",
+      "type": "string",
+      "enum": [
+        "all",
+        "default"
+      ]
+    }
+  }
+}

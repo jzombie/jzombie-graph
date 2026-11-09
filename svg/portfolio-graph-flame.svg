@@ -1,0 +1,70 @@
+<svg class="flame-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800.0 284.0" role="img" font-family="Helvetica, Arial, sans-serif"><title>Portfolio heat flame</title><text x="16" y="24" font-size="14" font-weight="bold" fill="#222">portfolio heat</text><text x="16" y="40" class="muted">one card per repo · heat bands · cycling</text><style>
+            .bar {
+                stroke: #fff;
+                stroke-width: 2;
+                rx: 4;
+            }
+            .lbl {
+                fill: #fff;
+                font-size: 13px;
+                font-weight: 600;
+            }
+            .sub {
+                fill: #fff;
+                font-size: 11px;
+                opacity: .92;
+            }
+            .dim {
+                fill: #333;
+                font-size: 12px;
+            }
+            .wht {
+                fill: #fff;
+                font-size: 10px;
+                paint-order: stroke;
+                stroke: rgba(0, 0, 0, .45);
+                stroke-width: 3px;
+                stroke-linejoin: round;
+            }
+            .muted {
+                fill: #666;
+                font-size: 11px;
+            }
+            .pulse {
+                animation: breathe 2.2s ease-in-out infinite;
+            }
+            .slow {
+                animation-duration: 3.4s;
+            }
+            @keyframes breathe {
+                0%, 100% { opacity: .95; }
+                50% { opacity: .62; }
+            }
+            .halo {
+                transform-box: fill-box;
+                transform-origin: center;
+                animation: halo 2.2s ease-out infinite;
+            }
+            @keyframes halo {
+                0% { opacity: .75; transform: scale(1); }
+                100% { opacity: 0; transform: scale(2.4); }
+            }
+            .card {
+                opacity: 0;
+                animation: whisk ease-in-out infinite;
+                animation-iteration-count: infinite;
+            }
+            .deck .card#r0 {
+                opacity: 1;
+            }
+            @keyframes whisk {
+                0% { opacity: 0; transform: translateX(60px); }
+                3% { opacity: 1; transform: translateX(0); }
+                10% { opacity: 1; transform: translateX(0); }
+                13% { opacity: 0; transform: translateX(-60px); }
+                100% { opacity: 0; transform: translateX(-60px); }
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .pulse, .halo, .card { animation: none; }
+            }
+        </style><rect x="16.0" y="52.0" width="768.0" height="34.0" rx="4" fill="#222"/><text x="28" y="74.0" class="lbl">portfolio · 146 commits / 30d · heat 0.8 steady</text><linearGradient id="grad-r0" x1="0" y1="0" x2="1" y2="0"><stop offset="0.000" stop-color="#BBBBBB" stop-opacity="0.55"/><stop offset="0.217" stop-color="#BBBBBB" stop-opacity="0.55"/><stop offset="1.000" stop-color="#56B4E9" stop-opacity="0.55"/></linearGradient><linearGradient id="grad-r1" x1="0" y1="0" x2="1" y2="0"><stop offset="0.000" stop-color="#BBBBBB" stop-opacity="0.55"/><stop offset="0.645" stop-color="#BBBBBB" stop-opacity="0.55"/><stop offset="0.839" stop-color="#56B4E9" stop-opacity="0.55"/><stop offset="0.903" stop-color="#E69F00" stop-opacity="0.55"/><stop offset="1.000" stop-color="#D55E00" stop-opacity="0.55"/></linearGradient><linearGradient id="grad-r2" x1="0" y1="0" x2="1" y2="0"><stop offset="0.000" stop-color="#BBBBBB" stop-opacity="0.55"/><stop offset="0.071" stop-color="#BBBBBB" stop-opacity="0.55"/><stop offset="1.000" stop-color="#56B4E9" stop-opacity="0.55"/></linearGradient><linearGradient id="grad-r3" x1="0" y1="0" x2="1" y2="0"><stop offset="0.000" stop-color="#BBBBBB" stop-opacity="0.55"/><stop offset="0.400" stop-color="#BBBBBB" stop-opacity="0.55"/><stop offset="1.000" stop-color="#E69F00" stop-opacity="0.55"/></linearGradient><linearGradient id="grad-r4" x1="0" y1="0" x2="1" y2="0"><stop offset="0.000" stop-color="#BBBBBB" stop-opacity="0.55"/><stop offset="0.375" stop-color="#BBBBBB" stop-opacity="0.55"/><stop offset="1.000" stop-color="#56B4E9" stop-opacity="0.55"/></linearGradient><linearGradient id="grad-r5" x1="0" y1="0" x2="1" y2="0"><stop offset="0.000" stop-color="#BBBBBB" stop-opacity="0.55"/><stop offset="0.500" stop-color="#BBBBBB" stop-opacity="0.55"/><stop offset="1.000" stop-color="#56B4E9" stop-opacity="0.55"/></linearGradient><linearGradient id="grad-r6" x1="0" y1="0" x2="1" y2="0"><stop offset="0.000" stop-color="#BBBBBB" stop-opacity="0.55"/><stop offset="0.667" stop-color="#BBBBBB" stop-opacity="0.55"/><stop offset="1.000" stop-color="#56B4E9" stop-opacity="0.55"/></linearGradient><linearGradient id="grad-r7" x1="0" y1="0" x2="1" y2="0"><stop offset="0.000" stop-color="#BBBBBB" stop-opacity="0.55"/><stop offset="1.000" stop-color="#BBBBBB" stop-opacity="0.55"/></linearGradient><g id="r0" class="card pulse slow" style="animation-duration:32.0s;animation-delay:0s"><rect x="16.0" y="100.0" width="768.0" height="104.0" rx="4" fill="url(#grad-r0)"><title>windows-headless · 69 commits/30d · heat 0.52 steady · top: crc32fast-1.5.4 (60), flate2-1.1.11 (60)</title></rect><text x="32.0" y="130.0" font-size="20" font-weight="bold" fill="#222">windows-headless</text><text x="32.0" y="152.0" class="dim" font-weight="bold">Turn a Microsoft ISO into an SSH-ready Windows 11 VM in one command. Unattended installation.</text><text x="32.0" y="168.0" class="sub">69 commits · 47.3% of portfolio · heat 0.5 steady · Rust</text><text x="32.0" y="182.0" class="wht">#command-line-utilities #headless #provisioning #ssh #unattended-installation #virtualization +2</text></g><g id="r1" class="card pulse" style="animation-duration:32.0s;animation-delay:-4.0s"><rect x="16.0" y="100.0" width="768.0" height="104.0" rx="4" fill="url(#grad-r1)"><title>rust-oxdock · 31 commits/30d · heat 1.53 heating · top: oxdock-compose (29), main (26)</title></rect><text x="32.0" y="130.0" font-size="20" font-weight="bold" fill="#222">rust-oxdock</text><text x="32.0" y="152.0" class="dim" font-weight="bold">An experimental DSL used for building embeddable artifacts and orchestrating pipelines.</text><text x="32.0" y="168.0" class="sub">31 commits · 21.2% of portfolio · heat 1.5 heating · Rust</text><text x="32.0" y="182.0" class="wht">#build-tools #containerless-build #dockerfile-syntax #dsl #mcp-server #process-orchestration +1</text></g><g id="r2" class="card pulse slow" style="animation-duration:32.0s;animation-delay:-8.0s"><rect x="16.0" y="100.0" width="768.0" height="104.0" rx="4" fill="url(#grad-r2)"><title>rust-triplets · 14 commits/30d · heat 0.62 steady · top: 59-extract-parquet-reader-from-hf-source-to-use-independently (12), line-ending-1.6.0 (6)</title></rect><text x="32.0" y="130.0" font-size="20" font-weight="bold" fill="#222">rust-triplets</text><text x="32.0" y="152.0" class="dim" font-weight="bold">Composable data sampling primitives for deterministic multi-source ML/AI training-data orchestration.</text><text x="32.0" y="168.0" class="sub">14 commits · 9.6% of portfolio · heat 0.6 steady · Rust</text><text x="32.0" y="182.0" class="wht">#algorithms #artificial-intelligence #bm25 #dataset-sampling #science #text-processing +3</text></g><g id="r3" class="card pulse" style="animation-duration:32.0s;animation-delay:-12.0s"><rect x="16.0" y="100.0" width="768.0" height="104.0" rx="4" fill="url(#grad-r3)"><title>rust-argtuner · 10 commits/30d · heat 1.60 heating · top: resume-trials--draft (10), ignore-existing-config--draft (7)</title></rect><text x="32.0" y="130.0" font-size="20" font-weight="bold" fill="#222">rust-argtuner</text><text x="32.0" y="152.0" class="dim" font-weight="bold">A language-agnostic CLI tool for black-box hyperparameter optimization.</text><text x="32.0" y="168.0" class="sub">10 commits · 6.8% of portfolio · heat 1.6 heating · Rust</text><text x="32.0" y="182.0" class="wht">#black-box-optimization #cli #hyperparameter-optimization #particle-swarm-optimization #rust #successive-halving +1</text></g><g id="r4" class="card " style="animation-duration:32.0s;animation-delay:-16.0s"><rect x="16.0" y="100.0" width="768.0" height="104.0" rx="4" fill="url(#grad-r4)"><title>term-wm · 8 commits/30d · heat 0.42 cooling · top: dev--draft--readme-overhauls (6), term-wm-vt100-0.16.2-patch5 (5)</title></rect><text x="32.0" y="130.0" font-size="20" font-weight="bold" fill="#222">term-wm</text><text x="32.0" y="152.0" class="dim" font-weight="bold">Spatial Terminal Desktop Environment for Remote Workspaces</text><text x="32.0" y="168.0" class="sub">8 commits · 5.5% of portfolio · heat 0.4 cooling · Rust</text><text x="32.0" y="182.0" class="wht">#gui #spatial-desktop #ssh #terminal-ui #window-managers #workspace</text></g><g id="r5" class="card " style="animation-duration:32.0s;animation-delay:-20.0s"><rect x="16.0" y="100.0" width="768.0" height="104.0" rx="4" fill="url(#grad-r5)"><title>rust-simd-r-drive · 4 commits/30d · heat 0.33 cooling · top: arrow-60.1.0 (4), crc32fast-1.5.4 (4)</title></rect><text x="32.0" y="130.0" font-size="20" font-weight="bold" fill="#222">rust-simd-r-drive</text><text x="32.0" y="152.0" class="dim" font-weight="bold">Zero-copy access, schema-less, append-only, SIMD-optimized binary storage engine for Rust.</text><text x="32.0" y="168.0" class="sub">4 commits · 2.7% of portfolio · heat 0.3 cooling · Rust</text><text x="32.0" y="182.0" class="wht">#append-only #binary-storage #key-value-store #mmap #simd-optimized #storage-backend +3</text></g><g id="r6" class="card " style="animation-duration:32.0s;animation-delay:-24.0s"><rect x="16.0" y="100.0" width="768.0" height="104.0" rx="4" fill="url(#grad-r6)"><title>rust-muxio · 3 commits/30d · heat 0.22 cooling · top: main (3)</title></rect><text x="32.0" y="130.0" font-size="20" font-weight="bold" fill="#222">rust-muxio</text><text x="32.0" y="152.0" class="dim" font-weight="bold">Rust toolkit for layered stream multiplexing and schemaless RPC communication.</text><text x="32.0" y="168.0" class="sub">3 commits · 2.1% of portfolio · heat 0.2 cooling · Rust</text><text x="32.0" y="182.0" class="wht">#rpc-framework #wasm-rpc #websocket-client #websocket-server</text></g><g id="r7" class="card " style="animation-duration:32.0s;animation-delay:-28.0s"><rect x="16.0" y="100.0" width="768.0" height="104.0" rx="4" fill="url(#grad-r7)"><title>term-wm-vt100 · 2 commits/30d · heat 0.00 dormant · top: serde_json-1.0.154 (2), unicode-width-0.2.3 (2)</title></rect><text x="32.0" y="130.0" font-size="20" font-weight="bold" fill="#222">term-wm-vt100</text><text x="32.0" y="152.0" class="dim" font-weight="bold">A fork of vt100 specifically for usage in term-wm.</text><text x="32.0" y="168.0" class="sub">2 commits · 1.4% of portfolio · heat 0.0 dormant · Rust</text><text x="32.0" y="182.0" class="wht">#terminal #vt100</text></g><g font-size="12" fill="#333"><circle cx="24" cy="220" r="6" fill="#D55E00"/><text x="36" y="224">heating &gt;1.5</text><circle cx="150" cy="220" r="6" fill="#E69F00"/><text x="162" y="224">steady ~1.0</text><circle cx="268" cy="220" r="6" fill="#56B4E9"/><text x="280" y="224">cooling &lt;0.5</text><circle cx="392" cy="220" r="6" fill="#BBBBBB"/><text x="404" y="224">dormant</text><text x="16" y="250" class="muted">heat bands · cycling cards · +5 more · 5 commits</text></g></svg>
