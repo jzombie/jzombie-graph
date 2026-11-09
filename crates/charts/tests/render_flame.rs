@@ -46,6 +46,7 @@ fn node(name: &str, c1: u32, c5: u32, c15: u32, c30: u32, branches: Vec<BranchHe
         focus: None,
         last_commit_at: None,
         branch_heat: branches,
+        recent_prs: vec![],
         visible: true,
         visible_reason: None,
         layer: Layer::Isolated,
@@ -71,9 +72,12 @@ fn flame_pro_rata_snapshot() {
     assert!(svg.starts_with("<svg "));
     assert!(svg.ends_with("</svg>"));
     assert!(svg.contains("portfolio · 84 commits / 30d"));
-    assert!(svg.contains("recent embers"));
+    assert!(svg.contains("top: main (27)"));
     assert!(!svg.contains("quiet"));
-    assert_eq!(svg.matches("class=\"bar pulse\"").count(), 1);
+    // One card per repo, heating pulse on the hot one.
+    assert_eq!(svg.matches("class=\"card pulse\"").count(), 1);
+    assert_eq!(svg.matches("class=\"card pulse slow\"").count(), 0);
+    assert_eq!(svg.matches("<linearGradient").count(), 2);
     insta::assert_snapshot!("flame", svg);
 }
 

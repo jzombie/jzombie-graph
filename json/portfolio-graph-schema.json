@@ -296,6 +296,14 @@
           ],
           "format": "date-time"
         },
+        "recent_prs": {
+          "description": "Recent PRs (GraphQL, updated-desc, capped). Branch association\nrides `branch` (head ref); titles are work descriptions.\nDisplay only, never scored.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/RecentPr"
+          }
+        },
         "size_kb": {
           "type": "integer",
           "format": "uint32",
@@ -342,6 +350,30 @@
         "fork",
         "private",
         "visible"
+      ]
+    },
+    "RecentPr": {
+      "description": "A recent pull request, branch-associated via the head ref name.\nDisplay only, never scored.",
+      "type": "object",
+      "properties": {
+        "base": {
+          "type": "string"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "branch",
+        "base",
+        "state"
       ]
     },
     "VelocityScope": {

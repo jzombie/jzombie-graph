@@ -37,6 +37,7 @@ fn node(name: &str, commits_5d: u32) -> Node {
         focus: None,
         last_commit_at: None,
         branch_heat: vec![],
+        recent_prs: vec![],
         visible: true,
         visible_reason: None,
         layer: Layer::Isolated,

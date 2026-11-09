@@ -36,6 +36,7 @@ fn node(name: &str, focus: Option<f32>) -> Node {
         focus,
         last_commit_at: None,
         branch_heat: vec![],
+        recent_prs: vec![],
         visible: true,
         visible_reason: None,
         layer: Layer::Isolated,

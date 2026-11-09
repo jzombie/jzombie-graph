@@ -126,12 +126,6 @@ fn f1(x: f64) -> String {
     format!("{x:.1}")
 }
 
-/// Scale factors ride at 4 decimals: a 1-decimal rounding on a 276px bar
-/// is an 8px tiling error. Positions stay f1 (absolute, no compounding).
-fn f4(x: f64) -> String {
-    format!("{x:.4}")
-}
-
 /// Rows for the commit-share pie: own-work repos only, via the shared
 /// `is_own_work` filter — pristine forks you never contributed to never
 /// slice. Top-`n` plus an `Other` bucket, with pie geometry precomputed.
@@ -525,41 +519,19 @@ fn pie_slices(graph_json: String, n: i64) -> anyhow::Result<Value> {
     Ok(Value::string(serde_json::to_string(&doc)?))
 }
 
-/// One branch bar inside its repo's span: preformatted, title always.
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
-struct FlameBranch {
-    label: String,
-    labeled: bool,
-    title: String,
-    bx: String,
-    bw: String,
-    tx: String,
-    opacity: String,
-    pulse: String,
-}
-
-/// One repo bar: two-line label when it fits, one short line under 110px,
-/// footer-key entry below 40px (never overlapping neighbors).
+/// One repo bar: full label when it fits, short line when it almost
+/// does, tour reveal plus footer key below that. Never overlaps.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 struct FlameRepo {
     rid: String,
     nav: String,
     tour_delay: String,
     title: String,
-    head: String,
-    sub: String,
-    short: String,
-    exlabel: String,
-    full: bool,
-    labeled: bool,
-    reveal: bool,
+    stats: String,
+    top: String,
+    share_w: String,
     color: String,
     pulse: String,
-    bx: String,
-    bw: String,
-    tx: String,
-    ember: String,
-    branches: Vec<FlameBranch>,
 }
 
 /// Flame document: static decor prebuilt in Rust, rows interpolated.
@@ -575,35 +547,32 @@ struct FlameDoc {
     fw: String,
     fh: String,
     tour_dur: String,
-    tour_y: String,
-    acc_css: String,
+    grads: String,
     // Layout values, so the template carries no coordinates.
     px: String,
     py: String,
     pw: String,
     ph: String,
     pty: String,
-    ry: String,
-    rh: String,
-    t1y: String,
-    t2y: String,
-    sty: String,
-    by: String,
-    bh: String,
-    bty: String,
-    ey: String,
-    eh: String,
-    cap_y: String,
+    dx: String,
+    dy: String,
+    dw: String,
+    dh: String,
+    lx: String,
+    l1y: String,
+    l2y: String,
+    l3y: String,
+    shy: String,
+    shh: String,
     rows: Vec<FlameRepo>,
 }
 
 /// Flame layout: the prototype's skeleton, widths now pro-rata real data.
 const FLAME_W: f64 = 800.0;
-const FLAME_H: f64 = 360.0;
+const FLAME_H: f64 = 270.0;
 const FLAME_X0: f64 = 16.0;
 const FLAME_TRACK: f64 = 768.0;
 const FLAME_TOPN: usize = 8;
-const FLAME_BRANCHES: usize = 2;
 
 /// Band word for a heat, same thresholds as `heat_color`.
 fn heat_band(h: Option<f32>) -> &'static str {
@@ -615,126 +584,9 @@ fn heat_band(h: Option<f32>) -> &'static str {
     }
 }
 
-/// Distinctive tail after the last dash, for tight bars.
-fn last_dash(name: &str) -> &str {
-    let tail = name.rsplit('-').next().unwrap_or(name);
-    if tail == name { name } else { tail }
-}
-
-/// Short repo label: full name, else the distinctive dash tail, else a stub.
-fn flame_short(name: &str, w: f64) -> String {
-    let est = |s: &str| s.chars().count() as f64 * 5.5 + 8.0;
-    if est(name) <= w {
-        return name.to_string();
-    }
-    let tail = last_dash(name);
-    if tail != name && est(tail) <= w {
-        return tail.to_string();
-    }
-    truncate_to(name, ((w - 8.0) / 5.5).floor().max(0.0) as usize)
-}
-
-/// A stub of under five real chars reads as noise: tail-key it instead.
-fn flame_labeled(name: &str, w: f64) -> bool {
-    if w < 32.0 {
-        return false;
-    }
-    let s = flame_short(name, w);
-    s.chars().filter(|c| *c != '\u{2026}').count() >= 5
-}
-
-fn truncate_to(name: &str, max: usize) -> String {
-    let chars: Vec<char> = name.chars().collect();
-    if chars.len() <= max.max(1) {
-        return name.to_string();
-    }
-    chars[..max.max(1).saturating_sub(1)]
-        .iter()
-        .collect::<String>()
-        + "…"
-}
-
-/// Accordion choreography: per-repo translate + scale keyframes, stops
-/// at every focus slot. Only repo k expands during slot k; the rest
-/// hold or yield pro-rata. Ease-in-out keeps the motion gradual.
-/// Expanded span per repo; already-wide repos hold their ground.
-fn expand(widths: &[f64]) -> Vec<f64> {
-    widths
-        .iter()
-        .map(|w| w.max((w * 2.0 + 20.0).min(FLAME_TRACK * 0.6)))
-        .collect()
-}
-
-fn accordion_css(widths: &[f64], exp: &[f64], n: usize) -> String {
-    let mut css = String::new();
-    let total: f64 = widths.iter().sum();
-    // Widths + left edges per focus slot.
-    let mut slot_w: Vec<Vec<f64>> = vec![];
-    let mut slot_x: Vec<Vec<f64>> = vec![];
-    for k in 0..n {
-        let d = exp[k] - widths[k];
-        let mut ws: Vec<f64> = widths
-            .iter()
-            .enumerate()
-            .map(|(j, w)| {
-                if j == k {
-                    exp[k]
-                } else {
-                    // Slivers never vanish entirely; the expanded repo
-                    // absorbs the rounding so the track stays exact.
-                    (w - d * w / (total - widths[k])).max(6.0)
-                }
-            })
-            .collect();
-        ws[k] += FLAME_TRACK - ws.iter().sum::<f64>();
-        let mut xs = vec![0.0; n];
-        let mut x = FLAME_X0;
-        for (j, w) in ws.iter().enumerate() {
-            xs[j] = x;
-            x += w;
-        }
-        slot_w.push(ws);
-        slot_x.push(xs);
-    }
-    let mut base_x = vec![0.0; n];
-    let mut x = FLAME_X0;
-    for (j, w) in widths.iter().enumerate() {
-        base_x[j] = x;
-        x += w;
-    }
-    let dur = f1(n as f64 * 4.0);
-    for j in 0..n {
-        css.push_str(&format!(
-            ".acc-t-r{j}{{animation:acct-r{j} {dur}s ease-in-out infinite}}.acc-s-r{j}{{animation:accs-r{j} {dur}s ease-in-out infinite}}"
-        ));
-        css.push_str(&format!("@keyframes acct-r{j}{{"));
-        for m in 0..=n {
-            let k = m % n;
-            css.push_str(&format!(
-                "{}%{{transform:translateX({}px)}}",
-                f1(m as f64 * 100.0 / n as f64),
-                f1(slot_x[k][j] - base_x[j])
-            ));
-        }
-        css.push('}');
-        css.push_str(&format!("@keyframes accs-r{j}{{"));
-        for m in 0..=n {
-            let k = m % n;
-            let f = slot_w[k][j] / widths[j];
-            css.push_str(&format!(
-                "{}%{{transform:scaleX({})}}",
-                f1(m as f64 * 100.0 / n as f64),
-                f4(f)
-            ));
-        }
-        css.push('}');
-    }
-    css
-}
-
-/// Flame rows: portfolio totals, top-8 repos by 30d share, top-2 live
-/// branches each, 1d embers. Widths are honest against the portfolio
-/// total — the tail gap is real and footnoted, never stretched.
+/// Flame rows: portfolio totals, top-8 repos by 30d share. Branch detail
+/// rides the readout caption as text. Widths are honest against the
+/// portfolio total — the tail gap is real and footnoted, never stretched.
 fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
     let graph = jzombie_graph::graph::Graph::from_json(graph_json)?;
     let mut repos: Vec<&jzombie_graph::graph::Node> = graph
@@ -760,24 +612,22 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
         msg: "No commits in trailing 30d".to_string(),
         muted: palette::muted(),
         tour_dur: String::new(),
-        tour_y: f1(270.0),
-        acc_css: String::new(),
+        grads: String::new(),
         px: String::new(),
         py: String::new(),
         pw: String::new(),
         ph: String::new(),
         pty: String::new(),
-        ry: f1(100.0),
-        rh: f1(52.0),
-        t1y: f1(122.0),
-        t2y: f1(138.0),
-        sty: f1(138.0),
-        by: f1(166.0),
-        bh: f1(40.0),
-        bty: f1(191.0),
-        ey: f1(236.0),
-        eh: f1(10.0),
-        cap_y: f1(228.0),
+        dx: f1(FLAME_X0),
+        dy: f1(100.0),
+        dw: f1(FLAME_TRACK),
+        dh: f1(84.0),
+        lx: f1(FLAME_X0 + 16.0),
+        l1y: f1(128.0),
+        l2y: f1(150.0),
+        l3y: f1(164.0),
+        shy: f1(172.0),
+        shh: f1(6.0),
         rows: vec![],
     };
     if total == 0 {
@@ -785,87 +635,78 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
     }
     let cut = repos.len().saturating_sub(FLAME_TOPN);
     let shown = &repos[..repos.len().min(FLAME_TOPN)];
-    let mut ws: Vec<f64> = shown
-        .iter()
-        .map(|n| n.commits_30d as f64 / total as f64 * FLAME_TRACK)
-        .collect();
-    for w in ws.iter_mut() {
-        if *w < 4.0 {
-            *w = 4.0;
-        }
-    }
-    if ws.iter().sum::<f64>() > FLAME_TRACK {
-        let over = ws.iter().sum::<f64>() - FLAME_TRACK;
-        if let Some(i) = ws
-            .iter()
-            .enumerate()
-            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-            .map(|(i, _)| i)
-        {
-            ws[i] -= over;
-        }
-    }
-    let mut tail: Vec<String> = vec![];
-    let mut x = FLAME_X0;
     let mut rows: Vec<FlameRepo> = vec![];
-    let ex = expand(&ws);
-    for (ri, (n, w)) in shown.iter().zip(ws.iter()).enumerate() {
-        let bx = x;
-        x += w;
+    let mut grads = String::new();
+    for (ri, n) in shown.iter().enumerate() {
         let heat = n.commit_heat.or_else(|| n.commit_heat());
         let band = heat_band(heat);
-        let head = match heat {
-            Some(h) => format!("{} · {:.1} {}", n.name, h, band),
-            None => format!("{} · dormant", n.name),
+        let share = n.commits_30d as f64 / total as f64;
+        let stats = match heat {
+            Some(h) => format!(
+                "{} commits \u{00b7} {:.1}% of portfolio \u{00b7} heat {h:.1} {band}",
+                n.commits_30d,
+                share * 100.0
+            ),
+            None => format!(
+                "{} commits \u{00b7} {:.1}% of portfolio \u{00b7} dormant",
+                n.commits_30d,
+                share * 100.0
+            ),
         };
-        let head = xml_escape(&head);
-        let full = head.chars().count() as f64 * 6.3 + 12.0 <= *w;
-        let labeled = full || flame_labeled(&n.name, *w);
-        if !labeled {
-            tail.push(format!(
-                "{} · {} · {band}",
-                xml_escape(&n.name),
-                n.commits_30d
-            ));
-        }
-        let mut bheads: Vec<&jzombie_graph::graph::BranchHeat> =
+        // Top branches ride the card as text.
+        let mut tops: Vec<&jzombie_graph::graph::BranchHeat> =
             n.branch_heat.iter().filter(|b| b.commits_30d > 0).collect();
-        bheads.sort_by(|a, b| {
+        tops.sort_by(|a, b| {
             b.commits_30d
                 .cmp(&a.commits_30d)
                 .then_with(|| a.branch.cmp(&b.branch))
         });
-        let mut bxx = bx;
-        let mut branches: Vec<FlameBranch> = vec![];
-        for b in bheads.iter().take(FLAME_BRANCHES) {
-            let bw = b.commits_30d as f64 / n.commits_30d as f64 * w;
-            let text = format!("{} · {}", b.branch, b.commits_30d);
-            let show = text.chars().count() as f64 * 5.5 + 8.0 <= bw;
-            let bheat = jzombie_graph::graph::commit_heat_from_windows(
-                b.commits_1d,
-                b.commits_5d,
-                b.commits_15d,
-                b.commits_30d,
-            );
-            branches.push(FlameBranch {
-                label: xml_escape(&text),
-                labeled: show,
-                title: xml_escape(&format!(
-                    "{}/{} · {} commits/30d",
-                    n.name, b.branch, b.commits_30d
-                )),
-                bx: f1(bxx),
-                bw: f1(bw),
-                tx: f1(bxx + 8.0),
-                opacity: if b.is_default {
-                    "1".into()
-                } else {
-                    "0.65".into()
-                },
-                pulse: palette::heat_pulse(bheat).to_string(),
-            });
-            bxx += bw;
-        }
+        let top_txt: String = tops
+            .iter()
+            .take(2)
+            .map(|b| {
+                let short = b.branch.rsplit('/').next().unwrap_or(&b.branch);
+                format!("{} ({})", short, b.commits_30d)
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        let top = if top_txt.is_empty() {
+            String::new()
+        } else {
+            format!("top: {top_txt}")
+        };
+        // Recency wash: oldest→newest window marginals as stop offsets,
+        // cool→hot left to right. Widths, not colors, carry the mix.
+        let m5 = n.commits_5d.saturating_sub(n.commits_1d);
+        let m15 = n.commits_15d.saturating_sub(n.commits_5d);
+        let m30 = n.commits_30d.saturating_sub(n.commits_15d);
+        let t = n.commits_30d.max(1) as f64;
+        let (o1, o2, o3) = (
+            m30 as f64 / t,
+            (m30 + m15) as f64 / t,
+            (m30 + m15 + m5) as f64 / t,
+        );
+        grads.push_str(&format!(
+            "<linearGradient id=\"grad-r{ri}\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"0\"><stop offset=\"0\" stop-color=\"{}\" stop-opacity=\"0.55\"/><stop offset=\"{:.3}\" stop-color=\"{}\" stop-opacity=\"0.55\"/><stop offset=\"{:.3}\" stop-color=\"{}\" stop-opacity=\"0.55\"/><stop offset=\"{:.3}\" stop-color=\"{}\" stop-opacity=\"0.55\"/><stop offset=\"1\" stop-color=\"{}\" stop-opacity=\"0.55\"/></linearGradient>",
+            palette::dormant(),
+            o1,
+            palette::cooling(),
+            o2,
+            palette::steady(),
+            o3,
+            palette::heating(),
+            palette::heating()
+        ));
+        let title = match heat {
+            Some(h) => format!(
+                "{} \u{00b7} {} commits/30d \u{00b7} heat {h:.2} {band}",
+                n.name, n.commits_30d
+            ),
+            None => format!(
+                "{} \u{00b7} {} commits/30d \u{00b7} dormant",
+                n.name, n.commits_30d
+            ),
+        };
         rows.push(FlameRepo {
             rid: format!("r{ri}"),
             nav: xml_escape(&n.name),
@@ -874,33 +715,12 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
             } else {
                 format!("-{}s", f1(ri as f64 * 4.0))
             },
-            title: xml_escape(&match heat {
-                Some(h) => format!(
-                    "{} · {} commits/30d · heat {h:.2} {band}",
-                    n.name, n.commits_30d
-                ),
-                None => format!("{} · {} commits/30d · dormant", n.name, n.commits_30d),
-            }),
-            head,
-            sub: format!("{} commits", n.commits_30d),
-            short: xml_escape(&flame_short(&n.name, *w)),
-            exlabel: xml_escape(&flame_short(&n.name, ex[ri])),
-            full,
-            labeled: full || flame_labeled(&n.name, *w),
-            reveal: !full
-                && !flame_labeled(&n.name, *w)
-                && flame_short(&n.name, *w)
-                    .chars()
-                    .filter(|c| *c != '…')
-                    .count()
-                    > 1,
-            color: heat_color(heat.unwrap_or(0.0)).to_string(),
+            title: xml_escape(&title),
+            stats: xml_escape(&stats),
+            top: xml_escape(&top),
+            share_w: f1(share * FLAME_TRACK),
+            color: heat_color(heat.unwrap_or(0.0)),
             pulse: palette::heat_pulse(heat).to_string(),
-            bx: f1(bx),
-            bw: f1(*w),
-            tx: f1(bx + 12.0),
-            ember: f1(n.commits_1d as f64 / n.commits_30d as f64 * w),
-            branches,
         });
     }
     let cut_c: u32 = repos[shown.len()..].iter().map(|n| n.commits_30d).sum();
@@ -913,17 +733,14 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
     );
     let port_label = match port_heat {
         Some(h) => format!(
-            "portfolio · {total} commits / 30d · heat {h:.1} {}",
+            "portfolio \u{00b7} {total} commits / 30d \u{00b7} heat {h:.1} {}",
             heat_band(port_heat)
         ),
-        None => format!("portfolio · {total} commits / 30d"),
+        None => format!("portfolio \u{00b7} {total} commits / 30d"),
     };
-    let mut note = String::from("width = 30d share · color = heat band · pulse = heating/steady");
+    let mut note = String::from("heat bands \u{00b7} cycling cards");
     if cut > 0 {
-        note.push_str(&format!(" · +{cut} more · {cut_c} commits"));
-    }
-    if !tail.is_empty() {
-        note.push_str(&format!(" · tail: {}", tail.join(", ")));
+        note.push_str(&format!(" \u{00b7} +{cut} more \u{00b7} {cut_c} commits"));
     }
     Ok(FlameDoc {
         header: flame_header(),
@@ -934,8 +751,7 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
         fw: f1(FLAME_W),
         fh: f1(FLAME_H),
         tour_dur: f1(shown.len() as f64 * 4.0),
-        tour_y: f1(270.0),
-        acc_css: accordion_css(&ws, &expand(&ws), rows.len()),
+        grads,
         msg: String::new(),
         muted: palette::muted(),
         px: f1(FLAME_X0),
@@ -943,24 +759,23 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
         pw: f1(FLAME_TRACK),
         ph: f1(34.0),
         pty: f1(74.0),
-        ry: f1(100.0),
-        rh: f1(52.0),
-        t1y: f1(122.0),
-        t2y: f1(138.0),
-        sty: f1(130.0),
-        by: f1(166.0),
-        bh: f1(40.0),
-        bty: f1(191.0),
-        ey: f1(236.0),
-        eh: f1(10.0),
-        cap_y: f1(228.0),
+        dx: f1(FLAME_X0),
+        dy: f1(100.0),
+        dw: f1(FLAME_TRACK),
+        dh: f1(84.0),
+        lx: f1(FLAME_X0 + 16.0),
+        l1y: f1(128.0),
+        l2y: f1(150.0),
+        l3y: f1(164.0),
+        shy: f1(172.0),
+        shh: f1(6.0),
         rows,
     })
 }
 
 fn flame_header() -> String {
     format!(
-        "<svg class=\"flame-svg\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"{family}\"><title>Portfolio heat flame</title><text x=\"16\" y=\"24\" font-size=\"14\" font-weight=\"bold\" fill=\"{ink}\">portfolio heat</text><text x=\"16\" y=\"40\" class=\"muted\">width = 30d share · color = heat band · pulse = heating only</text>",
+        "<svg class=\"flame-svg\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"{family}\"><title>Portfolio heat flame</title><text x=\"16\" y=\"24\" font-size=\"14\" font-weight=\"bold\" fill=\"{ink}\">portfolio heat</text><text x=\"16\" y=\"40\" class=\"muted\">one card per repo · heat bands · cycling</text>",
         f1(FLAME_W),
         f1(FLAME_H),
         ink = palette::portfolio_bar(),
@@ -970,7 +785,7 @@ fn flame_header() -> String {
 
 fn flame_legend(note: &str) -> String {
     format!(
-        "<g font-size=\"12\" fill=\"{dim}\"><circle cx=\"24\" cy=\"286\" r=\"6\" fill=\"{hot}\"/><text x=\"36\" y=\"290\">heating &gt;1.5</text><circle cx=\"150\" cy=\"286\" r=\"6\" fill=\"{steady}\"/><text x=\"162\" y=\"290\">steady ~1.0</text><circle cx=\"268\" cy=\"286\" r=\"6\" fill=\"{cool}\"/><text x=\"280\" y=\"290\">cooling &lt;0.5</text><circle cx=\"392\" cy=\"286\" r=\"6\" fill=\"{dorm}\"/><text x=\"404\" y=\"290\">dormant</text><text x=\"16\" y=\"316\" class=\"muted\">{note}</text></g>",
+        "<g font-size=\"12\" fill=\"{dim}\"><circle cx=\"24\" cy=\"220\" r=\"6\" fill=\"{hot}\"/><text x=\"36\" y=\"224\">heating &gt;1.5</text><circle cx=\"150\" cy=\"220\" r=\"6\" fill=\"{steady}\"/><text x=\"162\" y=\"224\">steady ~1.0</text><circle cx=\"268\" cy=\"220\" r=\"6\" fill=\"{cool}\"/><text x=\"280\" y=\"224\">cooling &lt;0.5</text><circle cx=\"392\" cy=\"220\" r=\"6\" fill=\"{dorm}\"/><text x=\"404\" y=\"224\">dormant</text><text x=\"16\" y=\"250\" class=\"muted\">{note}</text></g>",
         hot = palette::heating(),
         steady = palette::steady(),
         cool = palette::cooling(),
@@ -1007,43 +822,15 @@ pub fn render_flame_svg(graph_json: &str) -> anyhow::Result<String> {
         } ELSE {
             APPEND out.svg "<rect x=\"{{ $doc.px }}\" y=\"{{ $doc.py }}\" width=\"{{ $doc.pw }}\" height=\"{{ $doc.ph }}\" rx=\"4\" fill=\"#222\"/>"
             APPEND out.svg "<text x=\"28\" y=\"{{ $doc.pty }}\" class=\"lbl\">{{ $doc.port_label }}</text>"
-            APPEND out.svg "<text x=\"16\" y=\"{{ $doc.cap_y }}\" class=\"muted\">recent embers — 1d brightness under each repo</text>"
-            APPEND out.svg "<style>{{ $doc.acc_css }}</style>"
+            APPEND out.svg $doc.grads
             FOR $r: MAP<ANY> IN $doc.rows {
-                APPEND out.svg "<g class=\"repo acc-t acc-t-{{ $r.rid }}\">"
-                APPEND out.svg "<g class=\"acc-s acc-s-{{ $r.rid }}\">"
-                APPEND out.svg """
-                    <rect x="{{ $r.bx }}" y="{{ $doc.ry }}" width="{{ $r.bw }}" height="{{ $doc.rh }}" class="bar {{ $r.pulse }}" fill="{{ $r.color }}"><title>{{ $r.title }}</title></rect>
-                    """
-                FOR $b: MAP<ANY> IN $r.branches {
-                    APPEND out.svg """
-                        <rect x="{{ $b.bx }}" y="{{ $doc.by }}" width="{{ $b.bw }}" height="{{ $doc.bh }}" class="bar {{ $b.pulse }}" fill="{{ $r.color }}" opacity="{{ $b.opacity }}"><title>{{ $b.title }}</title></rect>
-                        """
-                    IF $b.labeled {
-                        APPEND out.svg "<text x=\"{{ $b.tx }}\" y=\"{{ $doc.bty }}\" class=\"sub\">{{ $b.label }}</text>"
-                    }
-                }
-                APPEND out.svg """
-                    <rect x="{{ $r.bx }}" y="{{ $doc.ey }}" width="{{ $r.bw }}" height="{{ $doc.eh }}" rx="5" fill="none" stroke="{{ $r.color }}" stroke-width="1"/>
-                    <rect x="{{ $r.bx }}" y="{{ $doc.ey }}" width="{{ $r.ember }}" height="{{ $doc.eh }}" rx="5" fill="{{ $r.color }}" class="{{ $r.pulse }}"/>
-                    """
+                APPEND out.svg "<g id=\"{{ $r.rid }}\" class=\"card {{ $r.pulse }}\" style=\"animation-duration:{{ $doc.tour_dur }}s;animation-delay:{{ $r.tour_delay }}\">"
+                APPEND out.svg "<rect x=\"{{ $doc.dx }}\" y=\"{{ $doc.dy }}\" width=\"{{ $doc.dw }}\" height=\"{{ $doc.dh }}\" rx=\"4\" fill=\"url(#grad-{{ $r.rid }})\"><title>{{ $r.title }}</title></rect>"
+                APPEND out.svg "<text x=\"{{ $doc.lx }}\" y=\"{{ $doc.l1y }}\" font-size=\"20\" font-weight=\"bold\" fill=\"#222\">{{ $r.nav }}</text>"
+                APPEND out.svg "<text x=\"{{ $doc.lx }}\" y=\"{{ $doc.l2y }}\" class=\"sub\">{{ $r.stats }}</text>"
+                APPEND out.svg "<text x=\"{{ $doc.lx }}\" y=\"{{ $doc.l3y }}\" class=\"muted\">{{ $r.top }}</text>"
+                APPEND out.svg "<rect x=\"{{ $doc.dx }}\" y=\"{{ $doc.shy }}\" width=\"{{ $r.share_w }}\" height=\"{{ $doc.shh }}\" fill=\"{{ $r.color }}\"/>"
                 APPEND out.svg "</g>"
-                IF $r.full {
-                    APPEND out.svg "<text x=\"{{ $r.tx }}\" y=\"{{ $doc.t1y }}\" class=\"lbl\">{{ $r.head }}</text>"
-                    APPEND out.svg "<text x=\"{{ $r.tx }}\" y=\"{{ $doc.t2y }}\" class=\"sub\">{{ $r.sub }}</text>"
-                } ELSE {
-                    IF $r.labeled {
-                        APPEND out.svg "<text x=\"{{ $r.tx }}\" y=\"{{ $doc.sty }}\" class=\"lbl\">{{ $r.short }}</text>"
-                    } ELSE {
-                        IF $r.reveal {
-                            APPEND out.svg "<text x=\"{{ $r.tx }}\" y=\"{{ $doc.sty }}\" class=\"lbl tour-cap\" style=\"animation-duration:{{ $doc.tour_dur }}s;animation-delay:{{ $r.tour_delay }}\">{{ $r.exlabel }}</text>"
-                        }
-                    }
-                }
-                APPEND out.svg "</g>"
-            }
-            FOR $r: MAP<ANY> IN $doc.rows {
-                APPEND out.svg "<text x=\"16\" y=\"{{ $doc.tour_y }}\" class=\"dim tour-cap\" style=\"animation-duration:{{ $doc.tour_dur }}s;animation-delay:{{ $r.tour_delay }}\">{{ $r.title }}</text>"
             }
             APPEND out.svg $doc.legend
         }
@@ -1139,8 +926,8 @@ struct IndicatorRow {
     color: String,
     core_opacity: String,
     ring: bool,
-    /// Shared breathing class (`pulse`, `pulse slow`, or empty).
-    /// Heating breathes fast, steady slow, cooling+dormant static.
+    /// Halo class (`halo`, `halo slow`, or empty).
+    /// Heating pulses fast, steady slow, cooling+dormant static.
     pulse: String,
     cx: String,
 }
@@ -1198,7 +985,13 @@ fn indicator_rows() -> Vec<IndicatorRow> {
     BANDS
         .into_iter()
         .map(|(name, h)| {
-            let pulse = palette::heat_pulse(Some(h)).to_string();
+            let pulse = if h > 1.5 {
+                "halo".to_string()
+            } else if h > 0.5 {
+                "halo slow".to_string()
+            } else {
+                String::new()
+            };
             let norm = (h / 6.0).clamp(0.0, 1.0);
             IndicatorRow {
                 band: name.to_string(),
@@ -1382,15 +1175,15 @@ fn render_indicator_doc(only: &str) -> anyhow::Result<String> {
         FOR $r: MAP<ANY> IN $doc.rows {
             IF $r.ring {
                 APPEND out.svg """
-                    <circle cx="{{ $r.cx }}" cy="{{ $doc.cy }}" r="{{ $doc.dot_r }}" fill="none" stroke="{{ $r.color }}" stroke-width="{{ $doc.ring_w }}" class="{{ $r.pulse }}"><title>{{ $r.label }} {{ $r.heat }}</title></circle>
+                    <circle cx="{{ $r.cx }}" cy="{{ $doc.cy }}" r="{{ $doc.dot_r }}" fill="none" stroke="{{ $r.color }}" stroke-width="{{ $doc.ring_w }}" class="{{ $r.pulse }}"><title>{{ $r.label }}</title></circle>
                     """
             } ELSE {
                 APPEND out.svg """
-                    <circle cx="{{ $r.cx }}" cy="{{ $doc.cy }}" r="{{ $doc.dot_r }}" fill="none" stroke="{{ $r.color }}" stroke-width="{{ $doc.ring_w }}"><title>{{ $r.label }} {{ $r.heat }}</title></circle>
+                    <circle cx="{{ $r.cx }}" cy="{{ $doc.cy }}" r="{{ $doc.dot_r }}" fill="none" stroke="{{ $r.color }}" stroke-width="{{ $doc.ring_w }}"><title>{{ $r.label }}</title></circle>
                     """
             }
             APPEND out.svg """
-                <circle cx="{{ $r.cx }}" cy="{{ $doc.cy }}" r="{{ $doc.dot_r }}" fill="{{ $r.color }}" opacity="{{ $r.core_opacity }}"><title>{{ $r.label }} {{ $r.heat }}</title></circle>
+                <circle cx="{{ $r.cx }}" cy="{{ $doc.cy }}" r="{{ $doc.dot_r }}" fill="{{ $r.color }}" opacity="{{ $r.core_opacity }}"><title>{{ $r.label }}</title></circle>
                 """
         }
         APPEND out.svg $doc.footer
@@ -1452,6 +1245,7 @@ mod tests {
                 focus: None,
                 last_commit_at: None,
                 branch_heat: vec![],
+                recent_prs: vec![],
                 visible: true,
                 visible_reason: None,
                 layer: Layer::Isolated,
@@ -1497,6 +1291,7 @@ mod tests {
                 last_commit_at: None,
                 branch_heat: vec![],
                 visible: true,
+                recent_prs: vec![],
                 visible_reason: None,
                 layer: Layer::Isolated,
             })
@@ -1611,8 +1406,9 @@ mod tests {
         let strip = render_indicators_svg().unwrap();
         assert!(strip.starts_with("<svg "));
         assert!(strip.ends_with("</svg>"));
-        // One shared style block — no SMIL, no scripts, no text, no ping:
+        // One shared style block — no SMIL, no scripts, no text:
         // the table around the badge names the repo.
+        assert!(strip.contains("@keyframes halo"));
         assert!(strip.contains("@keyframes breathe"));
         assert!(!strip.contains("@keyframes ping"));
         assert!(!strip.contains("style=\"animation-duration"));
@@ -1623,8 +1419,8 @@ mod tests {
         for band in ["heating", "steady", "cooling", "dormant"] {
             assert!(strip.contains(band), "missing {band}");
         }
-        assert_eq!(strip.matches("pulse slow").count(), 1);
-        assert_eq!(strip.matches("pulse\"").count(), 1);
+        assert_eq!(strip.matches("halo slow").count(), 1);
+        assert_eq!(strip.matches("halo\"").count(), 1);
     }
 
     #[test]
@@ -1694,22 +1490,21 @@ mod tests {
 
     #[test]
     fn tour_cycles_every_repo() {
-        // One slot per repo, 4s each; delays stagger the shared keyframes.
+        // One slot per repo, 4s each; delays stagger the shared whisk.
         let g = graph_with(&[("big", 30), ("small", 10)]);
         let doc = flame_rows(&g).unwrap();
         assert_eq!(doc.tour_dur, "8.0");
         assert_eq!(doc.rows[0].tour_delay, "0s");
         assert_eq!(doc.rows[1].tour_delay, "-4.0s");
         let svg = render_flame_svg(&g).unwrap();
-        assert!(svg.contains("@keyframes acct-r0"));
-        assert!(svg.contains("@keyframes accs-r1"));
-        assert!(svg.contains(".acc-t-r1{animation:acct-r1 8.0s ease-in-out infinite}"));
+        assert!(svg.contains("@keyframes whisk"));
         assert!(svg.contains("animation-delay:-4.0s"));
-        assert!(!svg.contains("tour-band"));
-        // Reduced-motion kills the accordion; base layout survives.
-        assert!(svg.contains(".flame-svg .acc-t,.flame-svg .acc-s{animation:none}"));
-        // Narrow bars still tour: the caption carries the full readout.
-        assert!(svg.contains(">small \u{00b7} 60 commits/30d"));
+        assert!(!svg.contains("@keyframes acc"));
+        // Reduced-motion freezes the deck on the lead card.
+        assert!(svg.contains(".pulse,.halo,.card{animation:none}"));
+        // Every repo gets a card with its readout, however small.
+        assert!(svg.contains(">small<"));
+        assert!(svg.contains("60 commits"));
     }
 
     #[test]
@@ -1719,17 +1514,18 @@ mod tests {
         let doc = flame_rows(&g).unwrap();
         assert!(!doc.empty);
         assert_eq!(doc.rows.len(), 2);
-        let w0: f64 = doc.rows[0].bw.parse().unwrap();
-        let w1: f64 = doc.rows[1].bw.parse().unwrap();
+        // Share bars stay pro-rata even though cards are full-width.
+        let w0: f64 = doc.rows[0].share_w.parse().unwrap();
+        let w1: f64 = doc.rows[1].share_w.parse().unwrap();
         assert!((w0 - 576.0).abs() < 0.2, "{w0}");
         assert!((w1 - 192.0).abs() < 0.2, "{w1}");
         // Portfolio label carries the total, not the shown sum.
         assert!(doc.port_label.contains("240 commits / 30d"));
-        // Narrow bars fall to the footer key, never overlap.
+        // Tiny repos still get a full card with their readout.
         let thin = graph_with(&[("huge", 100), ("sliver", 1)]);
         let doc = flame_rows(&thin).unwrap();
-        assert!(!doc.rows[1].labeled);
-        assert!(doc.legend.contains("sliver"));
+        assert_eq!(doc.rows.len(), 2);
+        assert_eq!(doc.rows[1].tour_delay, "-4.0s");
     }
 
     #[test]
@@ -1741,9 +1537,9 @@ mod tests {
         assert!(svg.contains("@keyframes breathe"));
         assert!(!svg.contains("<animate"));
         assert!(!svg.contains("<script"));
-        // Portfolio track + 2 repo bars + branch bars + 2 ember fills.
+        // Portfolio track + one card per repo, each with its readout.
         assert!(svg.contains("portfolio · 240 commits / 30d"));
-        assert!(svg.contains("recent embers"));
+        assert!(svg.contains(">big</text>"));
         assert!(svg.contains("heating &gt;1.5"));
     }
 
@@ -1903,6 +1699,7 @@ mod tests {
                     branch_heat: vec![],
                     visible: true,
                     visible_reason: None,
+                    recent_prs: vec![],
                     layer: Layer::Isolated,
                 }
             };

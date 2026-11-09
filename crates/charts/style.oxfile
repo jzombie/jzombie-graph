@@ -42,11 +42,17 @@ FUNC CHART_TOKENS() {
 
 FUNC CHART_STYLE() {
     WORKSPACE LOCAL
-    RETURN "<style>.bar{stroke:#fff;stroke-width:2;rx:4}.lbl{fill:#fff;font-size:13px;font-weight:600}.sub{fill:#fff;font-size:11px;opacity:.92}.dim{fill:#333;font-size:12px}.muted{fill:#666;font-size:11px}.pulse{animation:breathe 2.2s ease-in-out infinite}.slow{animation-duration:3.4s}@keyframes breathe{0%,100%{opacity:.95}50%{opacity:.62}}.tour-cap{opacity:0;animation:tour-cap ease-in-out infinite}@keyframes tour-cap{0%{opacity:0}2%{opacity:1}10.5%{opacity:1}12.5%{opacity:0}100%{opacity:0}}.acc-s{transform-box:fill-box;transform-origin:left center}@media (prefers-reduced-motion:reduce){.pulse,.tour-cap,.flame-svg .acc-t,.flame-svg .acc-s{animation:none}}</style>"
+    RETURN "<style>.bar{stroke:#fff;stroke-width:2;rx:4}.lbl{fill:#fff;font-size:13px;font-weight:600}.sub{fill:#fff;font-size:11px;opacity:.92}.dim{fill:#333;font-size:12px}.muted{fill:#666;font-size:11px}.pulse{animation:breathe 2.2s ease-in-out infinite}.slow{animation-duration:3.4s}@keyframes breathe{0%,100%{opacity:.95}50%{opacity:.62}}.halo{transform-box:fill-box;transform-origin:center;animation:halo 2.2s ease-out infinite}@keyframes halo{0%{opacity:.75;transform:scale(1)}100%{opacity:0;transform:scale(2.4)}}.card{opacity:0;animation-name:whisk;animation-timing-function:ease-in-out;animation-iteration-count:infinite}.deck .card#r0{opacity:1}@keyframes whisk{0%{opacity:0;transform:translateX(60px)}3%{opacity:1;transform:translateX(0)}10%{opacity:1;transform:translateX(0)}13%{opacity:0;transform:translateX(-60px)}100%{opacity:0;transform:translateX(-60px)}}@media (prefers-reduced-motion:reduce){.pulse,.halo,.card{animation:none}}</style>"
+}
+
+FUNC CHART_GRADIENTS() {
+    WORKSPACE LOCAL
+    RETURN "<defs><linearGradient id=\"grad-heating\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"0\"><stop offset=\"0\" stop-color=\"#009E73\" stop-opacity=\"0.85\"/><stop offset=\"1\" stop-color=\"#009E73\" stop-opacity=\"0.08\"/></linearGradient><linearGradient id=\"grad-steady\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"0\"><stop offset=\"0\" stop-color=\"#56B4E9\" stop-opacity=\"0.85\"/><stop offset=\"1\" stop-color=\"#56B4E9\" stop-opacity=\"0.08\"/></linearGradient><linearGradient id=\"grad-cooling\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"0\"><stop offset=\"0\" stop-color=\"#E69F00\" stop-opacity=\"0.85\"/><stop offset=\"1\" stop-color=\"#E69F00\" stop-opacity=\"0.08\"/></linearGradient><linearGradient id=\"grad-dormant\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"0\"><stop offset=\"0\" stop-color=\"#BBBBBB\" stop-opacity=\"0.7\"/><stop offset=\"1\" stop-color=\"#BBBBBB\" stop-opacity=\"0.08\"/></linearGradient></defs>"
 }
 
 EXPORT [
     TYPE TOKENS,
     CHART_TOKENS,
-    CHART_STYLE
+    CHART_STYLE,
+    CHART_GRADIENTS
 ]

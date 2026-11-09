@@ -39,6 +39,7 @@ fn node(id: &str, fork: bool, private: bool) -> Node {
         focus: None,
         last_commit_at: None,
         branch_heat: vec![],
+        recent_prs: vec![],
         visible: true,
         visible_reason: None,
         layer: Layer::Isolated,
