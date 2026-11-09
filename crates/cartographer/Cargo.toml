@@ -14,8 +14,8 @@ name = "cartographer"
 path = "src/lib.rs"
 
 [dependencies]
-clap = { version = "4", features = ["derive"] }
+clap.workspace = true
 jzombie-graph = { path = "../.." }
 
 [dev-dependencies]
-chrono = "0.4"
+chrono.workspace = true

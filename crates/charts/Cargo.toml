@@ -14,15 +14,15 @@ name = "charts"
 path = "src/lib.rs"
 
 [dependencies]
-anyhow = "1"
-base64 = "0.22"
-clap = { version = "4", features = ["derive"] }
+anyhow.workspace = true
+base64.workspace = true
+clap.workspace = true
 jzombie-graph = { path = "../.." }
-oxdock = "=0.35.0-alpha"
-oxdock-core = "=0.35.0-alpha"
-oxdock-markdown-plugin = "=0.35.0-alpha"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+oxdock.workspace = true
+oxdock-core.workspace = true
+oxdock-markdown-plugin.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 
 [dev-dependencies]
-insta = { version = "1", features = ["json"] }
+insta.workspace = true

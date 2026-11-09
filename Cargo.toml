@@ -17,11 +17,15 @@ path = "src/lib.rs"
 [workspace]
 members = [".", "crates/cartographer", "crates/charts"]
 
-[dependencies]
+[workspace.dependencies]
 anyhow = "1"
 base64 = "0.22"
 chrono = { version = "0.4", features = ["serde", "clock"] }
 clap = { version = "4", features = ["derive", "env"] }
+insta = { version = "1", features = ["json"] }
+oxdock = "=0.35.0-alpha"
+oxdock-core = "=0.35.0-alpha"
+oxdock-markdown-plugin = "=0.35.0-alpha"
 regex = "1"
 reqwest = { version = "0.13", features = ["json", "rustls"] }
 reqwest-drive = "0.13.5-alpha.1"
@@ -31,9 +35,27 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
 syn = { version = "2", features = ["full", "parsing"] }
+tempfile = "3"
 toml = { version = "0.8", features = ["parse", "display"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
+[dependencies]
+anyhow.workspace = true
+base64.workspace = true
+chrono.workspace = true
+clap.workspace = true
+regex.workspace = true
+reqwest.workspace = true
+reqwest-drive.workspace = true
+reqwest-middleware.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+syn.workspace = true
+toml.workspace = true
+tokio.workspace = true
+
 [dev-dependencies]
-insta = { version = "1", features = ["json"] }
-tempfile = "3"
+insta.workspace = true
+tempfile.workspace = true
