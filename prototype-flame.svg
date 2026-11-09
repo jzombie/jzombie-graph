@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 360" role="img" font-family="Helvetica, Arial, sans-serif">
+<!-- BRAND LOCK (prototype only, mock data):
+  All charts breathe together. Shared tokens: palette heating #009E73 /
+  steady #56B4E9 / cooling #E69F00 / dormant #BBBBBB; type Helvetica,Arial
+  13/11/12; bars rx=4 stroke #fff 2; motion = breathe opacity .95-.62,
+  heating 2.2s / steady 3.4s-or-static / cooling+dormant static;
+  prefers-reduced-motion kills all. Do not restyle per-chart.
+  Promote to DSL: one FUNC chart_style() in charts/style.oxfile emitting
+  this <style> block; pie/focus/indicators/flame IMPORT it. Rust owns
+  geometry only, never CSS literals. -->
+<title>Heat flame prototype (mock data)</title>
+<style>
+.bar{stroke:#fff;stroke-width:2;rx:4}
+.lbl{fill:#fff;font-size:13px;font-weight:600}
+.sub{fill:#fff;font-size:11px;opacity:.92}
+.dim{fill:#333;font-size:12px}
+.muted{fill:#666;font-size:11px}
+.pulse{animation:breathe 2.2s ease-in-out infinite}
+.slow{animation-duration:3.4s}
+@keyframes breathe{0%,100%{opacity:.95}50%{opacity:.62}}
+@media (prefers-reduced-motion:reduce){.pulse{animation:none}}
+</style>
+
+<text x="16" y="24" font-size="14" font-weight="bold" fill="#222">portfolio heat — flame sketch (mock data)</text>
+<text x="16" y="40" class="muted">width = 30d share · color = heat band · pulse = heating only</text>
+
+<!-- level 0: portfolio -->
+<rect x="16" y="52" width="768" height="34" rx="4" fill="#222"/>
+<text x="28" y="74" class="lbl">portfolio · 128 commits / 30d · heat 1.4 steady</text>
+
+<!-- level 1: repos, widths pro-rata to 768 -->
+<!-- atlas 48, oxdock 32, lab 24, cartographer 18, triplets 6 -->
+<rect x="16" y="100" width="288" height="52" class="bar pulse" fill="#009E73"/>
+<text x="26" y="122" class="lbl">atlas · 3.0 heating</text>
+<text x="26" y="138" class="sub">48 commits</text>
+
+<rect x="304" y="100" width="192" height="52" class="bar" fill="#56B4E9"/>
+<text x="314" y="122" class="lbl">oxdock · 1.0</text>
+<text x="314" y="138" class="sub">32 commits</text>
+
+<rect x="496" y="100" width="144" height="52" class="bar pulse slow" fill="#009E73"/>
+<text x="506" y="122" class="lbl">lab · 1.9</text>
+<text x="506" y="138" class="sub">24 commits</text>
+
+<rect x="640" y="100" width="108" height="52" class="bar" fill="#E69F00"/>
+<text x="648" y="122" class="lbl">carto · 0.3</text>
+<text x="648" y="138" class="sub">18 commits</text>
+
+<rect x="748" y="100" width="36" height="52" class="bar" fill="#BBBBBB"/>
+<text x="748" y="166" class="dim">triplets · 0.0 · 6</text>
+
+<!-- level 2: branches -->
+<rect x="16" y="166" width="200" height="40" class="bar pulse" fill="#009E73"/>
+<text x="24" y="191" class="sub">main · 34</text>
+
+<rect x="216" y="166" width="88" height="40" class="bar" fill="#009E73" opacity=".65"/>
+<text x="224" y="191" class="sub">feat-x · 14</text>
+
+<rect x="304" y="166" width="130" height="40" class="bar" fill="#56B4E9"/>
+<text x="312" y="191" class="sub">main · 22</text>
+
+<rect x="434" y="166" width="62" height="40" class="bar" fill="#56B4E9" opacity=".65"/>
+<text x="440" y="191" class="sub">feat-y · 10</text>
+
+<rect x="496" y="166" width="144" height="40" class="bar pulse slow" fill="#009E73" opacity=".85"/>
+<text x="504" y="191" class="sub">main · 24</text>
+
+<rect x="640" y="166" width="70" height="40" class="bar" fill="#E69F00"/>
+<text x="646" y="191" class="sub">main · 12</text>
+
+<rect x="710" y="166" width="38" height="40" class="bar" fill="#E69F00" opacity=".6"/>
+<text x="714" y="191" class="sub">old · 6</text>
+
+<!-- level 3: recency embers (1d/5d share of each repo) -->
+<g font-size="11" fill="#333">
+<text x="16" y="228" class="muted">recent embers — 1d brightness under each repo (mock)</text>
+<rect x="16" y="236" width="90" height="10" rx="5" fill="#009E73"/>
+<rect x="16" y="236" width="288" height="10" rx="5" fill="none" stroke="#009E73" stroke-width="1"/>
+<rect x="304" y="236" width="30" height="10" rx="5" fill="#56B4E9"/>
+<rect x="304" y="236" width="192" height="10" rx="5" fill="none" stroke="#56B4E9" stroke-width="1"/>
+<rect x="496" y="236" width="60" height="10" rx="5" fill="#009E73" class="pulse slow"/>
+<rect x="496" y="236" width="144" height="10" rx="5" fill="none" stroke="#009E73" stroke-width="1"/>
+<rect x="640" y="236" width="6" height="10" rx="5" fill="#E69F00"/>
+<rect x="640" y="236" width="108" height="10" rx="5" fill="none" stroke="#E69F00" stroke-width="1"/>
+<rect x="748" y="236" width="2" height="10" rx="5" fill="#BBBBBB"/>
+<rect x="748" y="236" width="36" height="10" rx="5" fill="none" stroke="#BBBBBB" stroke-width="1"/>
+</g>
+
+<!-- legend -->
+<g font-size="12" fill="#333">
+<circle cx="24" cy="286" r="6" fill="#009E73"/><text x="36" y="290">heating &gt;1.5</text>
+<circle cx="150" cy="286" r="6" fill="#56B4E9"/><text x="162" y="290">steady ~1.0</text>
+<circle cx="268" cy="286" r="6" fill="#E69F00"/><text x="280" y="290">cooling &lt;0.5</text>
+<circle cx="392" cy="286" r="6" fill="#BBBBBB"/><text x="404" y="290">dormant</text>
+<text x="16" y="316" class="muted">CSS-only pulse; frozen frame still reads. Delete or promote to charts/ if you like it.</text>
+</g>
+</svg>
