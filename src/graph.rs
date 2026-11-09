@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Stable schema version. Bump only with a documented migration.
-pub const SCHEMA_VERSION: u32 = 5;
+pub const SCHEMA_VERSION: u32 = 7;
 
 fn is_false(b: &bool) -> bool {
     !*b
@@ -37,18 +37,24 @@ impl EdgeKind {
     }
 }
 
-/// Structural role from *dependence* fan-in/fan-out
-/// (`EdgeKind::is_dependence`: manifest/submodule/registry).
+/// Structural roles from *dependence* fan-in/fan-out
+/// (`EdgeKind::is_dependence`: manifest/submodule/registry) plus the
+/// default-binary tag. A node holds every tag it earns — position and
+/// product are independent, so `term-wm` is both middleware (transit
+/// positionally) and application (has a default binary).
 ///
-/// - `Foundation`: depended upon, depends on nothing (`in > 0, out == 0`).
+/// - `Foundation`: depended upon, depends on nothing.
 /// - `Middleware`: both used and using (`in > 0, out > 0`).
-/// - `Application`: top of its chain (`in == 0, out > 0`).
-/// - `Isolated`: no dependence edges either way.
+/// - `Application`: has a default binary — nothing else earns it.
+/// - `Isolated`: no dependence edges.
+/// - A consuming endpoint with no default binary and no dependents here
+///   falls back to middleware (assumed transit — the private graph may
+///   depend on it where this data cannot see).
 ///
-/// The contract is the stored `Node.layer`, set once by `apply_layers`
-/// and never recomputed: identical in the briefing lane and the public
-/// file, regardless of render. Dependence edges (docs/workflow/xrefs)
-/// never count.
+/// The contract is the stored `Node.layer` tag set, set once by
+/// `apply_layers` and never recomputed: identical in the briefing lane
+/// and the public file, regardless of render. Dependence edges
+/// (docs/workflow/xrefs) never count.
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize, JsonSchema,
 )]
@@ -115,6 +121,20 @@ pub struct RecentPr {
     pub state: String,
 }
 
+/// A sampled planning thread: what it is, where it stands, how tagged
+/// and how discussed. Display plus agent roadmap signal — the plan
+/// outside the code, minable straight from the JSON. Never scored.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct RecentIssue {
+    pub number: u64,
+    pub title: String,
+    pub state: String,
+    #[serde(default)]
+    pub labels: Vec<String>,
+    #[serde(default)]
+    pub comments: u32,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Node {
     /// Canonical id: `owner/repo` full name.
@@ -169,10 +189,11 @@ pub struct Node {
     pub has_agents_md: bool,
     #[serde(default, skip_serializing_if = "is_false")]
     pub has_license_file: bool,
-    /// Commit velocity: 1d/5d/15d/30d commit counts summed across all
-    /// branches in one GraphQL call; fail-open 0. `commit_heat()` means
-    /// the three sub-window pro-rata heats against the 30d baseline, so
-    /// a flat repo reads 1.0 in every window.
+    /// Commit velocity: 1d/5d/15d/30d commit counts summed across
+    /// in-scope branches in one GraphQL call; fail-open 0. Owner-authored
+    /// when `Graph::velocity_owner` is set, all authors otherwise.
+    /// `commit_heat()` means the three sub-window pro-rata heats against
+    /// the 30d baseline, so a flat repo reads 1.0 in every window.
     #[serde(default)]
     pub commits_1d: u32,
     #[serde(default)]
@@ -181,6 +202,50 @@ pub struct Node {
     pub commits_15d: u32,
     #[serde(default)]
     pub commits_30d: u32,
+    /// Issue touches: open/closed thread updates per window, repo-level
+    /// (same GraphQL call as velocity, no new requests). Open vs closed
+    /// ride separately — resolution traffic never hides as backlog
+    /// attention. Owner-authored when `Graph::velocity_owner` is set only
+    /// insofar as the sweep owner works the threads; bots that only bump
+    /// PRs never land here (`issues` excludes pull requests).
+    #[serde(default)]
+    pub issues_open_1d: u32,
+    #[serde(default)]
+    pub issues_open_5d: u32,
+    #[serde(default)]
+    pub issues_open_15d: u32,
+    #[serde(default)]
+    pub issues_open_30d: u32,
+    #[serde(default)]
+    pub issues_closed_1d: u32,
+    #[serde(default)]
+    pub issues_closed_5d: u32,
+    #[serde(default)]
+    pub issues_closed_15d: u32,
+    #[serde(default)]
+    pub issues_closed_30d: u32,
+    /// Owner-authored issue comments per window (counted in the pipeline
+    /// from the sampled threads; caps in the query). This is the volume
+    /// the issue score reads — opening an issue plus commenting on it is
+    /// focus; an untouched thread is just backlog.
+    #[serde(default)]
+    pub issue_comments_1d: u32,
+    #[serde(default)]
+    pub issue_comments_5d: u32,
+    #[serde(default)]
+    pub issue_comments_15d: u32,
+    #[serde(default)]
+    pub issue_comments_30d: u32,
+    /// Label census over the sampled recent threads (`enhancement: 3`).
+    /// Logged so scheduling mix (bugs vs features vs research) is minable
+    /// from the JSON; never scored, never weighted.
+    #[serde(default)]
+    pub issue_labels: BTreeMap<String, u32>,
+    /// Captured issue heat as of `generated_at` (same pro-rata shape as
+    /// `commit_heat`, over open+closed touches). Stored so the JSON
+    /// carries the gauge directly; frozen at collection.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub issue_heat: Option<f32>,
     /// Captured commit heat as of `generated_at` (same formula as
     /// `commit_heat()`). Stored so the JSON carries the gauge directly;
     /// frozen at collection — recompute live for today.
@@ -191,9 +256,10 @@ pub struct Node {
     /// it live from the inputs above.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub focus: Option<f32>,
-    /// Latest commit date across all branches (newest 30d date, else the
-    /// overall newest). Idle and focus measure from here — feature work
-    /// counts, so a live branch keeps the repo warm while main sits still.
+    /// Latest commit date under the sweep's authorship rule (newest 30d
+    /// date, else the overall newest). Idle and focus measure from here —
+    /// feature work counts, so a live branch keeps the repo warm while
+    /// main sits still. A bot-only push never warms an owner-filtered repo.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_commit_at: Option<DateTime<Utc>>,
     /// Per-branch velocity, hottest first. The headline gauges below sum
@@ -209,15 +275,31 @@ pub struct Node {
     /// Display only, never scored.
     #[serde(default)]
     pub recent_prs: Vec<RecentPr>,
-    /// Structural role, set once at ingestion by `apply_layers` on the
-    /// true graph (private transit included) and preserved verbatim by
-    /// `public_subgraph` — so the value is identical in the briefing
-    /// lane and the committed file, regardless of render. Persisted so
-    /// layers are minable straight from the JSON (`jq` on `.layer`).
-    /// Stated cost: a public `application -> middleware` value can reflect
-    /// a private dependent (never which one, no counts).
+    /// Sampled planning threads (GraphQL, updated-desc, capped at 10).
+    /// Titles plus labels plus state say what is being planned, prepped,
+    /// or scheduled outside the code — bugs vs enhancements vs research
+    /// at a glance. Display plus agent roadmap signal, never scored.
     #[serde(default)]
-    pub layer: Layer,
+    pub recent_issues: Vec<RecentIssue>,
+    /// Whether the repo has a default binary: explicit bin/script targets
+    /// in a manifest, or Cargo autobin layout (`src/main.rs`, `src/bin/`),
+    /// or a Go `package main`. Helper-only binaries (name matches neither
+    /// the package nor `default-run`) do NOT count. Set at ingestion from
+    /// manifest text plus the default tree (no extra calls except
+    /// tree-gated Go candidates); unioned across workspace members.
+    /// Independent application tag: rendered with the layer cell
+    /// (`· application`) — it never moves the positional word.
+    #[serde(default)]
+    pub has_default_binary: bool,
+    /// Structural tags, set once at ingestion by `apply_layers` on the
+    /// true graph (private transit included) and preserved verbatim by
+    /// `public_subgraph` — so the values are identical in the briefing
+    /// lane and the committed file, regardless of render. Persisted so
+    /// tags are minable straight from the JSON (`jq` on `.layer[]`).
+    /// Stated cost: a public tag can reflect a private dependent
+    /// (never which one, no counts).
+    #[serde(default)]
+    pub layer: BTreeSet<Layer>,
     /// Computed visibility: renderers filter blindly on this, never re-decide.
     pub visible: bool,
     /// Why visible / hidden — machine-readable for the briefing digest.
@@ -252,6 +334,18 @@ impl Node {
         )
     }
 
+    /// Issue heat (same pro-rata shape, over owner-authored comment
+    /// volume per window). None means no 30d comment baseline — an
+    /// untouched backlog never scores, no matter how many threads it holds.
+    pub fn issue_heat(&self) -> Option<f32> {
+        commit_heat_from_windows(
+            self.issue_comments_1d,
+            self.issue_comments_5d,
+            self.issue_comments_15d,
+            self.issue_comments_30d,
+        )
+    }
+
     /// Whole days since the default branch last moved, if known.
     /// Prefers `last_commit_at`, falls back to repo-level `pushed_at`
     /// (pre-recency JSON), unknown when both are missing.
@@ -261,13 +355,24 @@ impl Node {
     }
 
     /// Focus gauge (transparent heuristic, never scored): what I'm
-    /// working on now. Velocity ratio minus one point per idle month, so
-    /// dormancy depth counts — a repo quiet for 8 months sinks below one
-    /// quiet for a week, even when both read heat 0. None only when the
-    /// last push is unknown.
+    /// working on now. Mean of the available heats (commits, issues) minus
+    /// one point per idle month, so dormancy depth counts — a repo quiet
+    /// for 8 months sinks below one quiet for a week, even when both read
+    /// heat 0. A signal with no 30d baseline sits out (triage-free repos
+    /// score on commits alone, and vice versa). None only when the last
+    /// push is unknown.
     pub fn focus(&self, now: &chrono::DateTime<chrono::Utc>) -> Option<f32> {
         let idle = self.idle_days(now)? as f32;
-        Some(self.commit_heat().unwrap_or(0.0) - idle / 30.0)
+        let heats: Vec<f32> = [self.commit_heat(), self.issue_heat()]
+            .into_iter()
+            .flatten()
+            .collect();
+        let base = if heats.is_empty() {
+            0.0
+        } else {
+            heats.iter().sum::<f32>() / heats.len() as f32
+        };
+        Some(base - idle / 30.0)
     }
 }
 
@@ -292,6 +397,12 @@ pub struct Graph {
     /// audits know whether `commits_*` cover all branches or the default.
     #[serde(default)]
     pub velocity_scope: VelocityScope,
+    /// Whose authorship the velocity gauges count. `Some(login)` when the
+    /// sweep resolved the owner's user id and filtered every `history`
+    /// call by it; `None` means all authors counted (org scope or an
+    /// unresolvable id — the briefing digest names which).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub velocity_owner: Option<String>,
     pub nodes: Vec<Node>,
     pub edges: Vec<Edge>,
 }
@@ -319,11 +430,45 @@ impl Graph {
             schema_version: SCHEMA_VERSION,
             generated_at: Utc::now(),
             velocity_scope: VelocityScope::All,
+            velocity_owner: None,
             nodes,
             edges,
         }
     }
 
+    /// One rule for every layer call site: position earns its tag, and a
+    /// default binary independently earns `Application` — nothing else
+    /// does. Both directions is middleware; depended-upon is foundation;
+    /// the edgeless are isolated. A consuming endpoint with no default
+    /// binary and no dependents here claims no evidence either way, so
+    /// it falls back to middleware (assumed transit — the private graph
+    /// may depend on it where this data cannot see).
+    pub fn classify_layers(fan_in: u32, fan_out: u32, has_default_binary: bool) -> BTreeSet<Layer> {
+        let mut out = BTreeSet::new();
+        if fan_in > 0 && fan_out > 0 {
+            out.insert(Layer::Middleware);
+        } else if fan_in > 0 {
+            out.insert(Layer::Foundation);
+        } else if fan_out == 0 {
+            out.insert(Layer::Isolated);
+        }
+        if has_default_binary {
+            out.insert(Layer::Application);
+        }
+        if out.is_empty() {
+            out.insert(Layer::Middleware);
+        }
+        out
+    }
+
+    /// Joined tag display (`middleware · application`), enum order.
+    pub fn layer_string(layer: &BTreeSet<Layer>) -> String {
+        layer
+            .iter()
+            .map(|l| l.to_string())
+            .collect::<Vec<_>>()
+            .join(" · ")
+    }
     /// Node fan-in: count of incoming *dependence* edges (how many portfolio
     /// repos depend on this node). Associations never contribute.
     /// This is the "most depended-upon" ranking — no scope, no counting
@@ -358,10 +503,10 @@ impl Graph {
     }
 
     /// Ad-hoc layer recompute over `self`'s edges (same rule as
-    /// `apply_layers`). The stored `Node.layer` is the contract;
+    /// `apply_layers`). The stored `Node.layer` tag set is the contract;
     /// this is for one-off queries on graphs that never went through
     /// ingestion.
-    pub fn node_layers(&self) -> BTreeMap<String, Layer> {
+    pub fn node_layers(&self) -> BTreeMap<String, BTreeSet<Layer>> {
         let fan_in = self.node_fan_in();
         let fan_out = self.node_fan_out();
         self.nodes
@@ -369,19 +514,16 @@ impl Graph {
             .map(|n| {
                 let i = fan_in.get(&n.id).copied().unwrap_or(0);
                 let o = fan_out.get(&n.id).copied().unwrap_or(0);
-                let layer = match (i, o) {
-                    (0, 0) => Layer::Isolated,
-                    (_, 0) => Layer::Foundation,
-                    (_, _) if i > 0 && o > 0 => Layer::Middleware,
-                    _ => Layer::Application,
-                };
-                (n.id.clone(), layer)
+                (
+                    n.id.clone(),
+                    Self::classify_layers(i, o, n.has_default_binary),
+                )
             })
             .collect()
     }
 
-    /// Single-node layer (same rule as `node_layers`).
-    pub fn node_layer(&self, id: &str) -> Layer {
+    /// Single-node layer tags (same rule as `node_layers`).
+    pub fn node_layer(&self, id: &str) -> BTreeSet<Layer> {
         let fan_in = self
             .edges
             .iter()
@@ -392,12 +534,12 @@ impl Graph {
             .iter()
             .filter(|e| e.kind.is_dependence() && e.source == id)
             .count();
-        match (fan_in, fan_out) {
-            (0, 0) => Layer::Isolated,
-            (_, 0) => Layer::Foundation,
-            (_, _) if fan_in > 0 && fan_out > 0 => Layer::Middleware,
-            _ => Layer::Application,
-        }
+        let bin = self
+            .nodes
+            .iter()
+            .find(|n| n.id == id)
+            .is_some_and(|n| n.has_default_binary);
+        Self::classify_layers(fan_in as u32, fan_out as u32, bin)
     }
 
     /// Ordering: fan-in desc, stability tiebreak (id asc). Pure helper for renderers.
@@ -519,12 +661,7 @@ pub fn apply_layers(nodes: &mut [Node], edges: &[Edge]) {
     for n in nodes.iter_mut() {
         let i = fan_in.get(n.id.as_str()).copied().unwrap_or(0);
         let o = fan_out.get(n.id.as_str()).copied().unwrap_or(0);
-        n.layer = match (i, o) {
-            (0, 0) => Layer::Isolated,
-            (_, 0) => Layer::Foundation,
-            (_, _) if i > 0 && o > 0 => Layer::Middleware,
-            _ => Layer::Application,
-        };
+        n.layer = Graph::classify_layers(i, o, n.has_default_binary);
     }
 }
 
@@ -544,7 +681,12 @@ pub fn public_subgraph(graph: &Graph) -> Graph {
         .filter(|e| public.contains(e.source.as_str()) && public.contains(e.target.as_str()))
         .cloned()
         .collect();
-    Graph::new(nodes, edges)
+    let mut out = Graph::new(nodes, edges);
+    // Audit fields survive the strip: the public file must say what its
+    // gauges summed and whose authorship they count.
+    out.velocity_scope = graph.velocity_scope;
+    out.velocity_owner = graph.velocity_owner.clone();
+    out
 }
 
 #[cfg(test)]
@@ -581,11 +723,27 @@ mod tests {
             recent_prs: vec![],
             visible: false,
             visible_reason: None,
-            layer: Layer::Isolated,
+            layer: std::collections::BTreeSet::from([Layer::Isolated]),
+            has_default_binary: false,
             commits_1d: 0,
             commits_5d: 0,
             commits_15d: 0,
             commits_30d: 0,
+            issues_open_1d: 0,
+            issues_open_5d: 0,
+            issues_open_15d: 0,
+            issues_open_30d: 0,
+            issues_closed_1d: 0,
+            issues_closed_5d: 0,
+            issues_closed_15d: 0,
+            issues_closed_30d: 0,
+            issue_comments_1d: 0,
+            issue_comments_5d: 0,
+            issue_comments_15d: 0,
+            issue_comments_30d: 0,
+            issue_labels: Default::default(),
+            recent_issues: vec![],
+            issue_heat: None,
             commit_heat: None,
             focus: None,
             last_commit_at: None,
@@ -684,8 +842,10 @@ mod tests {
     }
 
     #[test]
-    fn layers_classify_foundation_middleware_application_isolated() {
+    fn layers_classify_position_plus_default_binary_tags() {
         // lib <- mid <- app, plus a loner with no dependence edges.
+        // Position earns its tag; a binary-less chain top with no
+        // dependents falls back to middleware (assumed transit).
         let g = Graph::new(
             vec![
                 node("me/lib", false, false, None),
@@ -699,11 +859,48 @@ mod tests {
             ],
         );
         let layers = g.node_layers();
-        assert_eq!(layers["me/lib"], Layer::Foundation);
-        assert_eq!(layers["me/mid"], Layer::Middleware);
-        assert_eq!(layers["me/app"], Layer::Application);
-        assert_eq!(layers["me/loner"], Layer::Isolated);
-        assert_eq!(g.node_layer("me/app"), Layer::Application);
+        assert_eq!(layers["me/lib"], BTreeSet::from([Layer::Foundation]));
+        assert_eq!(layers["me/mid"], BTreeSet::from([Layer::Middleware]));
+        assert_eq!(layers["me/app"], BTreeSet::from([Layer::Middleware]));
+        assert_eq!(layers["me/loner"], BTreeSet::from([Layer::Isolated]));
+        assert_eq!(g.node_layer("me/app"), BTreeSet::from([Layer::Middleware]));
+    }
+
+    #[test]
+    fn layers_default_binary_adds_application_tag() {
+        // Same shape, every node with a default binary: position tags
+        // don't move, application joins them — including the loner.
+        let bin = |id: &str| Node {
+            has_default_binary: true,
+            ..node(id, false, false, None)
+        };
+        let g = Graph::new(
+            vec![bin("me/lib"), bin("me/mid"), bin("me/app"), bin("me/loner")],
+            vec![
+                edge("me/mid", "me/lib", EdgeKind::Manifest),
+                edge("me/app", "me/mid", EdgeKind::Manifest),
+            ],
+        );
+        let layers = g.node_layers();
+        assert_eq!(
+            layers["me/lib"],
+            BTreeSet::from([Layer::Foundation, Layer::Application])
+        );
+        // term-wm case: transit positionally, default binary in hand —
+        // both tags, which is the whole point of the set.
+        assert_eq!(
+            layers["me/mid"],
+            BTreeSet::from([Layer::Middleware, Layer::Application])
+        );
+        assert_eq!(layers["me/app"], BTreeSet::from([Layer::Application]));
+        assert_eq!(
+            layers["me/loner"],
+            BTreeSet::from([Layer::Isolated, Layer::Application])
+        );
+        assert_eq!(
+            g.node_layer("me/loner"),
+            BTreeSet::from([Layer::Isolated, Layer::Application])
+        );
     }
 
     #[test]
@@ -716,8 +913,8 @@ mod tests {
             ],
             vec![edge("me/a", "me/b", EdgeKind::Docs)],
         );
-        assert_eq!(g.node_layer("me/a"), Layer::Isolated);
-        assert_eq!(g.node_layer("me/b"), Layer::Isolated);
+        assert_eq!(g.node_layer("me/a"), BTreeSet::from([Layer::Isolated]));
+        assert_eq!(g.node_layer("me/b"), BTreeSet::from([Layer::Isolated]));
     }
 
     #[test]
@@ -739,11 +936,18 @@ mod tests {
         apply_visibility(&mut nodes, &edges);
         apply_layers(&mut nodes, &edges);
         let g = Graph::new(nodes, edges);
-        let stored = |gr: &Graph, id: &str| gr.nodes.iter().find(|n| n.id == id).unwrap().layer;
-        assert_eq!(stored(&g, "me/app"), Layer::Middleware);
+        let stored =
+            |gr: &Graph, id: &str| gr.nodes.iter().find(|n| n.id == id).unwrap().layer.clone();
+        assert_eq!(stored(&g, "me/app"), BTreeSet::from([Layer::Middleware]));
         let pub_g = public_subgraph(&g);
-        assert_eq!(stored(&pub_g, "me/app"), Layer::Middleware);
-        assert_eq!(stored(&pub_g, "me/lib"), Layer::Foundation);
+        assert_eq!(
+            stored(&pub_g, "me/app"),
+            BTreeSet::from([Layer::Middleware])
+        );
+        assert_eq!(
+            stored(&pub_g, "me/lib"),
+            BTreeSet::from([Layer::Foundation])
+        );
     }
 
     #[test]
@@ -798,5 +1002,54 @@ mod tests {
         // Unknown push: no focus.
         n.pushed_at = None;
         assert_eq!(n.focus(&now), None);
+    }
+
+    #[test]
+    fn focus_averages_commit_and_issue_heats() {
+        use chrono::TimeZone;
+        let now = chrono::Utc.with_ymd_and_hms(2026, 11, 8, 12, 0, 0).unwrap();
+        // Commits-only repo: unchanged behavior — triage-free scores on
+        // commits alone (flat 1.0, pushed today).
+        let mut n = node("me/a", false, false, None);
+        n.commits_1d = 1;
+        n.commits_5d = 5;
+        n.commits_15d = 15;
+        n.commits_30d = 30;
+        n.pushed_at = Some(now);
+        assert!((n.focus(&now).unwrap() - 1.0).abs() < 1e-6);
+        // Triage-only week (no commits, hot comment volume): scores on
+        // issues alone — more comments, more focus.
+        n.commits_1d = 0;
+        n.commits_5d = 0;
+        n.commits_15d = 0;
+        n.commits_30d = 0;
+        n.issue_comments_1d = 2;
+        n.issue_comments_5d = 6;
+        n.issue_comments_15d = 9;
+        n.issue_comments_30d = 9;
+        let ih = n.issue_heat().unwrap();
+        assert!((n.focus(&now).unwrap() - ih).abs() < 1e-6);
+        assert!(ih > 1.0, "recent-heavy commenting reads hot");
+        // Open threads without comments log but never score: untouched
+        // backlog is not focus.
+        n.issue_comments_1d = 0;
+        n.issue_comments_5d = 0;
+        n.issue_comments_15d = 0;
+        n.issue_comments_30d = 0;
+        n.issues_open_30d = 9;
+        assert_eq!(n.issue_heat(), None);
+        assert!(n.focus(&now).unwrap().abs() < 1e-6);
+        // Both hot: the mean, never the sum — no double-counted spike.
+        n.commits_1d = 1;
+        n.commits_5d = 5;
+        n.commits_15d = 15;
+        n.commits_30d = 30;
+        n.issue_comments_1d = 2;
+        n.issue_comments_5d = 6;
+        n.issue_comments_15d = 9;
+        n.issue_comments_30d = 9;
+        let ch = n.commit_heat().unwrap();
+        let ih = n.issue_heat().unwrap();
+        assert!((n.focus(&now).unwrap() - (ch + ih) / 2.0).abs() < 1e-6);
     }
 }

@@ -10,7 +10,7 @@ enum Format {
     #[value(alias = "table")]
     Dump,
     Dot,
-    /// Focus ranking from collected JSON: commit heat vs own baseline
+    /// Developer Focus ranking from collected JSON: commit heat vs own baseline
     /// minus idle months. Offline — reads a file, no API calls.
     Focus,
     /// JSON Schema for the graph contract, derived from the Rust types.

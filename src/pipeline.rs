@@ -4,7 +4,43 @@ use crate::{
     graph::{self, Edge, EdgeKind, Graph, Node},
 };
 use anyhow::{Context, Result};
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+
+/// Window bucketing for one commit list, newest to oldest irrelevant —
+/// every commit lands in 30d plus each smaller window containing its
+/// date. Single rule for per-branch rows and the cross-branch union,
+/// never a copy. Undated (unparseable date) lands in 30d only: the
+/// server returned it under `since: $w30`, but it can't be placed in
+/// a smaller window.
+fn bucket_windows(
+    commits: &[crate::github::BranchCommit],
+    now: &chrono::DateTime<chrono::Utc>,
+) -> (u32, u32, u32, u32) {
+    let (mut c1, mut c5, mut c15, mut c30) = (0u32, 0u32, 0u32, 0u32);
+    for c in commits {
+        match c.date {
+            Some(d) if d >= *now - chrono::Duration::days(1) => {
+                c1 += 1;
+                c5 += 1;
+                c15 += 1;
+                c30 += 1;
+            }
+            Some(d) if d >= *now - chrono::Duration::days(5) => {
+                c5 += 1;
+                c15 += 1;
+                c30 += 1;
+            }
+            Some(d) if d >= *now - chrono::Duration::days(15) => {
+                c15 += 1;
+                c30 += 1;
+            }
+            _ => {
+                c30 += 1;
+            }
+        }
+    }
+    (c1, c5, c15, c30)
+}
 
 /// Output selection: public subgraph by default (store-safe, committable);
 /// true graph only with explicit opt-in (briefing lane, never commit).
@@ -157,12 +193,22 @@ pub async fn collect_live(
     const WORKFLOW_FILES_CAP: usize = 10;
     const MEMBER_MANIFEST_CAP: usize = 10;
     const RS_FILES_CAP: usize = 10;
+    const GO_BIN_CAP: usize = 10;
     {
         let n_repos = repos.len();
         // Providers pass: 1 SHA + 1 tree + ~4 roots + members (uncapped, ~10 typical).
         // Structure pass: as before (tree-gated, caps above).
         let per_repo_worst = (2 + 1 + 4 + 40)
-            + (2 + 1 + 1 + 2 + 2 + 3 + 1 + WORKFLOW_FILES_CAP + MEMBER_MANIFEST_CAP + RS_FILES_CAP);
+            + (2 + 1
+                + 1
+                + 2
+                + 2
+                + 3
+                + 1
+                + WORKFLOW_FILES_CAP
+                + MEMBER_MANIFEST_CAP
+                + RS_FILES_CAP
+                + GO_BIN_CAP);
         let est_worst = n_repos * per_repo_worst;
         let est_typ = n_repos * 26;
         eprintln!(
@@ -189,6 +235,25 @@ pub async fn collect_live(
     let mut all_edges: Vec<Edge> = vec![];
     // Briefing digest lines: every phantom nullification + lockfile gate drop.
     let mut digest: Vec<String> = vec![];
+    // Sweep-owner authorship for velocity: one lookup, every `history`
+    // call filtered by it. Fail-open to all-authors (org scope or a
+    // broken lookup) with a digest note — never abort on this.
+    let sweep_owner: Option<String> = repos.first().map(|r| r.owner.clone());
+    let velocity_author: Option<(String, String)> = match sweep_owner {
+        Some(login) => match client.owner_user_id(&login).await {
+            Ok(id) => {
+                digest.push(format!("velocity: owner-filtered to {login}"));
+                Some((login, id))
+            }
+            Err(_) => {
+                digest.push(format!(
+                    "velocity: owner id unresolvable for {login} — counts all authors"
+                ));
+                None
+            }
+        },
+        None => None,
+    };
     // Velocity probe failures: per-repo fail-open covers flakes, but a
     // majority failing means the probe/token is broken — gate below aborts.
     let mut velocity_failures: u32 = 0;
@@ -229,7 +294,15 @@ pub async fn collect_live(
         // every branch regardless. The default head SHA rides the same
         // response, so no separate branch_sha call.
         // Fail-open 0 with a digest note — a silent 0 would read as dead.
-        let velocity = match client.repo_velocity(&repo.owner, &repo.name, &now).await {
+        let velocity = match client
+            .repo_velocity(
+                &repo.owner,
+                &repo.name,
+                &now,
+                velocity_author.as_ref().map(|(_, id)| id.as_str()),
+            )
+            .await
+        {
             Ok(v) => v,
             Err(e) => {
                 // Carry the cause: a bare note hid a query-wide breakage
@@ -244,15 +317,21 @@ pub async fn collect_live(
             }
         };
         let velocities = velocity.branches;
+        let in_scope = |b: &crate::github::BranchVelocity| {
+            velocity_scope.includes(&repo.default_branch, &b.name)
+        };
         let mut branch_heat: Vec<graph::BranchHeat> = velocities
             .iter()
-            .map(|b| graph::BranchHeat {
-                branch: b.name.clone(),
-                is_default: b.name == repo.default_branch,
-                commits_1d: b.commits_1d,
-                commits_5d: b.commits_5d,
-                commits_15d: b.commits_15d,
-                commits_30d: b.commits_30d,
+            .map(|b| {
+                let (c1, c5, c15, c30) = bucket_windows(&b.commits, &now);
+                graph::BranchHeat {
+                    branch: b.name.clone(),
+                    is_default: b.name == repo.default_branch,
+                    commits_1d: c1,
+                    commits_5d: c5,
+                    commits_15d: c15,
+                    commits_30d: c30,
+                }
             })
             .collect();
         branch_heat.sort_by(|a, b| {
@@ -268,44 +347,47 @@ pub async fn collect_live(
                 repo.full_name
             ));
         }
-        let in_scope = |b: &crate::github::BranchVelocity| {
-            velocity_scope.includes(&repo.default_branch, &b.name)
-        };
         let (commits_1d, commits_5d, commits_15d, commits_30d, latest_30d, latest_overall, b_sha) =
             match default_v {
-                Some(b) => (
-                    velocities
-                        .iter()
-                        .filter(|v| in_scope(v))
-                        .map(|v| v.commits_1d)
-                        .sum(),
-                    velocities
-                        .iter()
-                        .filter(|v| in_scope(v))
-                        .map(|v| v.commits_5d)
-                        .sum(),
-                    velocities
-                        .iter()
-                        .filter(|v| in_scope(v))
-                        .map(|v| v.commits_15d)
-                        .sum(),
-                    velocities
-                        .iter()
-                        .filter(|v| in_scope(v))
-                        .map(|v| v.commits_30d)
-                        .sum(),
-                    velocities
-                        .iter()
-                        .filter(|v| in_scope(v))
-                        .filter_map(|v| v.latest_30d)
-                        .max(),
-                    velocities
-                        .iter()
-                        .filter(|v| in_scope(v))
-                        .filter_map(|v| v.latest_overall)
-                        .max(),
-                    b.head_sha.clone(),
-                ),
+                Some(b) => {
+                    // Headline windows are the oid union across in-scope
+                    // branches, bucketed by date. The same commit reachable
+                    // from main plus five dependabot branches counts once —
+                    // the old branch-sum counted it six times.
+                    let mut seen: BTreeSet<&str> = BTreeSet::new();
+                    let mut union: Vec<crate::github::BranchCommit> = vec![];
+                    for v in velocities.iter().filter(|v| in_scope(v)) {
+                        if v.truncated {
+                            digest.push(format!(
+                                "{}: {} hit the 100-commit list cap — windows undercount",
+                                repo.full_name, v.name
+                            ));
+                        }
+                        for c in &v.commits {
+                            if seen.insert(c.oid.as_str()) {
+                                union.push(c.clone());
+                            }
+                        }
+                    }
+                    let (c1, c5, c15, c30) = bucket_windows(&union, &now);
+                    (
+                        c1,
+                        c5,
+                        c15,
+                        c30,
+                        velocities
+                            .iter()
+                            .filter(|v| in_scope(v))
+                            .filter_map(|v| v.latest_30d)
+                            .max(),
+                        velocities
+                            .iter()
+                            .filter(|v| in_scope(v))
+                            .filter_map(|v| v.latest_overall)
+                            .max(),
+                        b.head_sha.clone(),
+                    )
+                }
                 None => (0, 0, 0, 0, None, None, String::new()),
             };
         // Latest commit anywhere: the 30d window's newest IS the newest
@@ -319,11 +401,59 @@ pub async fn collect_live(
         };
         // Captured gauges as of collection (frozen into the JSON; live
         // paths recompute from the inputs above via the same formula).
+        // Focus is the mean of the available heats — triage-free repos
+        // score on commits alone, commit-free weeks on issues alone.
         let commit_heat =
             graph::commit_heat_from_windows(commits_1d, commits_5d, commits_15d, commits_30d);
+        // Issue comment volume (owner-authored when the sweep owner
+        // resolved, all authors on fail-open) + label census + plan
+        // threads — all from the sampled `recentIssues` in the same
+        // GraphQL call, no new requests. Opening plus commenting is
+        // focus; an untouched thread is just backlog.
+        let sweep_login: Option<&str> = velocity_author.as_ref().map(|(l, _)| l.as_str());
+        let mine = |a: &Option<String>| match (sweep_login, a) {
+            (Some(login), Some(who)) => who.eq_ignore_ascii_case(login),
+            (None, _) => true,
+            _ => false,
+        };
+        let in_window = |days: i64| {
+            let cut = now - chrono::Duration::days(days);
+            velocity
+                .recent_issues
+                .iter()
+                .flat_map(|ri| ri.comments.iter())
+                .filter(|c| c.created_at.is_some_and(|t| t >= cut) && mine(&c.author))
+                .count()
+                .min(u32::MAX as usize) as u32
+        };
+        let (cc1, cc5, cc15, cc30) = (in_window(1), in_window(5), in_window(15), in_window(30));
+        let mut issue_labels: BTreeMap<String, u32> = BTreeMap::new();
+        for ri in &velocity.recent_issues {
+            for l in &ri.labels {
+                *issue_labels.entry(l.clone()).or_insert(0) += 1;
+            }
+        }
+        let recent_issues: Vec<graph::RecentIssue> = velocity
+            .recent_issues
+            .iter()
+            .map(|ri| graph::RecentIssue {
+                number: ri.number,
+                title: ri.title.clone(),
+                state: ri.state.clone(),
+                labels: ri.labels.clone(),
+                comments: ri.comments.len().min(u32::MAX as usize) as u32,
+            })
+            .collect();
+        let issue_heat = graph::commit_heat_from_windows(cc1, cc5, cc15, cc30);
         let focus = last_commit_at.or(repo.pushed_at).map(|t| {
             let idle = (chrono::Utc::now() - t).num_days().max(0) as f32;
-            commit_heat.unwrap_or(0.0) - idle / 30.0
+            let heats: Vec<f32> = [commit_heat, issue_heat].into_iter().flatten().collect();
+            let base = if heats.is_empty() {
+                0.0
+            } else {
+                heats.iter().sum::<f32>() / heats.len() as f32
+            };
+            base - idle / 30.0
         });
         // Structure stays default-branch: manifests/trees/edges come from
         // the default tree (proposals aren't structure). Velocity is
@@ -342,6 +472,11 @@ pub async fn collect_live(
         let mut docs_targets: BTreeSet<String> = BTreeSet::new();
         // package -> referenced? (None = unscanned -> match)
         let mut use_sites: HashMap<String, bool> = HashMap::new();
+        // Ships an executable? Manifest-text signals merge here;
+        // Cargo explicit-primary + autobins resolve against the
+        // already-fetched tree below — zero new calls.
+        let mut has_default_binary = false;
+        let mut autobin_pkgs: Vec<(String, String)> = vec![];
         // Default-branch-only: edge recency is the source repo's own
         // freshness signal (`pushed_at`, free in enumerate/get). No extra
         // commit-date fetch; single branch means max() is identity.
@@ -403,6 +538,9 @@ pub async fn collect_live(
             // kinds (Cargo) additionally merge workspace members (below) and
             // run the use-site scan. No per-ecosystem branches.
             let mut walked_present = false;
+            // Root workspace fallback for members whose `default-run`
+            // uses `workspace = true` (no new calls — root text in hand).
+            let mut workspace_default_run: Option<String> = None;
             for kind in collect::MANIFEST_KINDS {
                 if !has(kind.file) {
                     continue;
@@ -424,6 +562,29 @@ pub async fn collect_live(
                     manifest_union.workspace_members.extend(m.workspace_members);
                     manifest_union.workspace_members.sort();
                     manifest_union.workspace_members.dedup();
+                    // Binary signal rides the same text — no new calls.
+                    // Cargo is tree-gated (lib presence + autobin layout),
+                    // so it bypasses the registry `has_binary` hook. The
+                    // manifest parses once; every question reads the value.
+                    if kind.file == "Cargo.toml" {
+                        let parsed = collect::cargo_value(&text);
+                        if workspace_default_run.is_none() {
+                            workspace_default_run = collect::cargo_workspace_default_run(&text);
+                        }
+                        let has_lib_file = tree_set
+                            .as_ref()
+                            .is_some_and(|set| set.contains("src/lib.rs"));
+                        if collect::cargo_explicit_primary_bin_from_value(
+                            &parsed,
+                            has_lib_file,
+                            workspace_default_run.as_deref(),
+                        ) {
+                            has_default_binary = true;
+                        }
+                        autobin_pkgs.push((String::new(), text.clone()));
+                    } else if kind.has_binary.is_some_and(|f| f(&text)) {
+                        has_default_binary = true;
+                    }
                 }
             }
             // Workspace members walked via git trees, collapsed to repo node.
@@ -443,6 +604,25 @@ pub async fn collect_live(
                     {
                         for (k, v) in mm.deps {
                             manifest_union.deps.entry(k).or_insert(v);
+                        }
+                        if kind.file == "Cargo.toml"
+                            && let Some(dir) = mf.strip_suffix("/Cargo.toml")
+                        {
+                            let parsed = collect::cargo_value(&mt);
+                            let lib = format!("{dir}/src/lib.rs");
+                            let has_lib_file = tree_set
+                                .as_ref()
+                                .is_some_and(|set| set.contains(lib.as_str()));
+                            if collect::cargo_explicit_primary_bin_from_value(
+                                &parsed,
+                                has_lib_file,
+                                workspace_default_run.as_deref(),
+                            ) {
+                                has_default_binary = true;
+                            }
+                            autobin_pkgs.push((dir.to_string(), mt.clone()));
+                        } else if kind.has_binary.is_some_and(|f| f(&mt)) {
+                            has_default_binary = true;
                         }
                     }
                 }
@@ -497,6 +677,124 @@ pub async fn collect_live(
                             // partial + unused = fail-open: no entry (match),
                             // no phantom line — the cap note above covers it.
                         }
+                    }
+                }
+                // Cargo autobins: primary products only, checked against the
+                // fetched tree — zero calls. `src/main.rs` always counts
+                // (named for the package); `src/bin/*` counts for pure-bin
+                // packages, else only when matching `package.name` /
+                // `default-run` — helpers (`xtask`, `codegen`) never fire.
+                // Layout follows Cargo's own discovery: top-level `*.rs`
+                // plus direct-child `*/main.rs`; deeper modules ignored.
+                if !has_default_binary {
+                    for (dir, text) in &autobin_pkgs {
+                        let parsed = collect::cargo_value(text);
+                        if collect::cargo_autobins_disabled_from_value(&parsed) {
+                            continue;
+                        }
+                        if !collect::cargo_has_package_from_value(&parsed) {
+                            continue; // virtual root: no package to name
+                        }
+                        let pkg_name = collect::cargo_package_name(text);
+                        let default_run =
+                            collect::cargo_default_run_from_value(&parsed).or_else(|| {
+                                let inherits = parsed
+                                    .get("package")
+                                    .and_then(|p| p.get("default-run"))
+                                    .and_then(|d| d.as_table())
+                                    .is_some_and(|t| {
+                                        t.get("workspace")
+                                            .and_then(|w| w.as_bool())
+                                            .unwrap_or(false)
+                                    });
+                                if inherits {
+                                    workspace_default_run
+                                        .clone()
+                                        .map(|s| s.to_lowercase().replace('_', "-"))
+                                } else {
+                                    None
+                                }
+                            });
+                        let lib_path = if dir.is_empty() {
+                            "src/lib.rs".to_string()
+                        } else {
+                            format!("{dir}/src/lib.rs")
+                        };
+                        let has_lib = collect::cargo_has_explicit_lib_from_value(&parsed)
+                            || set.contains(lib_path.as_str());
+                        let main = if dir.is_empty() {
+                            "src/main.rs".to_string()
+                        } else {
+                            format!("{dir}/src/main.rs")
+                        };
+                        if set.contains(main.as_str()) {
+                            has_default_binary = true;
+                            break;
+                        }
+                        let prefix = if dir.is_empty() {
+                            String::new()
+                        } else {
+                            format!("{dir}/")
+                        };
+                        let mut hit = false;
+                        for p in set.iter() {
+                            let rel = if prefix.is_empty() {
+                                p.as_str()
+                            } else {
+                                match p.strip_prefix(prefix.as_str()) {
+                                    Some(r) => r,
+                                    None => continue,
+                                }
+                            };
+                            let Some(bin) = collect::cargo_src_bin_name(rel) else {
+                                continue;
+                            };
+                            if !has_lib {
+                                hit = true;
+                                break;
+                            }
+                            // lib present: only the namesake counts.
+                            let nn = bin.to_lowercase().replace('_', "-");
+                            if Some(&nn) == pkg_name.as_ref() {
+                                hit = true;
+                                break;
+                            }
+                            if let Some(dr) = &default_run
+                                && &nn == dr
+                            {
+                                hit = true;
+                                break;
+                            }
+                        }
+                        if hit {
+                            has_default_binary = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            // Go binaries: `package main` in tree-gated candidates
+            // (`main.go` anywhere, `cmd/**/*.go`), capped — the only
+            // binary signal that needs source, so the only new calls.
+            if !has_default_binary
+                && has("go.mod")
+                && let Some(set) = &tree_set
+            {
+                let cands: Vec<&String> = set
+                    .iter()
+                    .filter(|p| {
+                        *p == "main.go"
+                            || p.ends_with("/main.go")
+                            || (p.starts_with("cmd/") && p.ends_with(".go"))
+                    })
+                    .take(GO_BIN_CAP)
+                    .collect();
+                for c in cands {
+                    if let Ok(Some(src)) = client.file_content(&repo.full_name, c, &b_name).await
+                        && collect::go_has_main(&src)
+                    {
+                        has_default_binary = true;
+                        break;
                     }
                 }
             }
@@ -635,6 +933,12 @@ pub async fn collect_live(
             all_edges.len(),
             manifest_union.deps.len()
         );
+        if has_default_binary {
+            digest.push(format!(
+                "{}: has a default binary (manifest/source signal)",
+                repo.full_name
+            ));
+        }
 
         nodes.push(Node {
             id: repo.full_name.clone(),
@@ -664,14 +968,30 @@ pub async fn collect_live(
             commits_5d,
             commits_15d,
             commits_30d,
+            issues_open_1d: velocity.issues_open_1d,
+            issues_open_5d: velocity.issues_open_5d,
+            issues_open_15d: velocity.issues_open_15d,
+            issues_open_30d: velocity.issues_open_30d,
+            issues_closed_1d: velocity.issues_closed_1d,
+            issues_closed_5d: velocity.issues_closed_5d,
+            issues_closed_15d: velocity.issues_closed_15d,
+            issues_closed_30d: velocity.issues_closed_30d,
+            issue_comments_1d: cc1,
+            issue_comments_5d: cc5,
+            issue_comments_15d: cc15,
+            issue_comments_30d: cc30,
+            issue_labels,
+            recent_issues,
+            issue_heat,
             commit_heat,
             focus,
             last_commit_at,
             branch_heat,
             recent_prs: velocity.prs,
+            has_default_binary,
             visible: false, // computed below
             visible_reason: None,
-            layer: graph::Layer::Isolated, // computed below via apply_layers
+            layer: std::collections::BTreeSet::new(), // computed below via apply_layers
         });
     }
 
@@ -706,6 +1026,7 @@ pub async fn collect_live(
     graph::apply_layers(&mut nodes, &all_edges);
     let mut g = Graph::new(nodes, all_edges);
     g.velocity_scope = velocity_scope;
+    g.velocity_owner = velocity_author.map(|(login, _)| login);
     eprintln!(
         "done: {} repos, {} nodes, {} edges",
         repos.len(),
@@ -755,6 +1076,71 @@ mod tests {
         assert!(!velocity_blackout(0, 0));
     }
 
+    #[test]
+    fn bucket_windows_places_each_commit_in_its_windows() {
+        // The dedupe fix's bucketing rule: a 12h-old commit lands in
+        // every window; undated lands in 30d only (server returned it
+        // under since:$w30, but it can't be placed smaller).
+        use crate::github::BranchCommit;
+        let now = chrono::Utc::now();
+        let at = |h: i64| BranchCommit {
+            oid: format!("c{h}"),
+            date: Some(now - chrono::Duration::hours(h)),
+        };
+        let commits = vec![
+            at(12),
+            at(72),
+            at(240),
+            at(480),
+            BranchCommit {
+                oid: "undated".into(),
+                date: None,
+            },
+        ];
+        assert_eq!(bucket_windows(&commits, &now), (1, 2, 3, 5));
+    }
+
+    #[test]
+    fn union_counts_shared_ancestry_once() {
+        // The bug: main's commits reachable from five dependabot
+        // branches summed six times. The union counts each oid once.
+        use crate::github::BranchCommit;
+        use std::collections::BTreeSet;
+        let now = chrono::Utc::now();
+        let main = vec![
+            BranchCommit {
+                oid: "m1".into(),
+                date: Some(now - chrono::Duration::hours(12)),
+            },
+            BranchCommit {
+                oid: "m2".into(),
+                date: Some(now - chrono::Duration::days(20)),
+            },
+        ];
+        let bot = vec![
+            BranchCommit {
+                oid: "m1".into(),
+                date: Some(now - chrono::Duration::hours(12)),
+            },
+            BranchCommit {
+                oid: "m2".into(),
+                date: Some(now - chrono::Duration::days(20)),
+            },
+        ];
+        let mut seen: BTreeSet<&str> = BTreeSet::new();
+        let mut union: Vec<BranchCommit> = vec![];
+        for list in [&main, &bot, &bot, &bot, &bot, &bot] {
+            for c in list {
+                if seen.insert(c.oid.as_str()) {
+                    union.push(c.clone());
+                }
+            }
+        }
+        // Six branches, two unique commits — not twelve.
+        assert_eq!(union.len(), 2);
+        assert_eq!(bucket_windows(&union, &now), (1, 1, 1, 2));
+    }
+
     fn test_graph_with_private() -> Graph {
         let mut nodes = vec![
             Node {
@@ -785,6 +1171,21 @@ mod tests {
                 commits_5d: 0,
                 commits_15d: 0,
                 commits_30d: 0,
+                issues_open_1d: 0,
+                issues_open_5d: 0,
+                issues_open_15d: 0,
+                issues_open_30d: 0,
+                issues_closed_1d: 0,
+                issues_closed_5d: 0,
+                issues_closed_15d: 0,
+                issues_closed_30d: 0,
+                issue_comments_1d: 0,
+                issue_comments_5d: 0,
+                issue_comments_15d: 0,
+                issue_comments_30d: 0,
+                issue_labels: Default::default(),
+                recent_issues: vec![],
+                issue_heat: None,
                 commit_heat: None,
                 focus: None,
                 last_commit_at: None,
@@ -792,7 +1193,8 @@ mod tests {
                 visible: true,
                 recent_prs: vec![],
                 visible_reason: None,
-                layer: graph::Layer::Isolated,
+                layer: std::collections::BTreeSet::new(),
+                has_default_binary: false,
             },
             Node {
                 id: "me/secret".into(),
@@ -822,6 +1224,21 @@ mod tests {
                 commits_5d: 0,
                 commits_15d: 0,
                 commits_30d: 0,
+                issues_open_1d: 0,
+                issues_open_5d: 0,
+                issues_open_15d: 0,
+                issues_open_30d: 0,
+                issues_closed_1d: 0,
+                issues_closed_5d: 0,
+                issues_closed_15d: 0,
+                issues_closed_30d: 0,
+                issue_comments_1d: 0,
+                issue_comments_5d: 0,
+                issue_comments_15d: 0,
+                issue_comments_30d: 0,
+                issue_labels: Default::default(),
+                recent_issues: vec![],
+                issue_heat: None,
                 commit_heat: None,
                 focus: None,
                 last_commit_at: None,
@@ -829,7 +1246,8 @@ mod tests {
                 visible: false,
                 visible_reason: None,
                 recent_prs: vec![],
-                layer: graph::Layer::Isolated,
+                layer: std::collections::BTreeSet::new(),
+                has_default_binary: false,
             },
         ];
         let edges = vec![Edge {
@@ -896,13 +1314,29 @@ mod tests {
             commits_5d: 0,
             commits_15d: 0,
             commits_30d: 0,
+            issues_open_1d: 0,
+            issues_open_5d: 0,
+            issues_open_15d: 0,
+            issues_open_30d: 0,
+            issues_closed_1d: 0,
+            issues_closed_5d: 0,
+            issues_closed_15d: 0,
+            issues_closed_30d: 0,
+            issue_comments_1d: 0,
+            issue_comments_5d: 0,
+            issue_comments_15d: 0,
+            issue_comments_30d: 0,
+            issue_labels: Default::default(),
+            recent_issues: vec![],
+            issue_heat: None,
             commit_heat: None,
             focus: None,
             last_commit_at: None,
             branch_heat: vec![],
             visible: false,
             visible_reason: None,
-            layer: graph::Layer::Isolated,
+            layer: std::collections::BTreeSet::new(),
+            has_default_binary: false,
             recent_prs: vec![],
         }
     }

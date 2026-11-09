@@ -1,19 +1,19 @@
-name: publish
+name: nightly
 on:
   schedule:
     # Daily, offset off the top of the hour (cron posture: never :00).
     - cron: "17 4 * * *"
   workflow_dispatch: {}
 permissions:
-  # CI never writes to the repo: collect → render → deploy Pages only.
-  contents: read
-  pages: write
-  id-token: write
+  # Nightly commits the rebuilt preview proof. Nothing publishes:
+  # no Pages, no deploy steps — the committed preview/ files are
+  # the channel.
+  contents: write
 concurrency:
-  group: pages
+  group: nightly
   cancel-in-progress: false
 jobs:
-  publish:
+  nightly:
     runs-on: ubuntu-latest
     env:
       JZOMBIE_GRAPH_TOKEN: ${{ secrets.JZOMBIE_GRAPH_TOKEN }}
@@ -29,14 +29,11 @@ jobs:
       # OxDock owns the pipeline (build → collect → schema → render) via
       # .github/scripts/pipeline.oxfile. Setup tracks latest (action @main,
       # engine `latest` by default) — we own both ends, and a bad oxdock
-      # release fails closed (no deploy, last good site keeps serving).
+      # release fails closed (no commit, last good preview keeps serving).
       # Note: this `uses:` token points in-portfolio, so the sweep records
       # a Workflow-kind edge (JSON-only, never drawn — associations don't
       # render). Dogfooding, working as designed.
       - uses: jzombie/rust-oxdock/.github/actions/setup-oxdock@main
       # The PAT bridges into the script via INHERIT_ENV (see pipeline.oxfile).
+      # The script owns collect → render → commit; Actions owns trigger.
       - run: oxdock .github/scripts/pipeline.oxfile
-      - uses: actions/upload-pages-artifact@v4
-        with:
-          path: data
-      - uses: actions/deploy-pages@v4

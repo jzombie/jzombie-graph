@@ -67,4 +67,4 @@
             @media (prefers-reduced-motion: reduce) {
                 .pulse, .halo, .card { animation: none; }
             }
-        </style><circle cx="22.0" cy="22.0" r="8.0" fill="none " stroke="#E69F00" stroke-width="2"><title>cooling 0.25</title></circle><circle cx="22.0" cy="22.0" r="8.0" fill="#E69F00" opacity="0.47"><title>cooling 0.25</title></circle></svg>
+        </style><circle cx="22.0" cy="22.0" r="8.0" fill="none " stroke="#56B4E9" stroke-width="2"><title>cooling 0.25</title></circle><circle cx="22.0" cy="22.0" r="8.0" fill="#56B4E9" opacity="0.47"><title>cooling 0.25</title></circle></svg>

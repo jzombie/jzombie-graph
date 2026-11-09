@@ -1,4 +1,4 @@
-# Nightly publish. Any step fails, the run stops, old site stays up.
+# Nightly sweep + preview. Any step fails, the run stops, no commit lands.
 WORKSPACE LOCAL
 
 IMPORT ["../../scripts/lanes.oxfile" AS LANES]

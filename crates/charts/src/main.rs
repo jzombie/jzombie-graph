@@ -2,7 +2,7 @@
 //!
 //! Input is always the `paths::GRAPH_JSON` working copy (single source,
 //! never a duplicated path). Output defaults per chart (`paths::SHARE_SVG`,
-//! `paths::FOCUS_SVG`).
+//! `paths::DEVELOPER_FOCUS_SVG`).
 
 use clap::Parser;
 use std::path::PathBuf;
@@ -19,7 +19,7 @@ struct Cli {
     input: PathBuf,
 
     /// Write to file instead of stdout.
-    /// Default per chart (`paths::SHARE_SVG`, `paths::FOCUS_SVG`).
+    /// Default per chart (`paths::SHARE_SVG`, `paths::DEVELOPER_FOCUS_SVG`).
     #[arg(long)]
     output: Option<PathBuf>,
 
@@ -69,7 +69,7 @@ fn run_preview() -> anyhow::Result<()> {
         ),
         (
             charts::render_focus_svg(&input)?,
-            jzombie_graph::paths::FOCUS_SVG,
+            jzombie_graph::paths::DEVELOPER_FOCUS_SVG,
         ),
         (
             charts::render_flame_svg(&input)?,
@@ -85,12 +85,14 @@ fn run_preview() -> anyhow::Result<()> {
     }
     write_indicator_badges()?;
     let frag = std::fs::read_to_string(jzombie_graph::paths::FRAGMENT_MD)?;
+    let data = charts::render_data_table_md(&input)?;
     let table = std::fs::read_to_string(jzombie_graph::paths::PREVIEW_INDICATORS_MD)?;
     let md = charts::render_preview_md(
         &frag,
         &basename(jzombie_graph::paths::SHARE_SVG)?,
-        &basename(jzombie_graph::paths::FOCUS_SVG)?,
+        &basename(jzombie_graph::paths::DEVELOPER_FOCUS_SVG)?,
         &basename(jzombie_graph::paths::FLAME_SVG)?,
+        &data,
         &table,
     )?;
     jzombie_graph::output::write_file(
@@ -156,7 +158,7 @@ fn main() {
         }
     };
     let default = match cli.chart {
-        Chart::Focus => jzombie_graph::paths::FOCUS_SVG,
+        Chart::Focus => jzombie_graph::paths::DEVELOPER_FOCUS_SVG,
         Chart::Flame => jzombie_graph::paths::FLAME_SVG,
         Chart::Indicators => jzombie_graph::paths::INDICATORS_SVG,
         Chart::Share => jzombie_graph::paths::SHARE_SVG,

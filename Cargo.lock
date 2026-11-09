@@ -1615,6 +1615,7 @@ dependencies = [
  "jzombie-graph",
  "oxdock",
  "oxdock-core",
+ "oxdock-markdown-plugin",
  "serde",
  "serde_json",
 ]

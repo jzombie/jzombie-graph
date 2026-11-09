@@ -35,6 +35,21 @@ fn node(id: &str, fork: bool, private: bool) -> Node {
         commits_5d: 0,
         commits_15d: 0,
         commits_30d: 0,
+        issues_open_1d: 0,
+        issues_open_5d: 0,
+        issues_open_15d: 0,
+        issues_open_30d: 0,
+        issues_closed_1d: 0,
+        issues_closed_5d: 0,
+        issues_closed_15d: 0,
+        issues_closed_30d: 0,
+        issue_comments_1d: 0,
+        issue_comments_5d: 0,
+        issue_comments_15d: 0,
+        issue_comments_30d: 0,
+        issue_labels: Default::default(),
+        recent_issues: vec![],
+        issue_heat: None,
         commit_heat: None,
         focus: None,
         last_commit_at: None,
@@ -42,7 +57,8 @@ fn node(id: &str, fork: bool, private: bool) -> Node {
         recent_prs: vec![],
         visible: true,
         visible_reason: None,
-        layer: Layer::Isolated,
+        layer: std::collections::BTreeSet::from([Layer::Isolated]),
+        has_default_binary: false,
     }
 }
 
@@ -78,7 +94,10 @@ fn fixture() -> Graph {
 #[test]
 fn cluster_draws_linked_nodes_with_braille_traces() {
     let md = render_cartographer(&fixture());
-    assert!(md.contains("zenOSmosis"), "correct branding");
+    // Header derives from data: owner + counts, never brand strings.
+    assert!(md.contains("me portfolio cluster"), "data-driven title");
+    assert!(md.contains("Drawn: 4 repos"), "drawn count");
+    assert!(!md.contains("zenOSmosis"), "no hardcoded brand");
     assert!(!md.contains("Zenosmosis"), "old casing gone");
     assert!(
         md.contains("<pre aria-hidden=\"true\">"),
@@ -338,9 +357,29 @@ fn labels_abbreviate_rust_prefix() {
 }
 
 #[test]
+fn header_sentence_carries_layers_and_live_signals() {
+    // lib <- mid <- {app, app2}, no binaries: app/app2 are binary-less
+    // chain tops, so the middleware fallback claims them as assumed
+    // transit; mid has the fan-in. No heats stored, so no hottest clause.
+    let md = render_cartographer(&fixture());
+    assert!(
+        md.contains("1 foundation · 3 middleware · 0 application · 0 isolated"),
+        "layer mix from data:\n{md}"
+    );
+    assert!(
+        md.contains("most depended-upon: mid (2)"),
+        "fan-in leader from data:\n{md}"
+    );
+    assert!(!md.contains("Hottest now"), "no heat, no hottest clause");
+    assert!(md.contains("portfolio-graph"), "graph name from paths");
+    assert!(md.contains("last run"), "run timestamp on top");
+    assert!(md.contains("UTC"), "timestamps read UTC");
+}
+
+#[test]
 fn empty_graph_renders() {
     let g = Graph::new(vec![], vec![]);
     let md = render_cartographer(&g);
-    assert!(md.contains("zenOSmosis"));
+    assert!(md.contains("portfolio cluster"));
     assert!(md.contains("(no connected cluster)"));
 }

@@ -1,6 +1,6 @@
 # jzombie-graph
 
-A map of my GitHub portfolio: which of my repos depend on which of my other repos. It collects the data and draws it. Generated files live under `data/` (see `src/paths.rs` — one source of truth); `data/` is gitignored, so after the first publish the assets come from Pages, not the repo.
+A map of my GitHub portfolio: which of my repos depend on which of my other repos. It collects the data and draws it. Generated files live under `data/` (see `src/paths.rs` — one source of truth); `data/` is gitignored, so generated data stays out of the repo. The committed `preview/` proof page is the channel.
 
 Own repo, personal scope. `publish = false` — internal tool, never published to crates.io.
 
@@ -21,7 +21,7 @@ cargo run -p jzombie-graph-cartographer
 
 Local only, no API calls. Reads `data/json/portfolio-graph.json`, writes the clickable `<pre>` fragment to `data/markdown/fragments/portfolio-graph.md`. Piped stdin still wins when present; `--stdout` prints instead.
 
-Local only, no API calls. Reads the fresh JSON, writes the clickable `<pre>` fragment. Working copies stay in `data/` — never commit them; Pages serves them after publish.
+Local only, no API calls. Reads the fresh JSON, writes the clickable `<pre>` fragment. Working copies stay in `data/` — never commit them.
 
 ## Regenerate the charts
 
@@ -34,7 +34,7 @@ Local only, no API calls. Reads the fresh JSON, writes the commit-share pie and 
 
 Local only, no API calls. Reads the fresh JSON, writes the commit-share pie. Colors come from the shared `charts::palette` module so every chart reads as one family; bytes pinned by snapshot tests.
 
-## Focus ranking (offline, no API calls)
+## Developer Focus (offline, no API calls)
 
 ```bash
 cargo run -- --format focus
@@ -48,7 +48,7 @@ Same `focus` the dump lane shows — commit heat vs own 30d baseline minus idle 
 oxdock scripts/preview-indicators.oxfile
 ```
 
-Collects fresh, renders every lane, and assembles the committed `preview/portfolio-graph.md` — map fragment verbatim, all charts embedded, indicator table with badges. That page is the visual proof; `preview/` is generated, never hand-edited. All markup emission is [OxDock](https://github.com/jzombie/rust-oxdock)-templated; the script only orders the lanes.
+Collects fresh, renders every lane, and assembles the committed `preview/portfolio-graph.md` — map fragment verbatim, all charts embedded, machine-readable commit-data table (role/proof/reuse per repo, layer-labeled, tiny topic search links, top-10 + roll-up), indicator table with badges. That page is the visual proof; `preview/` is generated, never hand-edited. All markup emission is [OxDock](https://github.com/jzombie/rust-oxdock)-templated (tables via the shared `MARKDOWN` module); the script only orders the lanes.
 
 ## Regenerate the schema
 
@@ -58,9 +58,9 @@ cargo run -- --format schema
 
 Static, no API calls and no selector — derived from the Rust types. To bless a contract change, copy the lane output over the committed `json/portfolio-graph-schema.json`; the drift test fails CI if the types and the file disagree.
 
-## Daily publish (CI only)
+## Nightly rebuild (CI only)
 
-`.github/workflows/publish.yml` builds the workspace, installs the oxdock CLI (tracks latest), and runs `.github/scripts/pipeline.oxfile` (collect → schema → render → charts, fail-closed), then deploys `data/` to Pages. Trigger: daily cron + manual `workflow_dispatch`.
+`.github/workflows/nightly.yml` builds the workspace, installs the oxdock CLI (tracks latest), and runs `.github/scripts/pipeline.oxfile` (collect → schema → render → charts → preview → commit, fail-closed). Trigger: daily cron + manual `workflow_dispatch`. Nothing publishes: the rebuilt `preview/` commits back to the repo, gated on change — quiet sweeps push nothing.
 
 ## License
 

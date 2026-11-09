@@ -1,9 +1,8 @@
 ---
 source: crates/charts/tests/render_focus.rs
-assertion_line: 77
 expression: svg
 ---
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480.0 60.0" role="img" font-family="Helvetica, Arial, sans-serif"><title>Focus ranking</title><text x="16" y="30" font-size="20" fill="#767676">Focus ranking</text><style>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480.0 60.0" role="img" font-family="Helvetica, Arial, sans-serif"><title>Developer Focus</title><text x="16" y="30" font-size="20" fill="#767676">Developer Focus</text><style>
             .bar {
                 stroke: #fff;
                 stroke-width: 2;

@@ -31,8 +31,8 @@ pub const FRAGMENT_MD: &str = "data/markdown/fragments/portfolio-graph.md";
 /// working copy under gitignored `data/`.
 pub const SHARE_SVG: &str = "data/svg/portfolio-graph-share.svg";
 
-/// Focus ranking bars SVG. Same deal: local working copy until wired.
-pub const FOCUS_SVG: &str = "data/svg/portfolio-graph-focus.svg";
+/// Developer Focus bars SVG. Same deal: local working copy until wired.
+pub const DEVELOPER_FOCUS_SVG: &str = "data/svg/portfolio-graph-developer-focus.svg";
 
 /// Heat flame SVG: portfolio → repos → branches → embers, widths pro-rata
 /// 30d share, color + motion from the heat bands. Same working-copy deal.

@@ -22,13 +22,13 @@ FUNC CHART_TOKENS() {
     WORKSPACE LOCAL
 
     LET $tokens: TOKENS = {
-        "heating": "#009E73",
-        "steady": "#56B4E9",
-        "cooling": "#E69F00",
+        "heating": "#D55E00",
+        "steady": "#E69F00",
+        "cooling": "#56B4E9",
         "dormant": "#BBBBBB",
         "cat3": "#F0E442",
         "cat4": "#0072B2",
-        "cat5": "#D55E00",
+        "cat5": "#009E73",
         "cat6": "#CC79A7",
         "cat7": "#999999",
         "ink": "#767676",

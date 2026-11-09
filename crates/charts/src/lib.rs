@@ -457,7 +457,7 @@ fn focus_bars(graph_json: String, n_top: i64, n_bottom: i64) -> anyhow::Result<V
     let h = 44.0 + rows.len() as f64 * 26.0 + 16.0;
     let doc = FocusDoc {
         header: format!(
-            "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"{family}\"><title>Focus ranking</title><text x=\"16\" y=\"30\" font-size=\"20\" fill=\"{ink}\">Focus ranking</text>",
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"{family}\"><title>Developer Focus</title><text x=\"16\" y=\"30\" font-size=\"20\" fill=\"{ink}\">Developer Focus</text>",
             f1(480.0),
             f1(h),
             ink = palette::ink(),
@@ -928,6 +928,7 @@ fn engine() -> Engine {
             PieSlices::registration(),
             FocusBars::registration(),
             Indicators::registration(),
+            DataTable::registration(),
             Portfolio::registration(),
             ChartStyleFn::registration(),
             Flame::registration(),
@@ -936,6 +937,7 @@ fn engine() -> Engine {
         record_schemas: vec![],
         states: vec![],
     });
+    engine.register_module(oxdock_markdown_plugin::module());
     engine
 }
 
@@ -1023,8 +1025,9 @@ const INDICATOR_CELL: f64 = 44.0;
 const INDICATOR_CY: f64 = 22.0;
 const INDICATOR_R: f64 = 8.0;
 
-/// Heat color, stepped on the documented `commit_heat` bands: heating green,
-/// steady blue, cooling amber, dormant faint gray.
+/// Heat color, stepped on the documented `commit_heat` bands: heating
+/// vermillion, steady amber, cooling sky blue, dormant faint gray.
+/// Temperature order, Okabe-Ito stops — no legend needed.
 /// All stops from the shared palette.
 fn heat_color(h: f32) -> String {
     if h > 1.5 {
@@ -1111,11 +1114,330 @@ fn indicators(graph_json: String, only: String) -> anyhow::Result<Value> {
     Ok(Value::string(serde_json::to_string(&doc)?))
 }
 
-/// Portfolio page document: fragment + chart embeds + the indicator table
-/// (rendered by its own template, passed in — one row-template total).
+/// One data-table row: about (description + topic tags), proof
+/// (commits with the method shrunk beneath, heat badge beside it),
+/// reuse (one portfolio-internal column, both directions labeled —
+/// never GitHub's external "used by"; the JSON edges stay the machine
+/// surface). Stars fold into the repo cell (`★ N`) instead of spending
+/// a column on 0s. Keys sort alphabetically in the rendered table
+/// (`about, commits/30d, heat, layer, repo, reuse (portfolio)`) —
+/// Rust shapes the values, the MARKDOWN module owns the markup.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+struct DataRow {
+    // Leading-space sort key: `MAP_TO_MD_TABLE` orders columns
+    // alphabetically and Rust cannot hand it an order, so the identity
+    // column takes a sort key that renders as `repo` (cells are padded
+    // anyway). Deliberate, tested raw — not a silent trick.
+    // TODO: teach OxDock's MAP_TO_MD_TABLE an explicit column order (parameter
+    // or insertion-order framing) so the module owns sorting and this
+    // key goes back to `repo`.
+    #[serde(rename = " repo")]
+    repo: String,
+    layer: String,
+    about: String,
+    #[serde(rename = "commits/30d")]
+    commits: String,
+    heat: String,
+    #[serde(rename = "reuse (portfolio)")]
+    reuse: String,
+}
+
+/// Data-table document: summary line + rows + overflow note.
+/// Same contract as the badge table (Rust shapes data, OxDock emits).
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+struct DataDoc {
+    summary: String,
+    empty: bool,
+    msg: String,
+    rows: Vec<DataRow>,
+    /// Tail note when repos fall below the top-10 cut: rendered as an
+    /// HTML comment under the table, never a junk row. Empty when all
+    /// repos fit.
+    overflow: String,
+}
+
+/// Table scope: top-10 by 30d commits, the rest named in an HTML
+/// comment below the table. Matches the strategy's 5–10 curation
+/// cutline while staying inside token budget.
+const DATA_TOPN: usize = 10;
+
+/// Badge embed for a heat band, label shrunk beneath it, centered.
+/// The badge towers over the text on a shared baseline, so side by
+/// side they always read offset — stacked and centered instead.
+/// `div align` is the only centering github.com honors in a cell.
+fn heat_cell(band: &str) -> String {
+    format!("<div align=\"center\">![{band}](indicators/{band}.svg)<br><sub>{band}</sub></div>")
+}
+
+/// Published path: local `data/` working copies mirror the Pages layout,
+/// so strip the root to name the contract other projects link.
+fn published(path: &str) -> &str {
+    path.strip_prefix("data/").unwrap_or(path)
+}
+
+/// Topic links for an about cell: tiny `#tag` links to a user-scoped repo
+/// search, capped so one repo can't flood the table. Owner rides the
+/// node — never a baked-in login.
+fn topic_links(owner: &str, topics: &[String]) -> String {
+    const MAX: usize = 4;
+    let mut tags: Vec<String> = topics
+        .iter()
+        .take(MAX)
+        .map(|t| {
+            let enc: String = t
+                .chars()
+                .flat_map(|c| {
+                    if c.is_ascii_alphanumeric() || c == '-' {
+                        vec![c]
+                    } else {
+                        format!("%{0:02X}", c as u32).chars().collect::<Vec<_>>()
+                    }
+                })
+                .collect();
+            format!(
+                "[#{t}](https://github.com/search?q=user%3A{owner}+topic%3A{enc}&type=repositories)"
+            )
+        })
+        .collect();
+    if topics.len() > MAX {
+        tags.push(format!("+{}", topics.len() - MAX));
+    }
+    tags.join(" ")
+}
+
+/// One line of prose for a markdown table cell. The MARKDOWN module owns
+/// escaping (`|` → `\|`, newline → `<br>`); Rust only keeps descriptions short.
+fn cell_text(s: &str, max: usize) -> String {
+    let flat: String = s.split_whitespace().collect::<Vec<_>>().join(" ");
+    if flat.chars().count() > max {
+        flat.chars().take(max.saturating_sub(1)).collect::<String>() + "…"
+    } else {
+        flat
+    }
+}
+
+/// Rows for the commit-data table: own-work repos only (same filter as
+/// the charts — pristine forks never read). Sorted by 30d share desc;
+/// layers ride a column so the ranking stays contiguous.
+fn data_rows(graph_json: &str) -> anyhow::Result<DataDoc> {
+    let graph = jzombie_graph::graph::Graph::from_json(graph_json)?;
+    let mut repos: Vec<&jzombie_graph::graph::Node> = graph
+        .nodes
+        .iter()
+        .filter(|nd| !nd.private && jzombie_graph::graph::is_own_work(nd))
+        .filter(|nd| nd.commits_30d > 0)
+        .collect();
+    repos.sort_by(|a, b| {
+        b.commits_30d
+            .cmp(&a.commits_30d)
+            .then_with(|| a.name.cmp(&b.name))
+    });
+    let total: u32 = repos.iter().map(|n| n.commits_30d).sum();
+    let mut found = 0;
+    let mut mid = 0;
+    let mut app = 0;
+    let mut iso = 0;
+    for n in &repos {
+        let t = &n.layer;
+        if t.contains(&jzombie_graph::graph::Layer::Foundation) {
+            found += 1;
+        }
+        if t.contains(&jzombie_graph::graph::Layer::Middleware) {
+            mid += 1;
+        }
+        if t.contains(&jzombie_graph::graph::Layer::Application) {
+            app += 1;
+        }
+        if t.contains(&jzombie_graph::graph::Layer::Isolated) {
+            iso += 1;
+        }
+    }
+    let summary = format!(
+        "As of {} UTC · {} repos · {} commits/30d · {} foundation · {} middleware · {} application · {} isolated — machine-readable in `{}` (schema `{}`).",
+        graph.generated_at.format("%Y-%m-%d %H:%M"),
+        repos.len(),
+        total,
+        found,
+        mid,
+        app,
+        iso,
+        published(jzombie_graph::paths::GRAPH_JSON),
+        published(jzombie_graph::paths::SCHEMA_JSON),
+    );
+    if repos.is_empty() {
+        return Ok(DataDoc {
+            summary,
+            empty: true,
+            msg: "No commits in trailing 30d".to_string(),
+            rows: vec![],
+            overflow: String::new(),
+        });
+    }
+    // Short names for link labels; edge ids outside the node list fall
+    // back to the repo part of the id. Sorted for deterministic output.
+    let short = |id: &str| {
+        graph
+            .nodes
+            .iter()
+            .find(|n| n.id == id)
+            .map(|n| n.name.clone())
+            .unwrap_or_else(|| id.rsplit('/').next().unwrap_or(id).to_string())
+    };
+    let link = |id: &str| format!("[{}](https://github.com/{})", short(id), id);
+    let mut used_by: std::collections::BTreeMap<String, Vec<String>> =
+        std::collections::BTreeMap::new();
+    let mut uses: std::collections::BTreeMap<String, Vec<String>> =
+        std::collections::BTreeMap::new();
+    for n in &graph.nodes {
+        used_by.entry(n.id.clone()).or_default();
+        uses.entry(n.id.clone()).or_default();
+    }
+    for e in &graph.edges {
+        if e.kind.is_dependence() {
+            used_by
+                .entry(e.target.clone())
+                .or_default()
+                .push(e.source.clone());
+            uses.entry(e.source.clone())
+                .or_default()
+                .push(e.target.clone());
+        }
+    }
+    // Recruiter-readable connectivity: named links per direction, not
+    // opaque `in/out` counts. Headers carry the direction, so cells are
+    // pure link lists; an empty side reads `—`.
+    let links = |ids: &[String]| {
+        let mut v = ids.to_vec();
+        v.sort();
+        v.dedup();
+        if v.is_empty() {
+            return "—".to_string();
+        }
+        v.iter().map(|s| link(s)).collect::<Vec<_>>().join(", ")
+    };
+    let rows: Vec<DataRow> = repos
+        .iter()
+        .take(DATA_TOPN)
+        .map(|n| {
+            let heat = n.commit_heat.or_else(|| n.commit_heat());
+            let desc = n
+                .description
+                .as_deref()
+                .map(|d| cell_text(d, 80))
+                .unwrap_or_default();
+            let tags = topic_links(&n.owner, &n.topics);
+            // Role carries the tiny topic search links; bare repo keeps "-".
+            let about = match (desc.as_str(), tags.as_str()) {
+                ("", "") => "-".to_string(),
+                ("", _) => format!("<sub>{tags}</sub>"),
+                (_, "") => desc,
+                _ => format!("{desc} <sub>{tags}</sub>"),
+            };
+            DataRow {
+                // Proof folds in here, shrunk: a full column of 0s and
+                // 1s is noise, but `★ 37` still pops where it matters.
+                repo: format!(
+                    "[{}](https://github.com/{})<br><sub>★ {}</sub>",
+                    n.name, n.id, n.stars
+                ),
+                // The cell prints the stored tag set: middleware with a
+                // default binary reads `middleware · application` (both);
+                // a tagless leaf library reads `—` (no claim, not a lie).
+                layer: jzombie_graph::graph::Graph::layer_string(&n.layer),
+                about,
+                // The count carries its method on its own line, shrunk:
+                // deduped oid union across N in-scope branches under `all`
+                // (branch_heat spans every branch, so its length is the
+                // union width), default-branch commits under `default`.
+                // Branchless rows (fixtures, lean JSON) name no count.
+                // Literal `<br>`: the formatter flattens raw newlines to
+                // spaces (see the hostile-text test), tags pass through.
+                commits: {
+                    let width = n.branch_heat.len();
+                    let method = match graph.velocity_scope {
+                        jzombie_graph::graph::VelocityScope::All if width == 1 => {
+                            "single branch".to_string()
+                        }
+                        jzombie_graph::graph::VelocityScope::All if width > 1 => {
+                            format!("deduped across {width} branches")
+                        }
+                        jzombie_graph::graph::VelocityScope::All => {
+                            "deduped across branches".to_string()
+                        }
+                        jzombie_graph::graph::VelocityScope::Default => {
+                            "default branch".to_string()
+                        }
+                    };
+                    format!("{}<br><sub>{method}</sub>", n.commits_30d)
+                },
+                heat: heat_cell(heat_band(heat)),
+                // One reuse column: stacked labeled lines split by `<hr>`
+                // (`---` would split the row). Empty sides drop out;
+                // JSON edges stay the machine surface.
+                reuse: {
+                    let mut ub = used_by.get(&n.id).cloned().unwrap_or_default();
+                    let mut us = uses.get(&n.id).cloned().unwrap_or_default();
+                    ub.sort();
+                    ub.dedup();
+                    us.sort();
+                    us.dedup();
+                    match (ub.is_empty(), us.is_empty()) {
+                        (true, true) => "—".to_string(),
+                        (true, false) => format!("<sub>uses</sub><br>{}", links(&us)),
+                        (false, true) => {
+                            format!("<sub>used by</sub><br>{}", links(&ub))
+                        }
+                        (false, false) => {
+                            format!(
+                                "<sub>used by</sub><br>{}<br><hr><sub>uses</sub><br>{}",
+                                links(&ub),
+                                links(&us)
+                            )
+                        }
+                    }
+                },
+            }
+        })
+        .collect();
+    // Below the cut: no junk row — names plus combined commits ride an
+    // HTML comment under the table instead.
+    let rest = &repos[repos.len().min(DATA_TOPN)..];
+    let overflow = if rest.is_empty() {
+        String::new()
+    } else {
+        let names: Vec<String> = rest.iter().map(|n| n.name.clone()).collect();
+        let total: u32 = rest.iter().map(|n| n.commits_30d).sum();
+        format!(
+            "\n<!-- +{} more below top-10 ({} commits/30d combined): {} -->\n",
+            rest.len(),
+            total,
+            names.join(", ")
+        )
+    };
+    Ok(DataDoc {
+        summary,
+        empty: false,
+        msg: String::new(),
+        rows,
+        overflow,
+    })
+}
+
+/// Plugin function: validated graph JSON in, data-table document out.
+#[oxdock_func(pure, name = "DATA_TABLE")]
+fn data_table(graph_json: String) -> anyhow::Result<Value> {
+    let graph_json = transport_out(&graph_json)?;
+    Ok(Value::string(serde_json::to_string(&data_rows(
+        &graph_json,
+    )?)?))
+}
+
+/// Portfolio page document: fragment + chart embeds + the data table +
+/// the indicator table (each rendered by its own template, passed in).
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 struct PortfolioDoc {
     header: String,
+    data: String,
     table: String,
     footer: String,
 }
@@ -1128,11 +1450,13 @@ fn portfolio(
     share: String,
     focus: String,
     flame: String,
+    data: String,
     table: String,
 ) -> anyhow::Result<Value> {
     let frag = transport_out(&frag)?;
+    let data = transport_out(&data)?;
     let header = format!(
-        "# portfolio-graph — render proof\n\n*Generated — do not hand-edit. Regenerate with `oxdock scripts/preview-indicators.oxfile`. Fragment carried verbatim; charts embedded as files.*\n\n## Map fragment\n\n{frag}\n## Commit share\n\n![share]({share})\n\n## Focus ranking\n\n![focus]({focus})\n\n## Heat flame\n\n![flame]({flame})\n\n",
+        "# portfolio-graph — render proof\n\n*Generated — do not hand-edit. Regenerate with `oxdock scripts/preview-indicators.oxfile`. Fragment carried verbatim; charts embedded as files.*\n\n## Map fragment\n\n{frag}\n## Commit share\n\n![share]({share})\n\n## Developer Focus\n\nDeveloper Focus is a heuristic of where the developer's attention is right now.\n\n![developer focus]({focus})\n\n<sub>Each score blends commit heat (recent commit rates vs the trailing 30d baseline) with issue comment heat (owner authored comment volume, same comparison), then discounts idle months. A signal with no baseline sits out: triage free repos rank on commits alone, commit free weeks on comments alone.</sub>\n\n## Heat flame\n\n![flame]({flame})\n\n",
         frag = frag.trim_end(),
         share = share,
         focus = focus,
@@ -1140,6 +1464,7 @@ fn portfolio(
     );
     let doc = PortfolioDoc {
         header,
+        data,
         table,
         footer: String::new(),
     };
@@ -1198,33 +1523,71 @@ pub fn render_indicators_md() -> anyhow::Result<String> {
     Ok(resolver.read_to_string(&out).expect("read md"))
 }
 
-/// Render the full proof page: fragment + embeds + indicator table.
-/// One OxDock template, zero path literals — names arrive as arguments.
+/// Render the machine-readable commit-data table: one row per active
+/// repo (top-10, tail named in a comment), layer-labeled, same rows the
+/// charts draw. Markup comes from the shared MARKDOWN module — Rust
+/// shapes the rows, `MAP_TO_MD_TABLE` frames them. Data with quotes
+/// rides base64 — raw `#var` inlining would break.
+pub fn render_data_table_md(graph_json: &str) -> anyhow::Result<String> {
+    let engine = engine();
+    let arg = transport_in(graph_json);
+    let steps: Vec<oxdock_parser::Step> = oxdock! {
+        modules: [CHARTS, MARKDOWN],
+        IMPORT [STD, CHARTS, MARKDOWN]
+        LET $rows_json: STRING = CHARTS::DATA_TABLE(#arg)
+        WRITE rows.json $rows_json
+        LET $doc: MAP<ANY> = LOAD_JSON("rows.json")
+        WRITE md.md "## Commit data — machine-readable\n\n"
+        APPEND md.md $doc.summary
+        APPEND md.md "\n\n"
+        IF $doc.empty {
+            APPEND md.md "*{{ $doc.msg }}*\n"
+        } ELSE {
+            APPEND md.md "{{ MARKDOWN::MAP_TO_MD_TABLE($doc.rows) }}"
+            APPEND md.md $doc.overflow
+        }
+        LET $check: STRING = READ md.md
+        ASSERT_CONTAINS $check "machine-readable"
+    };
+    let temp = oxdock::GuardedPath::tempdir().expect("tempdir");
+    let root = temp.as_guarded_path().clone();
+    engine.run_steps_without_snapshot(&root, &steps)?;
+    let resolver = oxdock::PathResolver::new(root.as_path(), root.as_path()).expect("resolver");
+    let out = root.join("md.md").expect("md path");
+    Ok(resolver.read_to_string(&out).expect("read md"))
+}
+
+/// Render the full proof page: fragment + embeds + data table + indicator
+/// table. One OxDock template, zero path literals — names arrive as args.
 pub fn render_preview_md(
     frag: &str,
     share: &str,
     focus: &str,
     flame: &str,
+    data: &str,
     table: &str,
 ) -> anyhow::Result<String> {
     let engine = engine();
-    let (frag_arg, share_arg, focus_arg, flame_arg, table_arg) = (
+    let (frag_arg, share_arg, focus_arg, flame_arg, data_arg, table_arg) = (
         transport_in(frag),
         share.to_string(),
         focus.to_string(),
         flame.to_string(),
+        transport_in(data),
         table.to_string(),
     );
     let steps: Vec<oxdock_parser::Step> = oxdock! {
         modules: [CHARTS],
         IMPORT [STD, CHARTS]
-        LET $page_json: STRING = CHARTS::PORTFOLIO(#frag_arg, #share_arg, #focus_arg, #flame_arg, #table_arg)
+        LET $page_json: STRING = CHARTS::PORTFOLIO(#frag_arg, #share_arg, #focus_arg, #flame_arg, #data_arg, #table_arg)
         WRITE rows.json $page_json
         LET $doc: MAP<ANY> = LOAD_JSON("rows.json")
         WRITE md.md $doc.header
+        APPEND md.md $doc.data
         APPEND md.md $doc.table
         LET $check: STRING = READ md.md
         ASSERT_CONTAINS $check "| badge |"
+        ASSERT_CONTAINS $check "Commit data"
     };
     let temp = oxdock::GuardedPath::tempdir().expect("tempdir");
     let root = temp.as_guarded_path().clone();
@@ -1316,6 +1679,21 @@ mod tests {
                 commits_5d: *c5,
                 commits_15d: *c5 * 3,
                 commits_30d: *c30,
+                issues_open_1d: 0,
+                issues_open_5d: 0,
+                issues_open_15d: 0,
+                issues_open_30d: 0,
+                issues_closed_1d: 0,
+                issues_closed_5d: 0,
+                issues_closed_15d: 0,
+                issues_closed_30d: 0,
+                issue_comments_1d: 0,
+                issue_comments_5d: 0,
+                issue_comments_15d: 0,
+                issue_comments_30d: 0,
+                issue_labels: Default::default(),
+                recent_issues: vec![],
+                issue_heat: None,
                 commit_heat: None,
                 focus: None,
                 last_commit_at: None,
@@ -1323,7 +1701,8 @@ mod tests {
                 recent_prs: vec![],
                 visible: true,
                 visible_reason: None,
-                layer: Layer::Isolated,
+                layer: std::collections::BTreeSet::from([Layer::Isolated]),
+                has_default_binary: false,
             })
             .collect();
         jzombie_graph::output::render_json(&Graph::new(nodes, vec![])).unwrap()
@@ -1361,6 +1740,21 @@ mod tests {
                 commits_5d: 0,
                 commits_15d: 0,
                 commits_30d: 0,
+                issues_open_1d: 0,
+                issues_open_5d: 0,
+                issues_open_15d: 0,
+                issues_open_30d: 0,
+                issues_closed_1d: 0,
+                issues_closed_5d: 0,
+                issues_closed_15d: 0,
+                issues_closed_30d: 0,
+                issue_comments_1d: 0,
+                issue_comments_5d: 0,
+                issue_comments_15d: 0,
+                issue_comments_30d: 0,
+                issue_labels: Default::default(),
+                recent_issues: vec![],
+                issue_heat: None,
                 commit_heat: None,
                 focus: *f,
                 last_commit_at: None,
@@ -1368,7 +1762,8 @@ mod tests {
                 visible: true,
                 recent_prs: vec![],
                 visible_reason: None,
-                layer: Layer::Isolated,
+                layer: std::collections::BTreeSet::from([Layer::Isolated]),
+                has_default_binary: false,
             })
             .collect();
         jzombie_graph::output::render_json(&Graph::new(nodes, vec![])).unwrap()
@@ -1468,8 +1863,8 @@ mod tests {
     }
     #[test]
     fn indicators_pulse_with_heat_static_when_dormant() {
-        // Stepped ramp on the documented heat bands: heating green,
-        // steady blue, cooling amber (still pulses), dormant faint.
+        // Stepped ramp on the documented heat bands: heating vermillion,
+        // steady amber, cooling blue (still pulses), dormant faint.
         assert_eq!(heat_color(6.0), palette::heating());
         assert_eq!(heat_color(1.0), palette::steady());
         assert_eq!(heat_color(0.3), palette::cooling());
@@ -1615,7 +2010,7 @@ mod tests {
         assert!(svg.contains("60 commits"));
         // Recency gradients: oldest window dormant, newest heating.
         assert!(svg.contains("grad-r0"));
-        assert!(svg.contains("stop-color=\"#009E73\""));
+        assert!(svg.contains("stop-color=\"#D55E00\""));
     }
 
     #[test]
@@ -1667,15 +2062,547 @@ mod tests {
     #[test]
     fn preview_page_carries_everything_verbatim() {
         let table = render_indicators_md().unwrap();
-        let md = render_preview_md("# Frag\n", "s.svg", "f.svg", "fl.svg", &table).unwrap();
-        // Fragment verbatim, embeds by file name, indicator rows inlined.
+        let g = graph_with(&[("big", 30), ("small", 10)]);
+        let data = render_data_table_md(&g).unwrap();
+        let md = render_preview_md("# Frag\n", "s.svg", "f.svg", "fl.svg", &data, &table).unwrap();
+        // Fragment verbatim, embeds by file name, both tables inlined.
         assert!(md.contains("# Frag\n"));
         assert!(md.contains("![share](s.svg)"));
-        assert!(md.contains("![focus](f.svg)"));
+        assert!(md.contains("![developer focus](f.svg)"));
         assert!(md.contains("![flame](fl.svg)"));
+        assert!(md.contains("## Commit data — machine-readable"));
         assert!(md.contains("| ![heating](indicators/heating.svg) | heating | 3.00 |"));
         assert!(md.contains("oxdock scripts/preview-indicators.oxfile"));
         assert!(md.ends_with("|\n"));
+    }
+
+    #[test]
+    fn data_table_top10_names_the_tail_in_a_comment() {
+        // 12 active repos: 10 rows, tail named in an HTML comment —
+        // no junk row. Hottest first, badge in the heat cell.
+        let names: Vec<String> = (0..12).map(|i| format!("r{i:02}")).collect();
+        let pairs: Vec<(&str, u32, u32)> = names
+            .iter()
+            .enumerate()
+            .map(|(i, n)| (n.as_str(), (i as u32 + 1) * 2, (i as u32 + 1) * 12))
+            .collect();
+        let g = graph_with_heat(&pairs);
+        let md = render_data_table_md(&g).unwrap();
+        // Formatter owns the frame: alphabetical columns, padded cells.
+        let header = md.lines().find(|l| l.starts_with('|')).unwrap();
+        // Repo leads: the sort key carries a leading space, so the raw
+        // first cell opens with two (delimiter padding + key space).
+        // Trimmed assertions below would pass either way — this one
+        // proves the trick is present, not silent.
+        let raw_first = header.split('|').nth(1).unwrap();
+        assert!(
+            raw_first.starts_with("  "),
+            "repo sort key present:\n{header}"
+        );
+        let cols: Vec<String> = header
+            .split('|')
+            .map(|c| c.trim().to_string())
+            .filter(|c| !c.is_empty() && !c.chars().all(|c| c == '-'))
+            .collect();
+        assert_eq!(
+            cols,
+            vec![
+                "repo",
+                "about",
+                "commits/30d",
+                "heat",
+                "layer",
+                "reuse (portfolio)"
+            ],
+            "union columns, alphabetical:\n{md}"
+        );
+        // Top row is the hottest (r11 first), tail named below the table.
+        let top = md.find("r11").unwrap();
+        let second = md.find("r10").unwrap();
+        assert!(top < second, "30d desc");
+        assert!(!md.contains("_Other"), "no roll-up row");
+        assert!(
+            md.contains("<!-- +2 more below top-10"),
+            "tail in a comment:\n{md}"
+        );
+        // Count carries its method on its own line, shrunk
+        // (fixture scope is All, fixture nodes are branchless).
+        assert!(
+            md.contains("<br><sub>deduped across branches</sub>"),
+            "computation method in cell:\n{md}"
+        );
+        assert!(
+            md.contains("r00") && md.contains("r01"),
+            "tail named:\n{md}"
+        );
+        // Heat cell carries the band badge over its label, centered.
+        assert!(
+            md.contains(
+                "<div align=\"center\">![steady](indicators/steady.svg)<br><sub>steady</sub></div>"
+            ),
+            "badge + small label in heat cell:\n{md}"
+        );
+        // Summary is data: run time, counts, layers, published paths.
+        assert!(md.contains("12 repos"));
+        assert!(md.contains("As of"), "last run on top");
+        assert!(md.contains("UTC"), "timestamps read UTC");
+        assert!(md.contains("json/portfolio-graph.json"));
+        assert!(md.contains("json/portfolio-graph-schema.json"));
+        assert!(
+            !md.contains("data/json"),
+            "published paths, not working copies"
+        );
+    }
+
+    #[test]
+    fn data_table_commits_cell_names_branch_count() {
+        // The method sub carries the union width: N in-scope branches
+        // under scope All. Singular reads right too.
+        use jzombie_graph::graph::{BranchHeat, Graph, Layer, Node};
+        let heat = |branch: &str, c30: u32| BranchHeat {
+            branch: branch.into(),
+            is_default: branch == "main",
+            commits_1d: 0,
+            commits_5d: 0,
+            commits_15d: 0,
+            commits_30d: c30,
+        };
+        let node = |name: &str, c30: u32, branches: Vec<BranchHeat>| Node {
+            id: format!("me/{name}"),
+            owner: "me".into(),
+            name: name.into(),
+            fork: false,
+            private: false,
+            upstream: None,
+            ahead_by: None,
+            pushed_at: None,
+            description: None,
+            topics: vec![],
+            language: None,
+            homepage: None,
+            stars: 0,
+            forks_count: 0,
+            open_issues: 0,
+            license: None,
+            archived: false,
+            disabled: false,
+            size_kb: 0,
+            has_readme: false,
+            has_llms_txt: false,
+            has_agents_md: false,
+            has_license_file: false,
+            commits_1d: 0,
+            commits_5d: 0,
+            commits_15d: 0,
+            commits_30d: c30,
+            issues_open_1d: 0,
+            issues_open_5d: 0,
+            issues_open_15d: 0,
+            issues_open_30d: 0,
+            issues_closed_1d: 0,
+            issues_closed_5d: 0,
+            issues_closed_15d: 0,
+            issues_closed_30d: 0,
+            issue_comments_1d: 0,
+            issue_comments_5d: 0,
+            issue_comments_15d: 0,
+            issue_comments_30d: 0,
+            issue_labels: Default::default(),
+            recent_issues: vec![],
+            issue_heat: None,
+            commit_heat: None,
+            focus: None,
+            last_commit_at: None,
+            branch_heat: branches,
+            recent_prs: vec![],
+            visible: true,
+            visible_reason: None,
+            layer: std::collections::BTreeSet::from([Layer::Isolated]),
+            has_default_binary: false,
+        };
+        let g = jzombie_graph::output::render_json(&Graph::new(
+            vec![
+                node(
+                    "wide",
+                    60,
+                    vec![heat("main", 60), heat("a", 60), heat("b", 60)],
+                ),
+                node("solo", 5, vec![heat("main", 5)]),
+            ],
+            vec![],
+        ))
+        .unwrap();
+        let md = render_data_table_md(&g).unwrap();
+        assert!(
+            md.contains("60<br><sub>deduped across 3 branches</sub>"),
+            "union width in cell:\n{md}"
+        );
+        assert!(
+            md.contains("5<br><sub>single branch</sub>"),
+            "singular reads right:\n{md}"
+        );
+    }
+
+    #[test]
+    fn data_table_cells_survive_hostile_text() {
+        // Pipes, quotes, and newlines in a description must not break the
+        // table or the OxDock transport (quotes ride base64 end-to-end).
+        use jzombie_graph::graph::{Graph, Layer, Node};
+        let nodes = vec![Node {
+            id: "me/quot".into(),
+            owner: "me".into(),
+            name: "quot".into(),
+            fork: false,
+            private: false,
+            upstream: None,
+            ahead_by: None,
+            pushed_at: None,
+            description: Some("does \"things\" | pipes\nand lines".into()),
+            topics: vec![],
+            language: Some("Rust".into()),
+            homepage: None,
+            stars: 7,
+            forks_count: 0,
+            open_issues: 0,
+            license: None,
+            archived: false,
+            disabled: false,
+            size_kb: 0,
+            has_readme: false,
+            has_llms_txt: false,
+            has_agents_md: false,
+            has_license_file: false,
+            commits_1d: 2,
+            commits_5d: 10,
+            commits_15d: 30,
+            commits_30d: 60,
+            issues_open_1d: 0,
+            issues_open_5d: 0,
+            issues_open_15d: 0,
+            issues_open_30d: 0,
+            issues_closed_1d: 0,
+            issues_closed_5d: 0,
+            issues_closed_15d: 0,
+            issues_closed_30d: 0,
+            issue_comments_1d: 0,
+            issue_comments_5d: 0,
+            issue_comments_15d: 0,
+            issue_comments_30d: 0,
+            issue_labels: Default::default(),
+            recent_issues: vec![],
+            issue_heat: None,
+            commit_heat: None,
+            focus: None,
+            last_commit_at: None,
+            branch_heat: vec![],
+            recent_prs: vec![],
+            visible: true,
+            visible_reason: None,
+            layer: std::collections::BTreeSet::from([Layer::Isolated]),
+            has_default_binary: false,
+        }];
+        let g = jzombie_graph::output::render_json(&Graph::new(nodes, vec![])).unwrap();
+        let md = render_data_table_md(&g).unwrap();
+        assert!(
+            md.contains("[quot](https://github.com/me/quot)"),
+            "repo linked"
+        );
+        assert!(md.contains("foundation"), "layer column");
+        // Pipes ride the formatter's escaping, not a Rust rewrite.
+        assert!(
+            md.contains("does \"things\" \\| pipes and lines"),
+            "cell escaped"
+        );
+        assert!(md.contains("<sub>★ 7</sub>"), "stars folded into repo cell");
+    }
+
+    #[test]
+    fn data_table_layer_cell_carries_default_binary_tag() {
+        // term-wm case: the stored set holds both tags (middleware
+        // positionally, application by default binary — see
+        // `layers_default_binary_adds_application_tag` for the rule).
+        // The cell prints the set: `middleware · application` (both).
+        use jzombie_graph::graph::{Graph, Layer, Node};
+        let node = |tags: &[Layer]| Node {
+            id: "me/app".into(),
+            owner: "me".into(),
+            name: "app".into(),
+            fork: false,
+            private: false,
+            upstream: None,
+            ahead_by: None,
+            pushed_at: None,
+            description: None,
+            topics: vec![],
+            language: Some("Rust".into()),
+            homepage: None,
+            stars: 0,
+            forks_count: 0,
+            open_issues: 0,
+            license: None,
+            archived: false,
+            disabled: false,
+            size_kb: 0,
+            has_readme: false,
+            has_llms_txt: false,
+            has_agents_md: false,
+            has_license_file: false,
+            commits_1d: 1,
+            commits_5d: 5,
+            commits_15d: 15,
+            commits_30d: 30,
+            issues_open_1d: 0,
+            issues_open_5d: 0,
+            issues_open_15d: 0,
+            issues_open_30d: 0,
+            issues_closed_1d: 0,
+            issues_closed_5d: 0,
+            issues_closed_15d: 0,
+            issues_closed_30d: 0,
+            issue_comments_1d: 0,
+            issue_comments_5d: 0,
+            issue_comments_15d: 0,
+            issue_comments_30d: 0,
+            issue_labels: Default::default(),
+            recent_issues: vec![],
+            issue_heat: None,
+            commit_heat: None,
+            focus: None,
+            last_commit_at: None,
+            branch_heat: vec![],
+            recent_prs: vec![],
+            visible: true,
+            visible_reason: None,
+            layer: tags.iter().copied().collect(),
+            has_default_binary: false,
+        };
+        let both = [Layer::Middleware, Layer::Application];
+        let bin_g =
+            jzombie_graph::output::render_json(&Graph::new(vec![node(&both)], vec![])).unwrap();
+        assert!(
+            render_data_table_md(&bin_g)
+                .unwrap()
+                .contains("middleware · application"),
+            "both tags in the cell"
+        );
+        let mid = [Layer::Middleware];
+        let lib_g =
+            jzombie_graph::output::render_json(&Graph::new(vec![node(&mid)], vec![])).unwrap();
+        let lib_md = render_data_table_md(&lib_g).unwrap();
+        assert!(lib_md.contains("middleware"), "layer still there");
+        assert!(
+            !lib_md.contains("· application"),
+            "no tag without a default binary"
+        );
+    }
+
+    #[test]
+    fn data_table_used_by_and_uses_carry_repo_links() {
+        // lib <- mid <- app: separate columns, named links, no counts.
+        // Associations (docs) never land in either column.
+        use jzombie_graph::graph::{Edge, EdgeKind, Graph, Layer, Node};
+        let node = |name: &str| Node {
+            id: format!("me/{name}"),
+            owner: "me".into(),
+            name: name.into(),
+            fork: false,
+            private: false,
+            upstream: None,
+            ahead_by: None,
+            pushed_at: None,
+            description: None,
+            topics: vec![],
+            language: Some("Rust".into()),
+            homepage: None,
+            stars: 0,
+            forks_count: 0,
+            open_issues: 0,
+            license: None,
+            archived: false,
+            disabled: false,
+            size_kb: 0,
+            has_readme: false,
+            has_llms_txt: false,
+            has_agents_md: false,
+            has_license_file: false,
+            commits_1d: 1,
+            commits_5d: 5,
+            commits_15d: 15,
+            commits_30d: 30,
+            issues_open_1d: 0,
+            issues_open_5d: 0,
+            issues_open_15d: 0,
+            issues_open_30d: 0,
+            issues_closed_1d: 0,
+            issues_closed_5d: 0,
+            issues_closed_15d: 0,
+            issues_closed_30d: 0,
+            issue_comments_1d: 0,
+            issue_comments_5d: 0,
+            issue_comments_15d: 0,
+            issue_comments_30d: 0,
+            issue_labels: Default::default(),
+            recent_issues: vec![],
+            issue_heat: None,
+            commit_heat: None,
+            focus: None,
+            last_commit_at: None,
+            branch_heat: vec![],
+            recent_prs: vec![],
+            visible: true,
+            visible_reason: None,
+            layer: std::collections::BTreeSet::from([Layer::Isolated]),
+            has_default_binary: false,
+        };
+        let edge = |s: &str, t: &str, kind: EdgeKind| Edge {
+            source: s.into(),
+            target: t.into(),
+            kind,
+            declaring_branches: vec!["main".into()],
+            recency: None,
+            version: None,
+        };
+        let g = jzombie_graph::output::render_json(&Graph::new(
+            vec![node("lib"), node("mid"), node("app")],
+            vec![
+                edge("me/mid", "me/lib", EdgeKind::Manifest),
+                edge("me/app", "me/mid", EdgeKind::Manifest),
+                edge("me/app", "me/lib", EdgeKind::Docs),
+            ],
+        ))
+        .unwrap();
+        let md = render_data_table_md(&g).unwrap();
+        // Formatter pads cells, so parse the header like the top-10 test.
+        let header = md.lines().find(|l| l.starts_with('|')).unwrap();
+        let cols: Vec<String> = header
+            .split('|')
+            .map(|c| c.trim().to_string())
+            .filter(|c| !c.is_empty() && !c.chars().all(|c| c == '-'))
+            .collect();
+        assert_eq!(
+            cols,
+            vec![
+                "repo",
+                "about",
+                "commits/30d",
+                "heat",
+                "layer",
+                "reuse (portfolio)"
+            ],
+            "single reuse column:\n{md}"
+        );
+        let app_row = md
+            .lines()
+            .find(|l| l.contains("[app](https://github.com/me/app)"))
+            .unwrap()
+            .to_string();
+        assert!(
+            app_row.contains("<sub>uses</sub><br>[mid](https://github.com/me/mid)"),
+            "labeled uses line:\n{app_row}"
+        );
+        assert!(
+            !app_row.contains("[lib](https://github.com/me/lib)"),
+            "docs association never counts:\n{app_row}"
+        );
+        let lib_row = md
+            .lines()
+            .find(|l| l.contains("[lib](https://github.com/me/lib)"))
+            .unwrap()
+            .to_string();
+        assert!(
+            lib_row.contains("<sub>used by</sub><br>[mid](https://github.com/me/mid)"),
+            "labeled used-by line:\n{lib_row}"
+        );
+        let mid_row = md
+            .lines()
+            .find(|l| l.contains("[mid](https://github.com/me/mid)<br><sub>★ 0</sub>"))
+            .unwrap()
+            .to_string();
+        assert!(
+            mid_row.contains(
+                "<sub>used by</sub><br>[app](https://github.com/me/app)<br><hr><sub>uses</sub><br>[lib](https://github.com/me/lib)"
+            ),
+            "both directions, divider between:\n{mid_row}"
+        );
+    }
+
+    #[test]
+    fn data_table_empty_when_no_commits() {
+        let g = graph_with(&[("old", 0)]);
+        let md = render_data_table_md(&g).unwrap();
+        assert!(md.contains("No commits in trailing 30d"));
+    }
+    #[test]
+    fn data_table_about_carries_topic_search_links() {
+        // `#tag` links scope the search to the node's owner; capped at 4.
+        use jzombie_graph::graph::{Graph, Layer, Node};
+        let node = |name: &str, topics: Vec<&str>| Node {
+            id: format!("me/{name}"),
+            owner: "me".into(),
+            name: name.into(),
+            fork: false,
+            private: false,
+            upstream: None,
+            ahead_by: None,
+            pushed_at: None,
+            description: Some("does things".into()),
+            topics: topics.into_iter().map(str::to_string).collect(),
+            language: Some("Rust".into()),
+            homepage: None,
+            stars: 0,
+            forks_count: 0,
+            open_issues: 0,
+            license: None,
+            archived: false,
+            disabled: false,
+            size_kb: 0,
+            has_readme: false,
+            has_llms_txt: false,
+            has_agents_md: false,
+            has_license_file: false,
+            commits_1d: 1,
+            commits_5d: 5,
+            commits_15d: 15,
+            commits_30d: 30,
+            issues_open_1d: 0,
+            issues_open_5d: 0,
+            issues_open_15d: 0,
+            issues_open_30d: 0,
+            issues_closed_1d: 0,
+            issues_closed_5d: 0,
+            issues_closed_15d: 0,
+            issues_closed_30d: 0,
+            issue_comments_1d: 0,
+            issue_comments_5d: 0,
+            issue_comments_15d: 0,
+            issue_comments_30d: 0,
+            issue_labels: Default::default(),
+            recent_issues: vec![],
+            issue_heat: None,
+            commit_heat: None,
+            focus: None,
+            last_commit_at: None,
+            branch_heat: vec![],
+            recent_prs: vec![],
+            visible: true,
+            visible_reason: None,
+            layer: std::collections::BTreeSet::from([Layer::Isolated]),
+            has_default_binary: false,
+        };
+        let many: Vec<&str> = vec!["a", "b", "c", "d", "e", "f"];
+        let g = jzombie_graph::output::render_json(&Graph::new(
+            vec![node("r", many), node("bare", vec![])],
+            vec![],
+        ))
+        .unwrap();
+        let md = render_data_table_md(&g).unwrap();
+        assert!(
+            md.contains("[#a](https://github.com/search?q=user%3Ame+topic%3Aa&type=repositories)"),
+            "user-scoped search link:\n{md}"
+        );
+        assert!(md.contains("<sub>"), "tiny links");
+        assert!(md.contains("+2"), "tail capped");
+        assert!(!md.contains("topic%3Ae"), "fifth topic cut");
     }
 
     #[test]
@@ -1804,6 +2731,21 @@ mod tests {
                     commits_5d: 4,
                     commits_15d: 12,
                     commits_30d: 24,
+                    issues_open_1d: 0,
+                    issues_open_5d: 0,
+                    issues_open_15d: 0,
+                    issues_open_30d: 0,
+                    issues_closed_1d: 0,
+                    issues_closed_5d: 0,
+                    issues_closed_15d: 0,
+                    issues_closed_30d: 0,
+                    issue_comments_1d: 0,
+                    issue_comments_5d: 0,
+                    issue_comments_15d: 0,
+                    issue_comments_30d: 0,
+                    issue_labels: Default::default(),
+                    recent_issues: vec![],
+                    issue_heat: None,
                     commit_heat: None,
                     focus: Some(1.0),
                     last_commit_at: None,
@@ -1811,7 +2753,8 @@ mod tests {
                     visible: true,
                     visible_reason: None,
                     recent_prs: vec![],
-                    layer: Layer::Isolated,
+                    layer: std::collections::BTreeSet::from([Layer::Isolated]),
+                    has_default_binary: false,
                 }
             };
         let nodes = vec![

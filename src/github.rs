@@ -553,28 +553,77 @@ impl GitHubClient {
     }
 }
 
-/// Per-branch velocity from one GraphQL call: head SHA, 5d/30d counts,
-/// newest 30d date, newest date overall. One HTTP request for up to 100
-/// branches — the REST equivalent is a call per branch per window.
-/// The gauge stays default-branch-only; the pipeline picks that entry.
+/// Per-branch velocity from one GraphQL call: head SHA, the capped
+/// 30d commit list (oid + date, newest-first), newest 30d date, newest
+/// date overall. One HTTP request for up to 100 branches — the REST
+/// equivalent is a call per branch per window.
+/// Counts are never summed across branches here: the same commit is
+/// reachable from every branch containing it (shared ancestry), so the
+/// pipeline unions oids across in-scope branches instead. Per-branch
+/// windows are honest alone — the lie was only ever the sum.
 #[derive(Debug, Clone)]
 pub struct BranchVelocity {
     pub name: String,
     pub head_sha: String,
-    pub commits_1d: u32,
-    pub commits_5d: u32,
-    pub commits_15d: u32,
-    pub commits_30d: u32,
+    pub commits: Vec<BranchCommit>,
+    /// The 30d list hit the 100-cap: windows undercount. The pipeline
+    /// logs it, never silently.
+    pub truncated: bool,
     pub latest_30d: Option<DateTime<Utc>>,
     pub latest_overall: Option<DateTime<Utc>>,
 }
 
+/// One commit in a branch's 30d list: identity for the cross-branch
+/// union, date for window bucketing. Undated (unparseable date) counts
+/// in 30d — the server returned it under `since: $w30` — but in no
+/// smaller window, since it can't be placed.
+#[derive(Debug, Clone)]
+pub struct BranchCommit {
+    pub oid: String,
+    pub date: Option<DateTime<Utc>>,
+}
+
+/// One sampled issue thread: identity, planning labels, newest comments.
+/// Caps live in the query (10 threads × 20 comments × 10 labels,
+/// newest-first) — hot threads undercount old windows, documented.
+#[derive(Debug, Clone, Default)]
+pub struct RecentIssue {
+    pub number: u64,
+    pub title: String,
+    pub state: String,
+    pub labels: Vec<String>,
+    pub comments: Vec<IssueComment>,
+}
+
+/// One issue comment: when it landed, who wrote it (none when the
+/// account is gone). Windowing and authorship happen in the pipeline,
+/// where `now` and the sweep owner live — parsing stays pure.
+#[derive(Debug, Clone, Default)]
+pub struct IssueComment {
+    pub created_at: Option<DateTime<Utc>>,
+    pub author: Option<String>,
+}
+
 /// One GraphQL call's worth: branch velocity plus recent PRs.
 /// PRs carry their branch via the head ref name.
+/// Issue windows are repo-level open/closed thread touches per window
+/// (same call, no new requests): opened vs closed ride separately so
+/// resolution traffic never hides as backlog attention.
+/// `recent_issues` carries the sampled threads (labels + comments);
+/// the score reads comment volume only — labels are logged, never scored.
 #[derive(Debug, Clone, Default)]
 pub struct RepoVelocity {
     pub branches: Vec<BranchVelocity>,
     pub prs: Vec<crate::graph::RecentPr>,
+    pub issues_open_1d: u32,
+    pub issues_open_5d: u32,
+    pub issues_open_15d: u32,
+    pub issues_open_30d: u32,
+    pub issues_closed_1d: u32,
+    pub issues_closed_5d: u32,
+    pub issues_closed_15d: u32,
+    pub issues_closed_30d: u32,
+    pub recent_issues: Vec<RecentIssue>,
 }
 
 /// GitTimestamp shape GitHub accepts: seconds precision, Zulu suffix.
@@ -587,8 +636,13 @@ fn git_timestamp(dt: &DateTime<Utc>) -> String {
 /// The per-branch velocity query, counted open/close by test below.
 /// (A missing final brace once zeroed a whole sweep — the parser error
 /// points at end-of-input, which reads as nothing wrong.)
-fn velocity_query() -> &'static str {
-    r#"query($owner: String!, $name: String!, $w1: GitTimestamp!, $w5: GitTimestamp!, $w15: GitTimestamp!, $w30: GitTimestamp!) {
+/// One template for both modes: `__AUTHOR_DECL__` / `__AUTHOR_FILTER__`
+/// are the only divergence points, so the variants cannot drift apart.
+/// `owner_filtered` injects `author: $author` on every `history` call,
+/// so counts and dates reflect the sweep owner's pushes only —
+/// dependabot bumps and other committers never read as focus.
+/// Same response shape either way, so the parser never branches.
+const VELOCITY_QUERY_TEMPLATE: &str = r#"query($owner: String!, $name: String!__AUTHOR_DECL__, $w30: GitTimestamp!, $i1: DateTime!, $i5: DateTime!, $i15: DateTime!, $i30: DateTime!) {
   repository(owner: $owner, name: $name) {
     refs(first: 100, refPrefix: "refs/heads/") {
       nodes {
@@ -596,12 +650,31 @@ fn velocity_query() -> &'static str {
         target {
           oid
           ... on Commit {
-            w1: history(first: 1, since: $w1) { totalCount }
-            w5: history(first: 1, since: $w5) { totalCount edges { node { committedDate } } }
-            w15: history(first: 1, since: $w15) { totalCount }
-            w30: history(first: 1, since: $w30) { totalCount edges { node { committedDate } } }
-            latest: history(first: 1) { edges { node { committedDate } } }
+            hist: history(first: 100, since: $w30__AUTHOR_FILTER__) {
+              pageInfo { hasNextPage }
+              edges { node { oid committedDate } }
+            }
+            latest: history(first: 1__AUTHOR_FILTER__) { edges { node { committedDate } } }
           }
+        }
+      }
+    }
+    o1: issues(first: 1, filterBy: {states: OPEN, since: $i1}) { totalCount }
+    o5: issues(first: 1, filterBy: {states: OPEN, since: $i5}) { totalCount }
+    o15: issues(first: 1, filterBy: {states: OPEN, since: $i15}) { totalCount }
+    o30: issues(first: 1, filterBy: {states: OPEN, since: $i30}) { totalCount }
+    c1: issues(first: 1, filterBy: {states: CLOSED, since: $i1}) { totalCount }
+    c5: issues(first: 1, filterBy: {states: CLOSED, since: $i5}) { totalCount }
+    c15: issues(first: 1, filterBy: {states: CLOSED, since: $i15}) { totalCount }
+    c30: issues(first: 1, filterBy: {states: CLOSED, since: $i30}) { totalCount }
+    recentIssues: issues(first: 10, orderBy: {field: UPDATED_AT, direction: DESC}) {
+      nodes {
+        number
+        title
+        state
+        labels(first: 10) { nodes { name } }
+        comments(first: 20, orderBy: {field: UPDATED_AT, direction: DESC}) {
+          nodes { createdAt author { login } }
         }
       }
     }
@@ -614,31 +687,33 @@ fn velocity_query() -> &'static str {
       }
     }
   }
-}"#
+}"#;
+
+fn velocity_query(owner_filtered: bool) -> String {
+    // `__AUTHOR_FILTER__` first: it is not a prefix of `__AUTHOR_DECL__`
+    // but order-explicit beats order-dependent.
+    const ORDER: [&str; 2] = ["__AUTHOR_FILTER__", "__AUTHOR_DECL__"];
+    let (decl, filt) = if owner_filtered {
+        (", $author: CommitAuthor!", ", author: $author")
+    } else {
+        ("", "")
+    };
+    let mut q = VELOCITY_QUERY_TEMPLATE.to_string();
+    for ph in ORDER {
+        q = q.replace(ph, if ph == "__AUTHOR_DECL__" { decl } else { filt });
+    }
+    q
 }
 
 impl GitHubClient {
-    /// Per-branch velocity plus recent PR titles in one HTTP request
-    /// (GraphQL): 1d/5d/15d/30d counts + head SHA + newest dates, up to
-    /// 100 branches; up to 20 PRs by recency with head-ref branch names.
-    /// Errors are the caller's fail-open.
-    pub async fn repo_velocity(
-        &self,
-        owner: &str,
-        name: &str,
-        now: &DateTime<Utc>,
-    ) -> Result<RepoVelocity> {
-        let ago = |d: i64| git_timestamp(&(*now - chrono::Duration::days(d)));
+    /// Sweep-owner user id for the velocity author filter
+    /// (`user(login:){id}`). `None` when the login isn't a user (org
+    /// scope) or the lookup fails — callers fail open to unfiltered
+    /// velocity and log it, never abort the sweep on this.
+    pub async fn owner_user_id(&self, login: &str) -> Result<String> {
         let body = serde_json::json!({
-            "query": velocity_query(),
-            "variables": {
-                "owner": owner,
-                "name": name,
-                "w1": ago(1),
-                "w5": ago(5),
-                "w15": ago(15),
-                "w30": ago(30),
-            },
+            "query": "query($login: String!) { user(login: $login) { id } }",
+            "variables": { "login": login },
         });
         let url = format!("{}/graphql", self.api_base);
         let resp = self.http.post(&url).json(&body).send().await?;
@@ -646,9 +721,63 @@ impl GitHubClient {
             anyhow::bail!("{url}: HTTP {}", resp.status());
         }
         let value: serde_json::Value = resp.json().await?;
+        match value.pointer("/data/user/id").and_then(|s| s.as_str()) {
+            Some(id) if !id.is_empty() => Ok(id.to_string()),
+            _ => anyhow::bail!("user({login}) has no id (org scope?)"),
+        }
+    }
+
+    /// Per-branch velocity plus recent PR titles in one HTTP request
+    /// (GraphQL): 1d/5d/15d/30d counts + head SHA + newest dates, up to
+    /// 100 branches; up to 20 PRs by recency with head-ref branch names.
+    /// `author` is the sweep owner's user id: `Some` filters every
+    /// `history` call to their authorship, `None` counts all authors.
+    /// Errors are the caller's fail-open.
+    pub async fn repo_velocity(
+        &self,
+        owner: &str,
+        name: &str,
+        now: &DateTime<Utc>,
+        author: Option<&str>,
+    ) -> Result<RepoVelocity> {
+        let ago = |d: i64| git_timestamp(&(*now - chrono::Duration::days(d)));
+        let mut variables = serde_json::json!({
+            "owner": owner,
+            "name": name,
+            "w30": ago(30),
+            // Issue `filterBy.since` takes DateTime, not GitTimestamp —
+            // same instants, separate variables (one template, no drift).
+            "i1": ago(1),
+            "i5": ago(5),
+            "i15": ago(15),
+            "i30": ago(30),
+        });
+        if let Some(aid) = author {
+            variables["author"] = serde_json::json!({"id": aid});
+        }
+        let body = serde_json::json!({
+            "query": velocity_query(author.is_some()),
+            "variables": variables,
+        });
+        let url = format!("{}/graphql", self.api_base);
+        let resp = self.http.post(&url).json(&body).send().await?;
+        if !resp.status().is_success() {
+            anyhow::bail!("{url}: HTTP {}", resp.status());
+        }
+        let value: serde_json::Value = resp.json().await?;
+        let issues = parse_issue_windows(&value);
         Ok(RepoVelocity {
             branches: parse_branch_velocities(&value)?,
             prs: parse_recent_prs(&value),
+            issues_open_1d: issues[0],
+            issues_open_5d: issues[1],
+            issues_open_15d: issues[2],
+            issues_open_30d: issues[3],
+            issues_closed_1d: issues[4],
+            issues_closed_5d: issues[5],
+            issues_closed_15d: issues[6],
+            issues_closed_30d: issues[7],
+            recent_issues: parse_recent_issues(&value),
         })
     }
 }
@@ -689,16 +818,93 @@ fn parse_recent_prs(value: &serde_json::Value) -> Vec<crate::graph::RecentPr> {
     out
 }
 
+/// Repo-level issue windows (`o1`…`c30`): open/closed thread touches per
+/// window, in alias order. Missing keys read 0 — old fixtures and lean
+/// responses never fail the velocity they ride with.
+fn parse_issue_windows(value: &serde_json::Value) -> [u32; 8] {
+    const KEYS: [&str; 8] = ["o1", "o5", "o15", "o30", "c1", "c5", "c15", "c30"];
+    let mut out = [0u32; 8];
+    for (i, k) in KEYS.iter().enumerate() {
+        out[i] = value
+            .pointer(&format!("/data/repository/{k}/totalCount"))
+            .and_then(|c| c.as_u64())
+            .map(|c| c.min(u32::MAX as u64) as u32)
+            .unwrap_or(0);
+    }
+    out
+}
+
+/// Sampled issue threads (`recentIssues`): labels plus newest comments.
+/// Lenient throughout — missing connections are no threads, unparseable
+/// dates are undated (excluded from windows), nameless labels dropped.
+/// Caps are the query's (10 × 20 × 10); parsing never truncates further.
+fn parse_recent_issues(value: &serde_json::Value) -> Vec<RecentIssue> {
+    let mut out = Vec::new();
+    let nodes = value
+        .pointer("/data/repository/recentIssues/nodes")
+        .and_then(|n| n.as_array());
+    for n in nodes.into_iter().flatten() {
+        let labels: Vec<String> = n
+            .pointer("/labels/nodes")
+            .and_then(|l| l.as_array())
+            .map(|ls| {
+                ls.iter()
+                    .filter_map(|l| l.get("name").and_then(|s| s.as_str()))
+                    .filter(|s| !s.is_empty())
+                    .map(|s| s.to_string())
+                    .collect()
+            })
+            .unwrap_or_default();
+        let comments: Vec<IssueComment> = n
+            .pointer("/comments/nodes")
+            .and_then(|c| c.as_array())
+            .map(|cs| {
+                cs.iter()
+                    .map(|c| IssueComment {
+                        created_at: c
+                            .get("createdAt")
+                            .and_then(|s| s.as_str())
+                            .and_then(|s| s.parse::<DateTime<Utc>>().ok()),
+                        author: c
+                            .pointer("/author/login")
+                            .and_then(|s| s.as_str())
+                            .map(|s| s.to_string()),
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        // Identity is lenient: blank-title threads still carry labels
+        // and comments; only the plan line stays empty.
+        let title = n
+            .get("title")
+            .and_then(|s| s.as_str())
+            .unwrap_or_default()
+            .to_string();
+        if title.is_empty() && labels.is_empty() && comments.is_empty() {
+            continue;
+        }
+        out.push(RecentIssue {
+            number: n.get("number").and_then(|v| v.as_u64()).unwrap_or(0),
+            title,
+            state: n
+                .get("state")
+                .and_then(|s| s.as_str())
+                .unwrap_or_default()
+                .to_string(),
+            labels,
+            comments,
+        });
+    }
+    out
+}
 /// Pure parse for `repo_velocity` branches: non-commit targets skipped,
 /// GraphQL `errors` with null data is an error, empty nodes is empty.
+/// One capped 30d commit list per branch (oid + date, newest-first) —
+/// windowing happens in the pipeline, where `now` lives and the
+/// cross-branch union kills shared-ancestry double-counts.
 fn parse_branch_velocities(value: &serde_json::Value) -> Result<Vec<BranchVelocity>> {
     if value.get("data").is_none_or(|d| d.is_null()) && value.get("errors").is_some() {
         anyhow::bail!("graphql errors: {}", value["errors"]);
-    }
-    fn count(n: &serde_json::Value, key: &str) -> Option<u32> {
-        n.pointer(&format!("/target/{key}/totalCount"))
-            .and_then(|c| c.as_u64())
-            .map(|c| c.min(u32::MAX as u64) as u32)
     }
     fn newest(n: &serde_json::Value, key: &str) -> Option<DateTime<Utc>> {
         n.pointer(&format!("/target/{key}/edges"))
@@ -713,15 +919,41 @@ fn parse_branch_velocities(value: &serde_json::Value) -> Result<Vec<BranchVeloci
         .pointer("/data/repository/refs/nodes")
         .and_then(|n| n.as_array());
     for n in nodes.into_iter().flatten() {
-        let (Some(name), Some(c1), Some(c5), Some(c15), Some(c30)) = (
-            n.get("name").and_then(|s| s.as_str()),
-            count(n, "w1"),
-            count(n, "w5"),
-            count(n, "w15"),
-            count(n, "w30"),
-        ) else {
+        let Some(name) = n.get("name").and_then(|s| s.as_str()) else {
             continue;
         };
+        // Null targets (dangling refs) carry no commits — skipped, not
+        // errored, same as before.
+        if n.get("target").is_none_or(|t| t.is_null()) {
+            continue;
+        }
+        // Missing `hist` is a branch with no parseable list, not an
+        // error — same leniency the old missing-window rule gave.
+        let edges: &[serde_json::Value] = n
+            .pointer("/target/hist/edges")
+            .and_then(|e| e.as_array())
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        let mut commits = Vec::with_capacity(edges.len());
+        for e in edges {
+            let Some(oid) = e.pointer("/node/oid").and_then(|s| s.as_str()) else {
+                continue;
+            };
+            if oid.is_empty() {
+                continue;
+            }
+            commits.push(BranchCommit {
+                oid: oid.to_string(),
+                date: e
+                    .pointer("/node/committedDate")
+                    .and_then(|d| d.as_str())
+                    .and_then(|s| s.parse::<DateTime<Utc>>().ok()),
+            });
+        }
+        let truncated = n
+            .pointer("/target/hist/pageInfo/hasNextPage")
+            .and_then(|b| b.as_bool())
+            .unwrap_or(false);
         out.push(BranchVelocity {
             name: name.to_string(),
             head_sha: n
@@ -729,11 +961,9 @@ fn parse_branch_velocities(value: &serde_json::Value) -> Result<Vec<BranchVeloci
                 .and_then(|s| s.as_str())
                 .unwrap_or_default()
                 .to_string(),
-            commits_1d: c1,
-            commits_5d: c5,
-            commits_15d: c15,
-            commits_30d: c30,
-            latest_30d: newest(n, "w30"),
+            commits,
+            truncated,
+            latest_30d: newest(n, "hist"),
             latest_overall: newest(n, "latest"),
         });
     }
@@ -752,50 +982,40 @@ mod tests {
     }
 
     #[test]
-    fn branch_velocities_parse_all_branches() {
+    fn branch_velocities_parse_commit_lists() {
         use super::parse_branch_velocities;
         let v = serde_json::json!({
             "data": {"repository": {"refs": {"nodes": [
                 {"name": "main", "target": {"oid": "aaa",
-                    "w1": {"totalCount": 2},
-                    "w5": {"totalCount": 12, "edges": [{"node": {"committedDate": "2026-11-07T10:00:00Z"}}]},
-                    "w15": {"totalCount": 20},
-                    "w30": {"totalCount": 30, "edges": [{"node": {"committedDate": "2026-11-07T10:00:00Z"}}]},
+                    "hist": {"pageInfo": {"hasNextPage": false}, "edges": [
+                        {"node": {"oid": "c1", "committedDate": "2026-11-07T10:00:00Z"}},
+                        {"node": {"oid": "c2", "committedDate": "2026-10-20T10:00:00Z"}},
+                        {"node": {"oid": "", "committedDate": "2026-11-07T10:00:00Z"}},
+                        {"node": {"committedDate": "2026-11-07T10:00:00Z"}},
+                        {"node": {"oid": "c3", "committedDate": "not-a-date"}},
+                    ]},
                     "latest": {"edges": [{"node": {"committedDate": "2026-11-07T10:00:00Z"}}]}}},
                 {"name": "quiet", "target": {"oid": "bbb",
-                    "w1": {"totalCount": 0},
-                    "w5": {"totalCount": 0, "edges": []},
-                    "w15": {"totalCount": 1},
-                    "w30": {"totalCount": 0, "edges": []},
+                    "hist": {"pageInfo": {"hasNextPage": true}, "edges": []},
                     "latest": {"edges": [{"node": {"committedDate": "2026-01-01T00:00:00Z"}}]}}},
                 {"name": "tag-ref", "target": null},
             ]}}}
         });
-        // Non-commit targets skipped, no error.
+        // Non-commit targets skipped, no error. Oid-less nodes dropped;
+        // undated kept (30d bucket, no smaller window — pipeline decides).
         let got = parse_branch_velocities(&v).unwrap();
         assert_eq!(got.len(), 2);
         assert_eq!(got[0].name, "main");
         assert_eq!(got[0].head_sha, "aaa");
-        assert_eq!(
-            (
-                got[0].commits_1d,
-                got[0].commits_5d,
-                got[0].commits_15d,
-                got[0].commits_30d
-            ),
-            (2, 12, 20, 30)
-        );
+        assert!(!got[0].truncated);
+        assert_eq!(got[0].commits.len(), 3);
+        assert_eq!(got[0].commits[0].oid, "c1");
+        assert!(got[0].commits[0].date.is_some());
+        assert!(got[0].commits[2].date.is_none(), "bad date is undated");
         assert!(got[0].latest_30d.is_some() && got[0].latest_overall.is_some());
-        // Empty windows: zeros, no 30d date, overall kept.
-        assert_eq!(
-            (
-                got[1].commits_1d,
-                got[1].commits_5d,
-                got[1].commits_15d,
-                got[1].commits_30d
-            ),
-            (0, 0, 1, 0)
-        );
+        // Empty list, capped flag rides through; overall date kept.
+        assert!(got[1].commits.is_empty());
+        assert!(got[1].truncated);
         assert!(got[1].latest_30d.is_none() && got[1].latest_overall.is_some());
         let empty = serde_json::json!({"data": {"repository": {"refs": {"nodes": []}}}});
         assert!(parse_branch_velocities(&empty).unwrap().is_empty());
@@ -836,24 +1056,112 @@ mod tests {
     }
 
     #[test]
+    fn recent_issues_parse_threads_labels_comments() {
+        use super::{parse_issue_windows, parse_recent_issues};
+        let v = serde_json::json!({
+            "data": {"repository": {
+                "o1": {"totalCount": 1}, "o5": {"totalCount": 2},
+                "o15": {"totalCount": 3}, "o30": {"totalCount": 4},
+                "c1": {"totalCount": 0}, "c5": {"totalCount": 1},
+                "c15": {"totalCount": 1}, "c30": {"totalCount": 2},
+                "recentIssues": {"nodes": [
+                    {"number": 7, "title": "Ship labels", "state": "OPEN",
+                     "labels": {"nodes": [{"name": "enhancement"}, {"name": ""}, {}]},
+                     "comments": {"nodes": [
+                         {"createdAt": "2026-11-07T10:00:00Z", "author": {"login": "JZOMBIE"}},
+                         {"createdAt": "not-a-date", "author": {"login": "bot"}},
+                         {"createdAt": "2026-11-06T10:00:00Z", "author": null},
+                     ]}},
+                    {"number": 0, "title": "", "state": "",
+                     "labels": {"nodes": []}, "comments": {"nodes": []}},
+                ]}}}
+        });
+        assert_eq!(parse_issue_windows(&v), [1, 2, 3, 4, 0, 1, 1, 2]);
+        let got = parse_recent_issues(&v);
+        // Blank thread (no title, labels, or comments) drops out.
+        assert_eq!(got.len(), 1);
+        assert_eq!(got[0].number, 7);
+        assert_eq!(got[0].title, "Ship labels");
+        assert_eq!(got[0].labels, vec!["enhancement"]);
+        assert_eq!(got[0].comments.len(), 3);
+        assert_eq!(got[0].comments[0].author.as_deref(), Some("JZOMBIE"));
+        assert!(
+            got[0].comments[1].created_at.is_none(),
+            "bad date is undated"
+        );
+        assert!(got[0].comments[2].author.is_none());
+        // Missing block is no threads and zero windows, not an error.
+        let bare = serde_json::json!({"data": {"repository": {}}});
+        assert!(parse_recent_issues(&bare).is_empty());
+        assert_eq!(parse_issue_windows(&bare), [0; 8]);
+    }
+
+    #[test]
     fn velocity_query_is_balanced_and_complete() {
         // A dropped final brace zeroed a whole sweep: the parser error
         // points at end-of-input, easy to misread as a timestamp problem.
-        let q = super::velocity_query();
-        assert_eq!(q.matches('{').count(), q.matches('}').count());
-        for want in [
-            "refs(first: 100",
-            "history",
-            "GitTimestamp",
-            "committedDate",
-            "pullRequests",
-            "headRefName",
-        ] {
-            assert!(q.contains(want), "{want}");
+        // One template serves both modes, so equivalence is asserted, not
+        // assumed: stripping the filter fragments must yield the unfiltered
+        // query exactly — the variants cannot drift apart.
+        let q = super::velocity_query(false);
+        let o = super::velocity_query(true);
+        assert_eq!(
+            o.replace(", author: $author", "")
+                .replace(", $author: CommitAuthor!", ""),
+            q,
+            "single template, no drift"
+        );
+        assert!(!q.contains("__AUTHOR_"), "no raw placeholders leak");
+        assert!(!o.contains("__AUTHOR_"), "no raw placeholders leak");
+        assert!(
+            !q.contains("author: $author"),
+            "unfiltered query has no author filter"
+        );
+        assert!(
+            o.contains("$author: CommitAuthor!"),
+            "author variable declared"
+        );
+        for qv in [&q, &o] {
+            assert_eq!(qv.matches('{').count(), qv.matches('}').count());
+            for want in [
+                "refs(first: 100",
+                "history(first: 100",
+                "pageInfo",
+                "hasNextPage",
+                "oid",
+                "GitTimestamp",
+                "DateTime",
+                "committedDate",
+                "pullRequests",
+                "headRefName",
+                "recentIssues",
+                "createdAt",
+                "author { login }",
+            ] {
+                assert!(qv.contains(want), "{want}");
+            }
+            for alias in ["hist:", "latest:"] {
+                assert!(qv.contains(alias), "{alias}");
+            }
+            // Open/closed thread touches ride separate per-window aliases.
+            for alias in ["o1:", "o5:", "o15:", "o30:", "c1:", "c5:", "c15:", "c30:"] {
+                assert!(qv.contains(alias), "{alias}");
+            }
         }
-        for alias in ["w1:", "w5:", "w15:", "w30:", "latest:"] {
-            assert!(q.contains(alias), "{alias}");
+        // Filter rides every history call, line by line — not just a
+        // global count that could cluster on one line.
+        assert_eq!(o.matches("author: $author").count(), 2, "hist/latest");
+        for line in o.lines().filter(|l| l.contains("history(first:")) {
+            assert!(
+                line.contains("author: $author"),
+                "unfiltered history call:\n{line}"
+            );
         }
+        assert_eq!(
+            q.lines().filter(|l| l.contains("history(first:")).count(),
+            2,
+            "same two calls unfiltered"
+        );
     }
 
     #[test]

@@ -162,7 +162,7 @@ pub fn render_dump(graph: &Graph) -> String {
         ));
         s.push_str(&format!(
             "  fan-in: {fan_in} fan-out: {fan_out} layer: {} (dep-in: {dep_in})\n",
-            n.layer
+            crate::graph::Graph::layer_string(&n.layer)
         ));
         s.push_str(&format!(
             "  focus: commits_5d={} commits_30d={} commit_heat={} idle={}d focus={} open_issues={}\n",
@@ -297,6 +297,21 @@ mod tests {
                 commits_5d: 0,
                 commits_15d: 0,
                 commits_30d: 0,
+                issues_open_1d: 0,
+                issues_open_5d: 0,
+                issues_open_15d: 0,
+                issues_open_30d: 0,
+                issues_closed_1d: 0,
+                issues_closed_5d: 0,
+                issues_closed_15d: 0,
+                issues_closed_30d: 0,
+                issue_comments_1d: 0,
+                issue_comments_5d: 0,
+                issue_comments_15d: 0,
+                issue_comments_30d: 0,
+                issue_labels: Default::default(),
+                recent_issues: vec![],
+                issue_heat: None,
                 commit_heat: None,
                 focus: None,
                 last_commit_at: None,
@@ -304,7 +319,8 @@ mod tests {
                 recent_prs: vec![],
                 visible: true,
                 visible_reason: Some("tier3: >=1 portfolio edge".into()),
-                layer: crate::graph::Layer::Isolated,
+                layer: std::collections::BTreeSet::new(),
+                has_default_binary: false,
             },
             Node {
                 id: "me/b".into(),
@@ -334,6 +350,21 @@ mod tests {
                 commits_5d: 0,
                 commits_15d: 0,
                 commits_30d: 0,
+                issues_open_1d: 0,
+                issues_open_5d: 0,
+                issues_open_15d: 0,
+                issues_open_30d: 0,
+                issues_closed_1d: 0,
+                issues_closed_5d: 0,
+                issues_closed_15d: 0,
+                issues_closed_30d: 0,
+                issue_comments_1d: 0,
+                issue_comments_5d: 0,
+                issue_comments_15d: 0,
+                issue_comments_30d: 0,
+                issue_labels: Default::default(),
+                recent_issues: vec![],
+                issue_heat: None,
                 commit_heat: None,
                 focus: None,
                 last_commit_at: None,
@@ -341,7 +372,8 @@ mod tests {
                 visible: true,
                 recent_prs: vec![],
                 visible_reason: Some("tier3: >=1 portfolio edge".into()),
-                layer: crate::graph::Layer::Isolated,
+                layer: std::collections::BTreeSet::new(),
+                has_default_binary: false,
             },
         ];
         let edges = vec![Edge {

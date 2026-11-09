@@ -19,7 +19,7 @@ FUNC RENDER_PROOF() {
     ECHO "preview complete"
 }
 
-# Pipeline: fragment + charts, collecting first when $collect.
+# Pipeline: fragment + charts + proof page, collecting first when $collect.
 FUNC PIPELINE($collect: BOOL) {
     WORKSPACE LOCAL
     IF $collect {
@@ -30,6 +30,8 @@ FUNC PIPELINE($collect: BOOL) {
     STEPS::CHART_FOCUS()
     STEPS::CHART_FLAME()
     STEPS::CHART_INDICATORS()
+    STEPS::PREVIEW()
+    STEPS::COMMIT_PREVIEW()
     ECHO "pipeline complete"
 }
 

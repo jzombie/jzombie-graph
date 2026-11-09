@@ -6,7 +6,7 @@
 //! No buses, no stubs, no intermediate glyphs — one braille trace per real
 //! edge: cargo-level dependence (`manifest`/`submodule`/`registry`) plus
 //! `docs` references (runtime coupling the manifest can't see, e.g.
-//! precompiled binaries the main project consumes). Docs edges pull with
+//! precompiled artifacts the main project consumes). Docs edges pull with
 //! lighter gravity in layout but render with the same glyphs.
 //! Every node label is a link; tags are zero-width so
 //! geometry computed on visible text stays aligned.
@@ -24,7 +24,7 @@
 //! - only the largest connected component over dependence edges is drawn,
 //!   so detached scraps never appear as footnote lists.
 
-use jzombie_graph::graph::{EdgeKind, Graph, is_own_work};
+use jzombie_graph::graph::{EdgeKind, Graph, Layer, is_own_work};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
@@ -35,20 +35,41 @@ const HEIGHT: usize = 26;
 /// Staleness cutoff: pushes older than this before generation are omitted.
 const STALE_DAYS: i64 = 365;
 
-/// Render the cluster doc for a collected graph.
+/// Render the cluster doc for a collected graph. Title, counts, layer
+/// mix, and live signals all derive from the drawn cluster — no brand
+/// strings, no repo names baked in.
 pub fn render_cartographer(graph: &Graph) -> String {
-    let mut s = String::new();
-    s.push_str("# The zenOSmosis Cluster\n\n");
-    s.push_str("jzombie's portfolio as a 2D projection — proximity is edge strength.\n\n");
-    let _ = writeln!(
-        s,
-        "Generated from `graph.json` (schema v{}). Braille traces show cargo dependence plus docs runtime coupling; every label links to GitHub.\n",
-        graph.schema_version,
-    );
     let Some(draw) = select_cluster(graph) else {
-        s.push_str("(no connected cluster)\n");
+        let mut s = String::new();
+        s.push_str("# portfolio cluster\n\n(no connected cluster)\n");
         return s;
     };
+    let owner = cluster_owner(graph, &draw);
+    let dep = draw.edges.len();
+    let weak = draw.weak.len();
+    let (found, mid, app, iso, untagged) = layer_mix(graph, &draw);
+    let mut s = String::new();
+    let layers = if untagged > 0 {
+        format!(
+            "{found} foundation · {mid} middleware · {app} application · {iso} isolated · {untagged} untagged"
+        )
+    } else {
+        format!("{found} foundation · {mid} middleware · {app} application · {iso} isolated")
+    };
+    let _ = writeln!(s, "# {owner} portfolio cluster\n");
+    let _ = writeln!(
+        s,
+        "{owner} portfolio as a 2D projection — proximity is edge strength. Drawn: {n} repos, {dep} dependence edges (+{weak} runtime-coupling); layers {layers}.{live}\n",
+        n = draw.nodes.len(),
+        live = live_sentence(graph, &draw),
+    );
+    let _ = writeln!(
+        s,
+        "Generated from the `{name}` collection (schema v{}) — last run {}. Braille traces show cargo dependence plus docs runtime coupling; every label links to GitHub.\n",
+        graph.schema_version,
+        graph.generated_at.format("%Y-%m-%d %H:%M UTC"),
+        name = jzombie_graph::paths::GRAPH_NAME,
+    );
     s.push_str(
         "<sub>Diagram: a 2D projection of these repos — closeness means shared dependencies. \
 Screen readers: the block below uses braille characters for lines and is noisy, so it is hidden; \
@@ -63,10 +84,93 @@ repos untouched for over a year are omitted unless something current depends on 
     s
 }
 
+/// Mode owner among drawn nodes (ties break lexicographically).
+fn cluster_owner(graph: &Graph, draw: &Cluster) -> String {
+    use std::collections::BTreeMap;
+    let mut counts: BTreeMap<&str, usize> = BTreeMap::new();
+    for id in &draw.nodes {
+        if let Some(n) = graph.nodes.iter().find(|n| &n.id == id) {
+            *counts.entry(n.owner.as_str()).or_default() += 1;
+        }
+    }
+    counts
+        .into_iter()
+        .max_by(|a, b| a.1.cmp(&b.1).then_with(|| b.0.cmp(a.0)))
+        .map(|(o, _)| o.to_string())
+        .unwrap_or_else(|| "portfolio".to_string())
+}
+
+/// Stored-layer tag mix over drawn nodes: a both-tag node counts twice.
+/// Tagless leaf libraries count nowhere — no layer claim, never a wrong
+/// word. Returned fifth is the untagged count (header discloses it).
+fn layer_mix(graph: &Graph, draw: &Cluster) -> (usize, usize, usize, usize, usize) {
+    let mut found = 0;
+    let mut mid = 0;
+    let mut app = 0;
+    let mut iso = 0;
+    let mut untagged = 0;
+    for id in &draw.nodes {
+        let tags = graph.nodes.iter().find(|n| &n.id == id).map(|n| &n.layer);
+        if tags.is_none_or(|t| t.is_empty()) {
+            untagged += 1;
+            continue;
+        }
+        if tags.is_some_and(|t| t.contains(&Layer::Foundation)) {
+            found += 1;
+        }
+        if tags.is_some_and(|t| t.contains(&Layer::Middleware)) {
+            mid += 1;
+        }
+        if tags.is_some_and(|t| t.contains(&Layer::Application)) {
+            app += 1;
+        }
+        if tags.is_some_and(|t| t.contains(&Layer::Isolated)) {
+            iso += 1;
+        }
+    }
+    (found, mid, app, iso, untagged)
+}
+
+/// Live signals from drawn data: hottest repo by commit heat, most
+/// depended-upon by dependence fan-in. Absent parts omit silently.
+fn live_sentence(graph: &Graph, draw: &Cluster) -> String {
+    let drawn: Vec<&jzombie_graph::graph::Node> = draw
+        .nodes
+        .iter()
+        .filter_map(|id| graph.nodes.iter().find(|n| &n.id == id))
+        .collect();
+    let hot = drawn
+        .iter()
+        .filter_map(|n| {
+            n.commit_heat
+                .or_else(|| n.commit_heat())
+                .map(|h| (n.name.as_str(), h))
+        })
+        .max_by(|a, b| {
+            a.1.partial_cmp(&b.1)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| b.0.cmp(a.0))
+        });
+    let fan = graph.node_fan_in();
+    let dep = draw
+        .nodes
+        .iter()
+        .map(|id| (id.as_str(), fan.get(id).copied().unwrap_or(0)))
+        .max_by(|a, b| a.1.cmp(&b.1).then_with(|| b.0.cmp(a.0)));
+    let mut s = String::new();
+    if let Some((name, h)) = hot {
+        s.push_str(&format!(" Hottest now: {name} (heat {h:.2});"));
+    }
+    if let Some((id, c)) = dep.filter(|(_, c)| *c > 0) {
+        let name = id.split('/').nth(1).unwrap_or(id);
+        s.push_str(&format!(" most depended-upon: {name} ({c})."));
+    }
+    s
+}
 /// Nodes + edges selected for the drawing. Strong edges are cargo-level
 /// dependence (`manifest`/`submodule`/`registry`); weak edges are `docs`
-/// references (runtime coupling the manifest can't see, e.g.
-/// `windows-headless` ↔ `lab-qemu-portable`). Workflow stays out as tooling.
+/// references (runtime coupling the manifest can't see). Workflow stays
+/// out as tooling.
 struct Cluster {
     /// Cluster member ids, sorted.
     nodes: Vec<String>,
@@ -179,9 +283,8 @@ fn select_cluster(graph: &Graph) -> Option<Cluster> {
     });
     let mut core: BTreeSet<String> = comps.into_iter().next()?;
     // Docs satellites: fresh eligible nodes with a direct docs edge to the
-    // dependence core (runtime coupling, e.g. portable QEMU builds the VM
-    // host consumes but doesn't declare as a cargo dep). The satellite must
-    // contain code (detected `language`) — prose alone (description/topics)
+    // dependence core (runtime coupling a manifest can't declare). The
+    // satellite must contain code (detected `language`) — prose alone
     // never qualifies, so an asset bucket stays out even if it gains a
     // readme blurb later. Workflow stays out as tooling.
     for e in &graph.edges {

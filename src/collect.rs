@@ -102,6 +102,236 @@ fn normalize_pkg(name: &str) -> String {
     name.trim().to_lowercase().replace('_', "-")
 }
 
+/// Parse a manifest once; callers pass the value to the `_from_value`
+/// helpers below instead of re-parsing per question.
+pub fn cargo_value(text: &str) -> toml::Value {
+    toml::from_str(text).unwrap_or(toml::Value::Table(Default::default()))
+}
+
+/// Explicit binary targets in Cargo.toml: `[[bin]]`/`[bin]`, either shape.
+/// Raw presence only — the pipeline decides primary-vs-helper via
+/// `cargo_explicit_primary_bin` (needs lib presence, so it can't live on
+/// text alone).
+pub fn cargo_has_bin_target(text: &str) -> bool {
+    cargo_value(text).get("bin").is_some()
+}
+
+/// `[package] default-run`: names the primary binary when several exist.
+pub fn cargo_default_run(text: &str) -> Option<String> {
+    cargo_default_run_from_value(&cargo_value(text))
+}
+
+/// Same, on an already-parsed manifest (parse once, ask many times).
+pub fn cargo_default_run_from_value(v: &toml::Value) -> Option<String> {
+    v.get("package")?
+        .get("default-run")?
+        .as_str()
+        .map(normalize_pkg)
+}
+
+/// `default-run` with workspace inheritance resolved: a member whose
+/// `default-run.workspace = true` falls back to the root's
+/// `[workspace.package] default-run` (already in hand, zero new calls).
+pub fn cargo_default_run_resolved(
+    v: &toml::Value,
+    workspace_default_run: Option<&str>,
+) -> Option<String> {
+    if let Some(direct) = cargo_default_run_from_value(v) {
+        return Some(direct);
+    }
+    let inherits = v
+        .get("package")
+        .and_then(|p| p.get("default-run"))
+        .and_then(|d| d.as_table())
+        .is_some_and(|t| {
+            t.get("workspace")
+                .and_then(|w| w.as_bool())
+                .unwrap_or(false)
+        });
+    if inherits {
+        workspace_default_run.map(normalize_pkg)
+    } else {
+        None
+    }
+}
+
+/// Root's `[workspace.package] default-run`, for member fallback above.
+pub fn cargo_workspace_default_run(text: &str) -> Option<String> {
+    let v = cargo_value(text);
+    v.get("workspace")?
+        .get("package")?
+        .get("default-run")?
+        .as_str()
+        .map(|s| s.to_string())
+}
+
+/// Any `[package]` table at all (virtual workspace roots have none)?
+/// Gates autobin `src/main.rs`: a real package with `main.rs` has a
+/// default binary, even when the name itself is workspace-inherited
+/// and unresolvable here.
+pub fn cargo_has_package(text: &str) -> bool {
+    cargo_has_package_from_value(&cargo_value(text))
+}
+
+/// Same, on an already-parsed manifest.
+pub fn cargo_has_package_from_value(v: &toml::Value) -> bool {
+    v.get("package").is_some()
+}
+
+/// Explicit `[lib]` table present? Combined with `src/lib.rs` in the tree
+/// this tells pure-binary packages apart from lib+helper-bin packages.
+pub fn cargo_has_explicit_lib(text: &str) -> bool {
+    cargo_has_explicit_lib_from_value(&cargo_value(text))
+}
+
+/// Same, on an already-parsed manifest.
+pub fn cargo_has_explicit_lib_from_value(v: &toml::Value) -> bool {
+    v.get("lib").is_some()
+}
+
+/// `[package] autobins = false` opts out of the `src/main.rs` convention.
+pub fn cargo_autobins_disabled(text: &str) -> bool {
+    cargo_autobins_disabled_from_value(&cargo_value(text))
+}
+
+/// Same, on an already-parsed manifest.
+pub fn cargo_autobins_disabled_from_value(v: &toml::Value) -> bool {
+    v.get("package")
+        .and_then(|p| p.get("autobins"))
+        .and_then(|a| a.as_bool())
+        .is_some_and(|b| !b)
+}
+
+/// Explicit `[[bin]]`/`[bin]` that yields the primary product — not a helper.
+/// All from the already-parsed manifest plus whether `src/lib.rs` exists
+/// (caller probes the fetched tree, zero new calls). No `[package]`
+/// (virtual workspace root) means false. A pure binary package (no `[lib]`,
+/// no `src/lib.rs`) counts any bin. A lib-plus-bins package only counts the
+/// bin matching `package.name` or `default-run` (workspace-inherited
+/// `default-run` resolved via the caller); the rest are helpers (`xtask`,
+/// `codegen`, …). Missing `name` defaults to the package name, so primary.
+/// `required-features` never disqualifies: the repo still has the
+/// default binary (`--features X` builds it) — capability, not
+/// bare-`cargo build` output.
+pub fn cargo_explicit_primary_bin(text: &str, has_lib_file: bool) -> bool {
+    let v = cargo_value(text);
+    cargo_explicit_primary_bin_from_value(&v, has_lib_file, None)
+}
+
+/// Same, on an already-parsed manifest with workspace fallback.
+pub fn cargo_explicit_primary_bin_from_value(
+    v: &toml::Value,
+    has_lib_file: bool,
+    workspace_default_run: Option<&str>,
+) -> bool {
+    let Some(pkg) = v.get("package") else {
+        return false;
+    };
+    let pkg_name = pkg.get("name").and_then(|n| n.as_str()).map(normalize_pkg);
+    let default_run = cargo_default_run_from_value(v).or_else(|| {
+        let inherits = pkg
+            .get("default-run")
+            .and_then(|d| d.as_table())
+            .is_some_and(|t| {
+                t.get("workspace")
+                    .and_then(|w| w.as_bool())
+                    .unwrap_or(false)
+            });
+        if inherits {
+            workspace_default_run.map(normalize_pkg)
+        } else {
+            None
+        }
+    });
+    let has_lib = v.get("lib").is_some() || has_lib_file;
+    let bins: Vec<&toml::map::Map<String, toml::Value>> = match v.get("bin") {
+        Some(toml::Value::Table(t)) => vec![t],
+        Some(toml::Value::Array(arr)) => arr.iter().filter_map(|x| x.as_table()).collect(),
+        _ => vec![],
+    };
+    if bins.is_empty() {
+        return false;
+    }
+    for b in bins {
+        if !has_lib {
+            return true; // pure bin package: every bin is product
+        }
+        match b.get("name").and_then(|n| n.as_str()) {
+            None => return true, // defaults to package name
+            Some(n) => {
+                let nn = normalize_pkg(n);
+                if Some(&nn) == pkg_name.as_ref() {
+                    return true;
+                }
+                if let Some(dr) = &default_run
+                    && &nn == dr
+                {
+                    return true;
+                }
+                // else: helper bin, keep looking
+            }
+        }
+    }
+    false
+}
+
+/// Cargo autobin file rule for `src/bin/`: only top-level `*.rs` and
+/// direct-child `*/main.rs` are bins. Returns the bin name, or None for
+/// helper modules (`src/bin/foo/helper.rs`, deeper nesting). `rel` is the
+/// path relative to the package dir (`src/bin/foo.rs`, …).
+pub fn cargo_src_bin_name(rel: &str) -> Option<String> {
+    let rest = rel.strip_prefix("src/bin/")?;
+    if let Some(stem) = rest.strip_suffix("/main.rs") {
+        if stem.is_empty() || stem.contains('/') {
+            return None;
+        }
+        return Some(stem.to_string());
+    }
+    if let Some(stem) = rest.strip_suffix(".rs") {
+        if stem.is_empty() || stem.contains('/') {
+            return None;
+        }
+        return Some(stem.to_string());
+    }
+    None
+}
+
+/// package.json `bin`: string or map, non-empty.
+pub fn package_json_has_bin(text: &str) -> bool {
+    let v: serde_json::Value = serde_json::from_str(text).unwrap_or(serde_json::Value::Null);
+    match v.get("bin") {
+        Some(serde_json::Value::String(s)) => !s.is_empty(),
+        Some(serde_json::Value::Object(m)) => !m.is_empty(),
+        _ => false,
+    }
+}
+
+/// Script entry points: `[project.scripts]` / `[project.gui-scripts]`,
+/// else Poetry `[tool.poetry.scripts]`. Non-empty table ships a command.
+pub fn pyproject_has_scripts(text: &str) -> bool {
+    let v: toml::Value = toml::from_str(text).unwrap_or(toml::Value::Table(Default::default()));
+    let non_empty =
+        |t: Option<&toml::Value>| t.and_then(|t| t.as_table()).is_some_and(|t| !t.is_empty());
+    non_empty(v.get("project").and_then(|p| p.get("scripts")))
+        || non_empty(v.get("project").and_then(|p| p.get("gui-scripts")))
+        || non_empty(
+            v.get("tool")
+                .and_then(|t| t.get("poetry"))
+                .and_then(|p| p.get("scripts")),
+        )
+}
+
+/// Go `package main`: line-anchored with a word boundary, so a doc
+/// example mentioning it can't fire. The package clause is the file's
+/// first declaration; scanning lines is exact here, not heuristic.
+pub fn go_has_main(src: &str) -> bool {
+    src.lines().any(|l| {
+        let t = l.trim_start();
+        t.strip_prefix("package main")
+            .is_some_and(|rest| rest.is_empty() || rest.starts_with([' ', '\t']))
+    })
+}
+
 /// Registry/package names for alias-table generation (machine-generated,
 /// never hand-edited). Each returns the normalized name, if the manifest
 /// declares one. Workspace-only roots declare none (members carry names).
@@ -150,6 +380,11 @@ pub struct ManifestKind {
     pub parse: fn(&str) -> anyhow::Result<ManifestSet>,
     /// Manifest -> provided package name (provider pass).
     pub package_name: fn(&str) -> Option<String>,
+    /// Manifest text -> ships an executable (provider pass reuse: the
+    /// structure pass calls it on the same text, no new calls). None
+    /// when the signal needs the tree (Cargo: lib presence + autobin
+    /// layout — probed tree-gated in the pipeline; Go: needs source).
+    pub has_binary: Option<fn(&str) -> bool>,
     /// Whether member manifests of this kind are walked (Cargo workspaces).
     pub walk_members: bool,
 }
@@ -159,24 +394,28 @@ pub static MANIFEST_KINDS: &[ManifestKind] = &[
         file: "Cargo.toml",
         parse: parse_cargo_manifest,
         package_name: cargo_package_name,
+        has_binary: None, // tree-gated: explicit primary + autobins in pipeline
         walk_members: true,
     },
     ManifestKind {
         file: "package.json",
         parse: parse_package_json,
         package_name: package_json_name,
+        has_binary: Some(package_json_has_bin),
         walk_members: false,
     },
     ManifestKind {
         file: "pyproject.toml",
         parse: parse_pyproject,
         package_name: pyproject_name,
+        has_binary: Some(pyproject_has_scripts),
         walk_members: false,
     },
     ManifestKind {
         file: "go.mod",
         parse: parse_go_mod,
         package_name: go_mod_name,
+        has_binary: None,
         walk_members: false,
     },
 ];
@@ -207,11 +446,16 @@ pub fn manifest_kind_for_member(path: &str) -> Option<&'static ManifestKind> {
 
 /// True when a manifest path lives under a conventional non-library dir.
 /// Cargo never links these as dependencies: they are demos (`examples/`),
-/// harnesses (`tests/`, `benches/`), or data (`fixtures/`).
+/// harnesses (`tests/`, `benches/`, `fuzz/`), or data (`fixtures/`).
 pub fn is_auxiliary_manifest(path: &str) -> bool {
     let mut segs = path.split('/');
     segs.next_back();
-    segs.any(|s| matches!(s, "examples" | "tests" | "benches" | "fixtures"))
+    segs.any(|s| {
+        matches!(
+            s,
+            "examples" | "tests" | "benches" | "fixtures" | "fuzz" | "fuzz_targets"
+        )
+    })
 }
 
 /// package.json: `dependencies` + peer + optional, all uniform presence.
@@ -634,6 +878,103 @@ cc = "1"
     }
 
     #[test]
+    fn binary_signals_per_ecosystem() {
+        // Cargo: explicit targets either shape; autobins is a tree
+        // question, so only the opt-out lives here.
+        assert!(cargo_has_bin_target(
+            "[[bin]]\nname = \"t\"\npath = \"src/main.rs\"\n"
+        ));
+        assert!(cargo_has_bin_target(
+            "[bin]\nname = \"t\"\npath = \"src/main.rs\"\n"
+        ));
+        assert!(!cargo_has_bin_target("[package]\nname = \"lib\"\n"));
+        assert!(cargo_autobins_disabled(
+            "[package]\nname = \"t\"\nautobins = false\n"
+        ));
+        assert!(!cargo_autobins_disabled("[package]\nname = \"t\"\n"));
+        // npm: string or map, empty means no binary.
+        assert!(package_json_has_bin(r#"{"bin": "./cli.js"}"#));
+        assert!(package_json_has_bin(r#"{"bin": {"t": "./cli.js"}}"#));
+        assert!(!package_json_has_bin(r#"{"bin": {}}"#));
+        assert!(!package_json_has_bin(r#"{"name": "t"}"#));
+        // Python: project scripts or Poetry scripts, non-empty.
+        assert!(pyproject_has_scripts("[project.scripts]\nt = \"t:main\"\n"));
+        assert!(pyproject_has_scripts(
+            "[project.gui-scripts]\nt = \"t:main\"\n"
+        ));
+        assert!(pyproject_has_scripts(
+            "[tool.poetry.scripts]\nt = \"t:main\"\n"
+        ));
+        assert!(!pyproject_has_scripts("[project.scripts]\n"));
+        assert!(!pyproject_has_scripts("[project]\nname = \"t\"\n"));
+        // Go: line-anchored `package main`, word boundary held.
+        assert!(go_has_main("package main\n\nimport \"fmt\"\n"));
+        assert!(go_has_main("\tpackage main // entry\n"));
+        assert!(!go_has_main("package mainfoo\n"));
+        assert!(!go_has_main("// package main in a comment\npackage lib\n"));
+    }
+
+    #[test]
+    fn cargo_primary_vs_helper_bins() {
+        // Pure binary package: any explicit bin counts, no lib anywhere.
+        let pure = "[package]\nname = \"tool\"\n[[bin]]\nname = \"tool-a\"\npath = \"src/bin/tool-a.rs\"\n";
+        assert!(cargo_explicit_primary_bin(pure, false));
+        // Lib + namesake bin: primary.
+        let lib_primary = "[package]\nname = \"mylib\"\n[lib]\n[[bin]]\nname = \"mylib\"\npath = \"src/main.rs\"\n";
+        assert!(cargo_explicit_primary_bin(lib_primary, true));
+        assert!(cargo_explicit_primary_bin(lib_primary, false)); // [lib] suffices
+        // Lib + helper-only bin: never primary.
+        let helper =
+            "[package]\nname = \"mylib\"\n[[bin]]\nname = \"xtask\"\npath = \"tools/xtask.rs\"\n";
+        assert!(!cargo_explicit_primary_bin(helper, true));
+        // Lib, no lib file, no [lib] table, helper name: without lib
+        // evidence it looks like a pure bin package — counts. The tree
+        // probe (src/lib.rs) is what separates this from the case above.
+        assert!(cargo_explicit_primary_bin(helper, false));
+        // default-run names the primary among several.
+        let multi = "[package]\nname = \"mylib\"\ndefault-run = \"real\"\n[lib]\n[[bin]]\nname = \"xtask\"\npath = \"tools/x.rs\"\n[[bin]]\nname = \"real\"\npath = \"src/bin/real.rs\"\n";
+        assert!(cargo_explicit_primary_bin(multi, true));
+        let helper_only = "[package]\nname = \"mylib\"\ndefault-run = \"real\"\n[lib]\n[[bin]]\nname = \"xtask\"\npath = \"tools/x.rs\"\n";
+        assert!(!cargo_explicit_primary_bin(helper_only, true));
+        // Virtual manifest: no package, no primary.
+        assert!(!cargo_explicit_primary_bin(
+            "[workspace]\nmembers = [\"a\"]\n[[bin]]\nname = \"t\"\npath = \"src/main.rs\"\n",
+            false
+        ));
+        // `required-features` does NOT disqualify: the repo still ships
+        // the binary (`--features gpu` builds it) — capability, not
+        // bare-`cargo build` output.
+        let gated = "[package]\nname = \"tool\"\n[features]\ndefault = []\ngpu = []\n[[bin]]\nname = \"tool\"\nrequired-features = [\"gpu\"]\n";
+        assert!(cargo_explicit_primary_bin(gated, false));
+        // Workspace-inherited default-run resolves via the root value.
+        let member = "[package]\nname = \"mylib\"\ndefault-run.workspace = true\n[lib]\n[[bin]]\nname = \"real\"\npath = \"src/bin/real.rs\"\n";
+        let mv = cargo_value(member);
+        assert!(cargo_default_run_from_value(&mv).is_none());
+        assert_eq!(
+            cargo_default_run_resolved(&mv, Some("real")).as_deref(),
+            Some("real")
+        );
+        assert!(cargo_explicit_primary_bin_from_value(
+            &mv,
+            true,
+            Some("real")
+        ));
+    }
+
+    #[test]
+    fn cargo_src_bin_discovery() {
+        assert_eq!(cargo_src_bin_name("src/bin/foo.rs").as_deref(), Some("foo"));
+        assert_eq!(
+            cargo_src_bin_name("src/bin/foo/main.rs").as_deref(),
+            Some("foo")
+        );
+        assert_eq!(cargo_src_bin_name("src/bin/foo/helper.rs"), None);
+        assert_eq!(cargo_src_bin_name("src/bin/foo/bar.rs"), None);
+        assert_eq!(cargo_src_bin_name("src/main.rs"), None); // handled separately
+        assert_eq!(cargo_src_bin_name("src/lib.rs"), None);
+    }
+
+    #[test]
     fn auxiliary_manifests_are_not_members() {
         // The tracing-example case: examples/apps/tracing/Cargo.toml must
         // not count as a workspace member, or its package name claims to
@@ -641,6 +982,10 @@ cc = "1"
         assert!(manifest_kind_for_member("examples/apps/tracing/Cargo.toml").is_none());
         assert!(manifest_kind_for_member("benches/big/Cargo.toml").is_none());
         assert!(manifest_kind_for_member("tests/vectors/Cargo.toml").is_none());
+        // cargo-fuzz harnesses ship no product: fuzz/src/main.rs must not
+        // promote a library (term-wm-vt100 case) to has_default_binary.
+        assert!(manifest_kind_for_member("fuzz/Cargo.toml").is_none());
+        assert!(manifest_kind_for_member("fuzz_targets/afl/Cargo.toml").is_none());
         // A real member that happens to share a name still walks —
         // ambiguity is reported, never silently resolved.
         assert!(manifest_kind_for_member("crates/tracing/Cargo.toml").is_some());
