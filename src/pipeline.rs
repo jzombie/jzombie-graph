@@ -222,16 +222,14 @@ pub async fn collect_live(
             }
             Err(_) => None,
         };
-        // Velocity in one GraphQL call: per-branch 1d/5d/15d/30d counts +
-        // head SHAs + newest dates. Headline gauges sum the in-scope
-        // branches (`--velocity-scope`, default all); branch_heat keeps
+        // Velocity + recent PRs in one GraphQL call: per-branch 1d/5d/15d/30d
+        // counts + head SHAs + newest dates; PR titles keyed by head-ref
+        // branch. Headline gauges sum the in-scope branches
+        // (`--velocity-scope`, default all); branch_heat keeps
         // every branch regardless. The default head SHA rides the same
         // response, so no separate branch_sha call.
         // Fail-open 0 with a digest note — a silent 0 would read as dead.
-        let velocities = match client
-            .branch_velocities(&repo.owner, &repo.name, &now)
-            .await
-        {
+        let velocity = match client.repo_velocity(&repo.owner, &repo.name, &now).await {
             Ok(v) => v,
             Err(e) => {
                 // Carry the cause: a bare note hid a query-wide breakage
@@ -242,9 +240,10 @@ pub async fn collect_live(
                     "{}: commit velocity unavailable ({why}) — heat fail-open 0",
                     repo.full_name
                 ));
-                Vec::new()
+                crate::github::RepoVelocity::default()
             }
         };
+        let velocities = velocity.branches;
         let mut branch_heat: Vec<graph::BranchHeat> = velocities
             .iter()
             .map(|b| graph::BranchHeat {
@@ -669,6 +668,7 @@ pub async fn collect_live(
             focus,
             last_commit_at,
             branch_heat,
+            recent_prs: velocity.prs,
             visible: false, // computed below
             visible_reason: None,
             layer: graph::Layer::Isolated, // computed below via apply_layers
@@ -790,6 +790,7 @@ mod tests {
                 last_commit_at: None,
                 branch_heat: vec![],
                 visible: true,
+                recent_prs: vec![],
                 visible_reason: None,
                 layer: graph::Layer::Isolated,
             },
@@ -827,6 +828,7 @@ mod tests {
                 branch_heat: vec![],
                 visible: false,
                 visible_reason: None,
+                recent_prs: vec![],
                 layer: graph::Layer::Isolated,
             },
         ];
@@ -901,6 +903,7 @@ mod tests {
             visible: false,
             visible_reason: None,
             layer: graph::Layer::Isolated,
+            recent_prs: vec![],
         }
     }
 

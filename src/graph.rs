@@ -105,6 +105,16 @@ pub struct BranchHeat {
     pub commits_30d: u32,
 }
 
+/// A recent pull request, branch-associated via the head ref name.
+/// Display only, never scored.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct RecentPr {
+    pub title: String,
+    pub branch: String,
+    pub base: String,
+    pub state: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Node {
     /// Canonical id: `owner/repo` full name.
@@ -194,6 +204,11 @@ pub struct Node {
     /// unique work.
     #[serde(default)]
     pub branch_heat: Vec<BranchHeat>,
+    /// Recent PRs (GraphQL, updated-desc, capped). Branch association
+    /// rides `branch` (head ref); titles are work descriptions.
+    /// Display only, never scored.
+    #[serde(default)]
+    pub recent_prs: Vec<RecentPr>,
     /// Structural role, set once at ingestion by `apply_layers` on the
     /// true graph (private transit included) and preserved verbatim by
     /// `public_subgraph` — so the value is identical in the briefing
@@ -563,6 +578,7 @@ mod tests {
             has_agents_md: false,
             has_license_file: false,
             branch_heat: vec![],
+            recent_prs: vec![],
             visible: false,
             visible_reason: None,
             layer: Layer::Isolated,

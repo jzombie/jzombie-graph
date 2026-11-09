@@ -41,6 +41,7 @@ fn node(id: &str, fork: bool, private: bool, ahead_by: Option<u32>) -> Node {
         focus: None,
         last_commit_at: None,
         branch_heat: vec![],
+        recent_prs: vec![],
         visible: false,
         visible_reason: None,
         layer: jzombie_graph::graph::Layer::Isolated,

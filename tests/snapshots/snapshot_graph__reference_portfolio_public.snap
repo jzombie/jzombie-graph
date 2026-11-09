@@ -1,6 +1,6 @@
 ---
 source: tests/snapshot_graph.rs
-assertion_line: 194
+assertion_line: 195
 expression: "&pub_g"
 ---
 {
@@ -58,6 +58,7 @@ expression: "&pub_g"
           "commits_30d": 5
         }
       ],
+      "recent_prs": [],
       "layer": "application",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
@@ -81,6 +82,7 @@ expression: "&pub_g"
       "commits_15d": 0,
       "commits_30d": 0,
       "branch_heat": [],
+      "recent_prs": [],
       "layer": "foundation",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
@@ -104,6 +106,7 @@ expression: "&pub_g"
       "commits_15d": 0,
       "commits_30d": 0,
       "branch_heat": [],
+      "recent_prs": [],
       "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
@@ -127,6 +130,7 @@ expression: "&pub_g"
       "commits_15d": 0,
       "commits_30d": 0,
       "branch_heat": [],
+      "recent_prs": [],
       "layer": "foundation",
       "visible": true,
       "visible_reason": "fork: diverged (ahead of upstream), has portfolio edge"

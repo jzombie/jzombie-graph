@@ -569,6 +569,14 @@ pub struct BranchVelocity {
     pub latest_overall: Option<DateTime<Utc>>,
 }
 
+/// One GraphQL call's worth: branch velocity plus recent PRs.
+/// PRs carry their branch via the head ref name.
+#[derive(Debug, Clone, Default)]
+pub struct RepoVelocity {
+    pub branches: Vec<BranchVelocity>,
+    pub prs: Vec<crate::graph::RecentPr>,
+}
+
 /// GitTimestamp shape GitHub accepts: seconds precision, Zulu suffix.
 /// `DateTime::to_rfc3339()` emits fractional seconds + `+00:00`, which the
 /// API rejects — that fail-opened a whole sweep to all-zero velocity.
@@ -597,21 +605,29 @@ fn velocity_query() -> &'static str {
         }
       }
     }
+    prs: pullRequests(first: 20, orderBy: {field: UPDATED_AT, direction: DESC}) {
+      nodes {
+        title
+        headRefName
+        baseRefName
+        state
+      }
+    }
   }
 }"#
 }
 
 impl GitHubClient {
-    /// Per-branch velocity in one HTTP request (GraphQL): 1d/5d/15d/30d
-    /// counts + head SHA + newest dates, up to 100 branches. The 5d/30d
-    /// pair feeds the gauge; 1d/15d are observational granularity.
+    /// Per-branch velocity plus recent PR titles in one HTTP request
+    /// (GraphQL): 1d/5d/15d/30d counts + head SHA + newest dates, up to
+    /// 100 branches; up to 20 PRs by recency with head-ref branch names.
     /// Errors are the caller's fail-open.
-    pub async fn branch_velocities(
+    pub async fn repo_velocity(
         &self,
         owner: &str,
         name: &str,
         now: &DateTime<Utc>,
-    ) -> Result<Vec<BranchVelocity>> {
+    ) -> Result<RepoVelocity> {
         let ago = |d: i64| git_timestamp(&(*now - chrono::Duration::days(d)));
         let body = serde_json::json!({
             "query": velocity_query(),
@@ -630,11 +646,50 @@ impl GitHubClient {
             anyhow::bail!("{url}: HTTP {}", resp.status());
         }
         let value: serde_json::Value = resp.json().await?;
-        parse_branch_velocities(&value)
+        Ok(RepoVelocity {
+            branches: parse_branch_velocities(&value)?,
+            prs: parse_recent_prs(&value),
+        })
     }
 }
 
-/// Pure parse for `branch_velocities`: non-commit targets skipped,
+/// Pure parse for the PR connection: title + head-ref branch + base +
+/// state, newest first. Lenient (skips blank titles/branches) — a bad
+/// PR node must not fail the velocity it rode in with.
+fn parse_recent_prs(value: &serde_json::Value) -> Vec<crate::graph::RecentPr> {
+    let mut out = vec![];
+    let nodes = value
+        .pointer("/data/repository/prs/nodes")
+        .and_then(|n| n.as_array());
+    for n in nodes.into_iter().flatten() {
+        let (Some(title), Some(branch)) = (
+            n.get("title").and_then(|s| s.as_str()),
+            n.get("headRefName").and_then(|s| s.as_str()),
+        ) else {
+            continue;
+        };
+        if title.is_empty() || branch.is_empty() {
+            continue;
+        }
+        out.push(crate::graph::RecentPr {
+            title: title.to_string(),
+            branch: branch.to_string(),
+            base: n
+                .get("baseRefName")
+                .and_then(|s| s.as_str())
+                .unwrap_or_default()
+                .to_string(),
+            state: n
+                .get("state")
+                .and_then(|s| s.as_str())
+                .unwrap_or_default()
+                .to_string(),
+        });
+    }
+    out
+}
+
+/// Pure parse for `repo_velocity` branches: non-commit targets skipped,
 /// GraphQL `errors` with null data is an error, empty nodes is empty.
 fn parse_branch_velocities(value: &serde_json::Value) -> Result<Vec<BranchVelocity>> {
     if value.get("data").is_none_or(|d| d.is_null()) && value.get("errors").is_some() {
@@ -759,6 +814,28 @@ mod tests {
     }
 
     #[test]
+    fn recent_prs_parse_branch_associated() {
+        use super::parse_recent_prs;
+        let v = serde_json::json!({
+            "data": {"repository": {"prs": {"nodes": [
+                {"title": "Heat v2", "headRefName": "feat/heat", "baseRefName": "main", "state": "OPEN"},
+                {"title": "Old bot bump", "headRefName": "dependabot/x", "baseRefName": "main", "state": "MERGED"},
+                {"title": "No branch", "headRefName": null, "baseRefName": "main", "state": "OPEN"},
+                {"title": "", "headRefName": "empty", "baseRefName": "main", "state": "OPEN"},
+            ]}}}
+        });
+        let got = parse_recent_prs(&v);
+        assert_eq!(got.len(), 2);
+        assert_eq!(got[0].title, "Heat v2");
+        assert_eq!(got[0].branch, "feat/heat");
+        assert_eq!(got[0].state, "OPEN");
+        assert_eq!(got[1].branch, "dependabot/x");
+        // Missing prs connection is no PRs, not an error.
+        let bare = serde_json::json!({"data": {"repository": {}}});
+        assert!(parse_recent_prs(&bare).is_empty());
+    }
+
+    #[test]
     fn velocity_query_is_balanced_and_complete() {
         // A dropped final brace zeroed a whole sweep: the parser error
         // points at end-of-input, easy to misread as a timestamp problem.
@@ -769,6 +846,8 @@ mod tests {
             "history",
             "GitTimestamp",
             "committedDate",
+            "pullRequests",
+            "headRefName",
         ] {
             assert!(q.contains(want), "{want}");
         }
