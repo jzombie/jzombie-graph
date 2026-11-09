@@ -32,6 +32,7 @@ struct Cli {
 enum Chart {
     Share,
     Focus,
+    Flame,
     Indicators,
     Preview,
 }
@@ -71,6 +72,10 @@ fn run_preview() -> anyhow::Result<()> {
             jzombie_graph::paths::FOCUS_SVG,
         ),
         (
+            charts::render_flame_svg(&input)?,
+            jzombie_graph::paths::FLAME_SVG,
+        ),
+        (
             charts::render_indicators_svg()?,
             jzombie_graph::paths::INDICATORS_SVG,
         ),
@@ -85,6 +90,7 @@ fn run_preview() -> anyhow::Result<()> {
         &frag,
         &basename(jzombie_graph::paths::SHARE_SVG)?,
         &basename(jzombie_graph::paths::FOCUS_SVG)?,
+        &basename(jzombie_graph::paths::FLAME_SVG)?,
         &table,
     )?;
     jzombie_graph::output::write_file(
@@ -138,6 +144,7 @@ fn main() {
     let svg = match cli.chart {
         Chart::Share => charts::render_share_svg(&text),
         Chart::Focus => charts::render_focus_svg(&text),
+        Chart::Flame => charts::render_flame_svg(&text),
         Chart::Indicators => charts::render_indicators_svg(),
         Chart::Preview => unreachable!("handled by the early return above"),
     };
@@ -150,6 +157,7 @@ fn main() {
     };
     let default = match cli.chart {
         Chart::Focus => jzombie_graph::paths::FOCUS_SVG,
+        Chart::Flame => jzombie_graph::paths::FLAME_SVG,
         Chart::Indicators => jzombie_graph::paths::INDICATORS_SVG,
         Chart::Share => jzombie_graph::paths::SHARE_SVG,
         Chart::Preview => unreachable!("handled by the early return above"),

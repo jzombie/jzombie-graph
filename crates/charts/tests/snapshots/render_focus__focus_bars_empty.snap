@@ -1,6 +1,6 @@
 ---
 source: crates/charts/tests/render_focus.rs
-assertion_line: 72
+assertion_line: 76
 expression: svg
 ---
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480.0 60.0" role="img" font-family="Helvetica, Arial, sans-serif"><title>Focus ranking</title><text x="16" y="30" font-size="20" fill="#767676">Focus ranking</text><line x1="260.0" y1="44.0" x2="260.0" y2="44.0" stroke="#767676" stroke-width="1"/><text x="240.0" y="84.0" text-anchor="middle" font-size="14" fill="#767676">No focus data</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480.0 60.0" role="img" font-family="Helvetica, Arial, sans-serif"><title>Focus ranking</title><text x="16" y="30" font-size="20" fill="#767676">Focus ranking</text><style>.bar{stroke:#fff;stroke-width:2;rx:4}.lbl{fill:#fff;font-size:13px;font-weight:600}.sub{fill:#fff;font-size:11px;opacity:.92}.dim{fill:#333;font-size:12px}.muted{fill:#666;font-size:11px}.pulse{animation:breathe 2.2s ease-in-out infinite}.slow{animation-duration:3.4s}@keyframes breathe{0%,100%{opacity:.95}50%{opacity:.62}}@media (prefers-reduced-motion:reduce){.pulse{animation:none}}</style><line x1="260.0" y1="44.0" x2="260.0" y2="44.0" stroke="#767676" stroke-width="1"/><text x="240.0" y="84.0" text-anchor="middle" font-size="14" fill="#767676">No focus data</text></svg>

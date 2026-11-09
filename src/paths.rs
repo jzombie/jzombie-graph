@@ -34,6 +34,10 @@ pub const SHARE_SVG: &str = "data/svg/portfolio-graph-share.svg";
 /// Focus ranking bars SVG. Same deal: local working copy until wired.
 pub const FOCUS_SVG: &str = "data/svg/portfolio-graph-focus.svg";
 
+/// Heat flame SVG: portfolio → repos → branches → embers, widths pro-rata
+/// 30d share, color + motion from the heat bands. Same working-copy deal.
+pub const FLAME_SVG: &str = "data/svg/portfolio-graph-flame.svg";
+
 /// Status-indicator strip preview SVG. Working copy until the per-repo badges
 /// land; not a published asset yet.
 pub const INDICATORS_SVG: &str = "data/svg/portfolio-graph-indicators.svg";

@@ -31,6 +31,13 @@ FUNC CHART_FOCUS() {
     RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "focus"]
 }
 
+# Flame: portfolio heat flame.
+FUNC CHART_FLAME() {
+    WORKSPACE LOCAL
+    ECHO "lanes: flame (binary default paths)"
+    RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "flame"]
+}
+
 # Indicators: status badges.
 FUNC CHART_INDICATORS() {
     WORKSPACE LOCAL
@@ -45,4 +52,4 @@ FUNC PREVIEW() {
     RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "preview"]
 }
 
-EXPORT [FUNC COLLECT, FUNC FRAGMENT, FUNC CHART_SHARE, FUNC CHART_FOCUS, FUNC CHART_INDICATORS, FUNC PREVIEW]
+EXPORT [FUNC COLLECT, FUNC FRAGMENT, FUNC CHART_SHARE, FUNC CHART_FOCUS, FUNC CHART_FLAME, FUNC CHART_INDICATORS, FUNC PREVIEW]

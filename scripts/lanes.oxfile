@@ -28,6 +28,7 @@ FUNC PIPELINE($collect: BOOL) {
     STEPS::FRAGMENT()
     STEPS::CHART_SHARE()
     STEPS::CHART_FOCUS()
+    STEPS::CHART_FLAME()
     STEPS::CHART_INDICATORS()
     ECHO "pipeline complete"
 }

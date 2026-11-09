@@ -1,0 +1,52 @@
+# Chart tokens + shared CSS. Edit here, never in .rs.
+WORKSPACE LOCAL
+
+TYPE TOKENS = MAP<
+    heating: STRING,
+    steady: STRING,
+    cooling: STRING,
+    dormant: STRING,
+    cat3: STRING,
+    cat4: STRING,
+    cat5: STRING,
+    cat6: STRING,
+    cat7: STRING,
+    ink: STRING,
+    ink_on_bar: STRING,
+    dim: STRING,
+    portfolio_bar: STRING,
+    family: STRING
+>
+
+LET $tokens: TOKENS = {
+    "heating": "#009E73",
+    "steady": "#56B4E9",
+    "cooling": "#E69F00",
+    "dormant": "#BBBBBB",
+    "cat3": "#F0E442",
+    "cat4": "#0072B2",
+    "cat5": "#D55E00",
+    "cat6": "#CC79A7",
+    "cat7": "#999999",
+    "ink": "#767676",
+    "ink_on_bar": "#1a1a1a",
+    "dim": "#333",
+    "portfolio_bar": "#222",
+    "family": "Helvetica, Arial, sans-serif"
+}
+
+FUNC CHART_TOKENS() {
+    WORKSPACE LOCAL
+    RETURN $tokens
+}
+
+FUNC CHART_STYLE() {
+    WORKSPACE LOCAL
+    RETURN "<style>.bar{stroke:#fff;stroke-width:2;rx:4}.lbl{fill:#fff;font-size:13px;font-weight:600}.sub{fill:#fff;font-size:11px;opacity:.92}.dim{fill:#333;font-size:12px}.muted{fill:#666;font-size:11px}.pulse{animation:breathe 2.2s ease-in-out infinite}.slow{animation-duration:3.4s}@keyframes breathe{0%,100%{opacity:.95}50%{opacity:.62}}@media (prefers-reduced-motion:reduce){.pulse{animation:none}}</style>"
+}
+
+EXPORT [
+    TYPE TOKENS,
+    CHART_TOKENS,
+    CHART_STYLE
+]

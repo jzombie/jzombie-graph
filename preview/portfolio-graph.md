@@ -49,6 +49,10 @@ Proximity reflects dependence strength: nodes sharing an edge attract, unconnect
 
 ![focus](portfolio-graph-focus.svg)
 
+## Heat flame
+
+![flame](portfolio-graph-flame.svg)
+
 # Indicator preview
 
 *Generated — do not hand-edit. Regenerate with `oxdock scripts/preview-indicators.oxfile`. Badges sit beside this file; the rows come from the same template doc as the SVGs.*

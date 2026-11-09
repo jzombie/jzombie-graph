@@ -14,12 +14,38 @@ use oxdock::{Engine, HostModule, OxDockFn, Value, oxdock, oxdock_func, oxdock_pa
 
 pub mod palette;
 
+/// Shared `<style>` block, single-sourced from `style.oxfile`.
+/// The CSS lives once in the DSL; Rust only extracts the payload,
+/// so no stylesheet literal can drift between charts.
+const STYLE_OXFILE: &str = include_str!("../style.oxfile");
+
+fn chart_style() -> anyhow::Result<String> {
+    let line = STYLE_OXFILE
+        .lines()
+        .find(|l| l.trim_start().starts_with("RETURN \""))
+        .ok_or_else(|| anyhow::anyhow!("CHART_STYLE payload missing in style.oxfile"))?;
+    let start = line.find('"').map(|i| i + 1).unwrap_or(0);
+    let end = line.rfind('"').unwrap_or(0);
+    anyhow::ensure!(end > start, "CHART_STYLE payload unterminated");
+    Ok(line[start..end].to_string())
+}
+
+/// Plugin function: the shared style block out. Every chart template
+/// calls this and appends the result — one FUNC, four callers.
+#[oxdock_func(pure, name = "CHART_STYLE")]
+fn chart_style_fn() -> anyhow::Result<Value> {
+    Ok(Value::string(chart_style()?))
+}
+
 /// One pie slice: everything preformatted — the script interpolates only.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 struct SliceRow {
     label: String,
     pct: String,
     color: String,
+    /// Breathing class from the repo's heat band (`pulse`, `pulse slow`,
+    /// or empty for static) — width is share, motion is heat.
+    pulse: String,
     /// True when this row is the whole pie (single contributor): the script
     /// emits a `<circle>` instead of a degenerate zero-length arc path.
     circle: bool,
@@ -108,27 +134,34 @@ fn f1(x: f64) -> String {
 /// Colors come from the shared [`palette`] module — same values every chart.
 fn share_rows(graph_json: &str, n: usize) -> anyhow::Result<Vec<SliceRow>> {
     let graph = jzombie_graph::graph::Graph::from_json(graph_json)?;
-    let mut repos: Vec<(&str, u32)> = graph
+    let mut repos: Vec<(&str, u32, Option<f32>)> = graph
         .nodes
         .iter()
         .filter(|nd| !nd.private && jzombie_graph::graph::is_own_work(nd))
         .filter(|nd| nd.commits_5d > 0)
-        .map(|nd| (nd.name.as_str(), nd.commits_5d))
+        .map(|nd| {
+            (
+                nd.name.as_str(),
+                nd.commits_5d,
+                nd.commit_heat.or_else(|| nd.commit_heat()),
+            )
+        })
         .collect();
     repos.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(b.0)));
-    let total: u32 = repos.iter().map(|(_, c)| c).sum();
+    let total: u32 = repos.iter().map(|(_, c, _)| c).sum();
     if total == 0 {
         return Ok(vec![]);
     }
     let n = n.max(1);
-    let mut kept: Vec<(String, u32)> = repos
+    let mut kept: Vec<(String, u32, Option<f32>)> = repos
         .iter()
         .take(n)
-        .map(|(name, c)| (name.to_string(), *c))
+        .map(|(name, c, h)| (name.to_string(), *c, *h))
         .collect();
-    let rest: u32 = repos.iter().skip(n).map(|(_, c)| c).sum();
+    let rest: u32 = repos.iter().skip(n).map(|(_, c, _)| c).sum();
     if rest > 0 {
-        kept.push(("Other".to_string(), rest));
+        // The bucket aggregates repos of every band — it stays static.
+        kept.push(("Other".to_string(), rest, None));
     }
     let kept_len = kept.len();
     let lay = layout(kept_len);
@@ -136,13 +169,13 @@ fn share_rows(graph_json: &str, n: usize) -> anyhow::Result<Vec<SliceRow>> {
     let rows = kept
         .into_iter()
         .enumerate()
-        .map(|(i, (label, c))| {
+        .map(|(i, (label, c, heat))| {
             let share = c as f64 / total as f64;
             let sweep = share * 360.0;
             let a0 = -90.0 + acc * 360.0;
             acc += share;
             let color = if label == "Other" {
-                palette::OTHER.to_string()
+                palette::other().to_string()
             } else {
                 palette::categorical(i).to_string()
             };
@@ -154,6 +187,7 @@ fn share_rows(graph_json: &str, n: usize) -> anyhow::Result<Vec<SliceRow>> {
                 label: xml_escape(&label),
                 pct: format!("{:.1}%", share * 100.0),
                 color,
+                pulse: palette::heat_pulse(heat).to_string(),
                 circle: kept_len == 1,
                 d: {
                     let rad = std::f64::consts::PI / 180.0;
@@ -195,6 +229,9 @@ struct FocusRow {
     label: String,
     value: String,
     color: String,
+    /// Breathing class from the bar's own heat (`pulse`, `pulse slow`,
+    /// or empty) — only actually-hot bars move.
+    pulse: String,
     bx: String,
     bw: String,
     by: String,
@@ -360,10 +397,11 @@ fn focus_rows(graph_json: &str, n_top: usize, n_bottom: usize) -> anyhow::Result
                 label: xml_escape(&truncate_name(label, LABEL_MAX)),
                 value: format!("{f:.2}"),
                 color: if f >= 0.0 {
-                    palette::FOCUS_POSITIVE.to_string()
+                    palette::heating()
                 } else {
-                    palette::FOCUS_NEGATIVE.to_string()
+                    palette::focus_negative().to_string()
                 },
+                pulse: palette::heat_pulse(Some(f)).to_string(),
                 bx: f1(bx),
                 bw: f1(len),
                 by: f1(title_h + i as f64 * row_h + 6.0),
@@ -385,10 +423,11 @@ fn focus_bars(graph_json: String, n_top: i64, n_bottom: i64) -> anyhow::Result<V
     let h = 44.0 + rows.len() as f64 * 26.0 + 16.0;
     let doc = FocusDoc {
         header: format!(
-            "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"Helvetica, Arial, sans-serif\"><title>Focus ranking</title><text x=\"16\" y=\"30\" font-size=\"20\" fill=\"{ink}\">Focus ranking</text>",
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"{family}\"><title>Focus ranking</title><text x=\"16\" y=\"30\" font-size=\"20\" fill=\"{ink}\">Focus ranking</text>",
             f1(480.0),
             f1(h),
-            ink = palette::INK
+            ink = palette::ink(),
+            family = palette::family(),
         ),
         footer: "</svg>".to_string(),
         zero_x: f1(260.0),
@@ -396,9 +435,9 @@ fn focus_bars(graph_json: String, n_top: i64, n_bottom: i64) -> anyhow::Result<V
         zero_y2: f1(h - 16.0),
         bar_h: "14".to_string(),
         fs: "14".to_string(),
-        ink: palette::INK.to_string(),
-        bar_ink: palette::INK_ON_BAR.to_string(),
-        muted: palette::MUTED.to_string(),
+        ink: palette::ink(),
+        bar_ink: palette::ink_on_bar(),
+        muted: palette::muted(),
         mx: f1(240.0),
         my: f1(44.0 + 40.0),
         msg: "No focus data".to_string(),
@@ -420,6 +459,8 @@ pub fn render_focus_svg(graph_json: &str) -> anyhow::Result<String> {
         WRITE rows.json $rows_json
         LET $doc: MAP<ANY> = LOAD_JSON("rows.json")
         WRITE out.svg $doc.header
+        LET $style: STRING = CHARTS::CHART_STYLE()
+        APPEND out.svg $style
         APPEND out.svg "<line x1=\"{{ $doc.zero_x }}\" y1=\"{{ $doc.zero_y1 }}\" x2=\"{{ $doc.zero_x }}\" y2=\"{{ $doc.zero_y2 }}\" stroke=\"{{ $doc.muted }}\" stroke-width=\"1\"/>"
         IF $doc.empty {
             APPEND out.svg "<text x=\"{{ $doc.mx }}\" y=\"{{ $doc.my }}\" text-anchor=\"middle\" font-size=\"{{ $doc.fs }}\" fill=\"{{ $doc.muted }}\">{{ $doc.msg }}</text>"
@@ -427,7 +468,7 @@ pub fn render_focus_svg(graph_json: &str) -> anyhow::Result<String> {
             FOR $r: MAP<ANY> IN $doc.rows {
                 APPEND out.svg """
                     <clipPath id="{{ $r.clip }}"><rect x="{{ $r.bx }}" y="{{ $r.by }}" width="{{ $r.bw }}" height="{{ $doc.bar_h }}"/></clipPath>
-                    <rect x="{{ $r.bx }}" y="{{ $r.by }}" width="{{ $r.bw }}" height="{{ $doc.bar_h }}" fill="{{ $r.color }}"><title>{{ $r.label }} {{ $r.value }}</title></rect>
+                    <rect x="{{ $r.bx }}" y="{{ $r.by }}" width="{{ $r.bw }}" height="{{ $doc.bar_h }}" fill="{{ $r.color }}" class="{{ $r.pulse }}"><title>{{ $r.label }} {{ $r.value }}</title></rect>
                     """
                 APPEND out.svg "<text x=\"{{ $r.tx }}\" y=\"{{ $r.ty }}\" text-anchor=\"end\" font-size=\"{{ $doc.fs }}\" fill=\"{{ $doc.ink }}\">{{ $r.label }}</text><text x=\"{{ $r.vx }}\" y=\"{{ $r.ty }}\" text-anchor=\"end\" font-size=\"{{ $doc.fs }}\" fill=\"{{ $doc.ink }}\">{{ $r.value }}</text>"
                 APPEND out.svg "<text x=\"{{ $r.tx }}\" y=\"{{ $r.ty }}\" text-anchor=\"end\" font-size=\"{{ $doc.fs }}\" fill=\"{{ $doc.bar_ink }}\" clip-path=\"url(#{{ $r.clip }})\">{{ $r.label }}</text><text x=\"{{ $r.vx }}\" y=\"{{ $r.ty }}\" text-anchor=\"end\" font-size=\"{{ $doc.fs }}\" fill=\"{{ $doc.bar_ink }}\" clip-path=\"url(#{{ $r.clip }})\">{{ $r.value }}</text>"
@@ -455,10 +496,11 @@ fn pie_slices(graph_json: String, n: i64) -> anyhow::Result<Value> {
     let lay = layout(rows.len());
     let doc = PieDoc {
         header: format!(
-            "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"Helvetica, Arial, sans-serif\"><title>Trailing-5d commit share</title><text x=\"16\" y=\"30\" font-size=\"20\" fill=\"{ink}\">Trailing-5d commit share</text>",
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"{family}\"><title>Trailing-5d commit share</title><text x=\"16\" y=\"30\" font-size=\"20\" fill=\"{ink}\">Trailing-5d commit share</text>",
             f1(lay.w),
             f1(lay.h),
-            ink = palette::INK
+            ink = palette::ink(),
+            family = palette::family(),
         ),
         footer: "</svg>".to_string(),
         cx: f1(lay.cx),
@@ -466,8 +508,8 @@ fn pie_slices(graph_json: String, n: i64) -> anyhow::Result<Value> {
         r: f1(lay.r),
         cell: "14".to_string(),
         fs: "14".to_string(),
-        ink: palette::INK.to_string(),
-        muted: palette::MUTED.to_string(),
+        ink: palette::ink(),
+        muted: palette::muted(),
         mx: f1(lay.w / 2.0),
         my: f1(lay.title_h + 40.0),
         msg: "No commits in trailing 5d".to_string(),
@@ -475,6 +517,391 @@ fn pie_slices(graph_json: String, n: i64) -> anyhow::Result<Value> {
         rows,
     };
     Ok(Value::string(serde_json::to_string(&doc)?))
+}
+
+/// One branch bar inside its repo's span: preformatted, title always.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+struct FlameBranch {
+    label: String,
+    labeled: bool,
+    title: String,
+    bx: String,
+    bw: String,
+    tx: String,
+    opacity: String,
+    pulse: String,
+}
+
+/// One repo bar: two-line label when it fits, one short line under 110px,
+/// footer-key entry below 40px (never overlapping neighbors).
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+struct FlameRepo {
+    title: String,
+    head: String,
+    sub: String,
+    short: String,
+    full: bool,
+    labeled: bool,
+    color: String,
+    pulse: String,
+    bx: String,
+    bw: String,
+    tx: String,
+    ember: String,
+    branches: Vec<FlameBranch>,
+}
+
+/// Flame document: static decor prebuilt in Rust, rows interpolated.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+struct FlameDoc {
+    header: String,
+    legend: String,
+    footer: String,
+    port_label: String,
+    empty: bool,
+    msg: String,
+    muted: String,
+    // Layout values, so the template carries no coordinates.
+    px: String,
+    py: String,
+    pw: String,
+    ph: String,
+    pty: String,
+    ry: String,
+    rh: String,
+    t1y: String,
+    t2y: String,
+    sty: String,
+    by: String,
+    bh: String,
+    bty: String,
+    ey: String,
+    eh: String,
+    cap_y: String,
+    rows: Vec<FlameRepo>,
+}
+
+/// Flame layout: the prototype's skeleton, widths now pro-rata real data.
+const FLAME_W: f64 = 800.0;
+const FLAME_H: f64 = 360.0;
+const FLAME_X0: f64 = 16.0;
+const FLAME_TRACK: f64 = 768.0;
+const FLAME_TOPN: usize = 8;
+const FLAME_BRANCHES: usize = 2;
+
+/// Band word for a heat, same thresholds as `heat_color`.
+fn heat_band(h: Option<f32>) -> &'static str {
+    match h {
+        Some(v) if v > 1.5 => "heating",
+        Some(v) if v > 0.5 => "steady",
+        Some(v) if v > 0.05 => "cooling",
+        _ => "dormant",
+    }
+}
+
+fn truncate_to(name: &str, max: usize) -> String {
+    let chars: Vec<char> = name.chars().collect();
+    if chars.len() <= max.max(1) {
+        return name.to_string();
+    }
+    chars[..max.max(1).saturating_sub(1)]
+        .iter()
+        .collect::<String>()
+        + "…"
+}
+
+/// Flame rows: portfolio totals, top-8 repos by 30d share, top-2 live
+/// branches each, 1d embers. Widths are honest against the portfolio
+/// total — the tail gap is real and footnoted, never stretched.
+fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
+    let graph = jzombie_graph::graph::Graph::from_json(graph_json)?;
+    let mut repos: Vec<&jzombie_graph::graph::Node> = graph
+        .nodes
+        .iter()
+        .filter(|nd| !nd.private && jzombie_graph::graph::is_own_work(nd))
+        .filter(|nd| nd.commits_30d > 0)
+        .collect();
+    repos.sort_by(|a, b| {
+        b.commits_30d
+            .cmp(&a.commits_30d)
+            .then_with(|| a.name.cmp(&b.name))
+    });
+    let total: u32 = repos.iter().map(|n| n.commits_30d).sum();
+    let empty = FlameDoc {
+        header: flame_header(),
+        legend: String::new(),
+        footer: "</svg>".to_string(),
+        port_label: String::new(),
+        empty: true,
+        msg: "No commits in trailing 30d".to_string(),
+        muted: palette::muted(),
+        px: String::new(),
+        py: String::new(),
+        pw: String::new(),
+        ph: String::new(),
+        pty: String::new(),
+        ry: f1(100.0),
+        rh: f1(52.0),
+        t1y: f1(122.0),
+        t2y: f1(138.0),
+        sty: f1(138.0),
+        by: f1(166.0),
+        bh: f1(40.0),
+        bty: f1(191.0),
+        ey: f1(236.0),
+        eh: f1(10.0),
+        cap_y: f1(228.0),
+        rows: vec![],
+    };
+    if total == 0 {
+        return Ok(empty);
+    }
+    let cut = repos.len().saturating_sub(FLAME_TOPN);
+    let shown = &repos[..repos.len().min(FLAME_TOPN)];
+    let mut ws: Vec<f64> = shown
+        .iter()
+        .map(|n| n.commits_30d as f64 / total as f64 * FLAME_TRACK)
+        .collect();
+    for w in ws.iter_mut() {
+        if *w < 4.0 {
+            *w = 4.0;
+        }
+    }
+    if ws.iter().sum::<f64>() > FLAME_TRACK {
+        let over = ws.iter().sum::<f64>() - FLAME_TRACK;
+        if let Some(i) = ws
+            .iter()
+            .enumerate()
+            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+            .map(|(i, _)| i)
+        {
+            ws[i] -= over;
+        }
+    }
+    let mut tail: Vec<String> = vec![];
+    let mut x = FLAME_X0;
+    let mut rows: Vec<FlameRepo> = vec![];
+    for (n, w) in shown.iter().zip(ws.iter()) {
+        let bx = x;
+        x += w;
+        let heat = n.commit_heat.or_else(|| n.commit_heat());
+        let band = heat_band(heat);
+        let head = match heat {
+            Some(h) => format!("{} · {:.1} {}", n.name, h, band),
+            None => format!("{} · dormant", n.name),
+        };
+        let head = xml_escape(&head);
+        let full = head.chars().count() as f64 * 6.3 + 12.0 <= *w;
+        let labeled = *w >= 40.0;
+        if !full && !labeled {
+            tail.push(format!(
+                "{} · {} · {band}",
+                xml_escape(&n.name),
+                n.commits_30d
+            ));
+        }
+        let mut bheads: Vec<&jzombie_graph::graph::BranchHeat> =
+            n.branch_heat.iter().filter(|b| b.commits_30d > 0).collect();
+        bheads.sort_by(|a, b| {
+            b.commits_30d
+                .cmp(&a.commits_30d)
+                .then_with(|| a.branch.cmp(&b.branch))
+        });
+        let mut bxx = bx;
+        let mut branches: Vec<FlameBranch> = vec![];
+        for b in bheads.iter().take(FLAME_BRANCHES) {
+            let bw = b.commits_30d as f64 / n.commits_30d as f64 * w;
+            let text = format!("{} · {}", b.branch, b.commits_30d);
+            let show = text.chars().count() as f64 * 5.5 + 8.0 <= bw;
+            let bheat = jzombie_graph::graph::commit_heat_from_windows(
+                b.commits_1d,
+                b.commits_5d,
+                b.commits_15d,
+                b.commits_30d,
+            );
+            branches.push(FlameBranch {
+                label: if show {
+                    xml_escape(&text)
+                } else {
+                    String::new()
+                },
+                labeled: show,
+                title: xml_escape(&format!(
+                    "{}/{} · {} commits/30d",
+                    n.name, b.branch, b.commits_30d
+                )),
+                bx: f1(bxx),
+                bw: f1(bw),
+                tx: f1(bxx + 8.0),
+                opacity: if b.is_default {
+                    "1".into()
+                } else {
+                    "0.65".into()
+                },
+                pulse: palette::heat_pulse(bheat).to_string(),
+            });
+            bxx += bw;
+        }
+        rows.push(FlameRepo {
+            title: xml_escape(&match heat {
+                Some(h) => format!(
+                    "{} · {} commits/30d · heat {h:.2} {band}",
+                    n.name, n.commits_30d
+                ),
+                None => format!("{} · {} commits/30d · dormant", n.name, n.commits_30d),
+            }),
+            head,
+            sub: format!("{} commits", n.commits_30d),
+            short: xml_escape(&truncate_to(&n.name, ((*w - 12.0) / 6.3).floor() as usize)),
+            full,
+            labeled,
+            color: heat_color(heat.unwrap_or(0.0)).to_string(),
+            pulse: palette::heat_pulse(heat).to_string(),
+            bx: f1(bx),
+            bw: f1(*w),
+            tx: f1(bx + 12.0),
+            ember: f1(n.commits_1d as f64 / n.commits_30d as f64 * w),
+            branches,
+        });
+    }
+    let cut_c: u32 = repos[shown.len()..].iter().map(|n| n.commits_30d).sum();
+    let sums = |f: fn(&jzombie_graph::graph::Node) -> u32| repos.iter().map(|n| f(n)).sum();
+    let port_heat = jzombie_graph::graph::commit_heat_from_windows(
+        sums(|n| n.commits_1d),
+        sums(|n| n.commits_5d),
+        sums(|n| n.commits_15d),
+        sums(|n| n.commits_30d),
+    );
+    let port_label = match port_heat {
+        Some(h) => format!(
+            "portfolio · {total} commits / 30d · heat {h:.1} {}",
+            heat_band(port_heat)
+        ),
+        None => format!("portfolio · {total} commits / 30d"),
+    };
+    let mut note = String::from("width = 30d share · color = heat band · pulse = heating/steady");
+    if cut > 0 {
+        note.push_str(&format!(" · +{cut} more · {cut_c} commits"));
+    }
+    if !tail.is_empty() {
+        note.push_str(&format!(" · tail: {}", tail.join(", ")));
+    }
+    Ok(FlameDoc {
+        header: flame_header(),
+        legend: flame_legend(&note),
+        footer: "</svg>".to_string(),
+        port_label: xml_escape(&port_label),
+        empty: false,
+        msg: String::new(),
+        muted: palette::muted(),
+        px: f1(FLAME_X0),
+        py: f1(52.0),
+        pw: f1(FLAME_TRACK),
+        ph: f1(34.0),
+        pty: f1(74.0),
+        ry: f1(100.0),
+        rh: f1(52.0),
+        t1y: f1(122.0),
+        t2y: f1(138.0),
+        sty: f1(130.0),
+        by: f1(166.0),
+        bh: f1(40.0),
+        bty: f1(191.0),
+        ey: f1(236.0),
+        eh: f1(10.0),
+        cap_y: f1(228.0),
+        rows,
+    })
+}
+
+fn flame_header() -> String {
+    format!(
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"{family}\"><title>Portfolio heat flame</title><text x=\"16\" y=\"24\" font-size=\"14\" font-weight=\"bold\" fill=\"{ink}\">portfolio heat</text><text x=\"16\" y=\"40\" class=\"muted\">width = 30d share · color = heat band · pulse = heating only</text>",
+        f1(FLAME_W),
+        f1(FLAME_H),
+        ink = palette::portfolio_bar(),
+        family = palette::family(),
+    )
+}
+
+fn flame_legend(note: &str) -> String {
+    format!(
+        "<g font-size=\"12\" fill=\"{dim}\"><circle cx=\"24\" cy=\"286\" r=\"6\" fill=\"{hot}\"/><text x=\"36\" y=\"290\">heating &gt;1.5</text><circle cx=\"150\" cy=\"286\" r=\"6\" fill=\"{steady}\"/><text x=\"162\" y=\"290\">steady ~1.0</text><circle cx=\"268\" cy=\"286\" r=\"6\" fill=\"{cool}\"/><text x=\"280\" y=\"290\">cooling &lt;0.5</text><circle cx=\"392\" cy=\"286\" r=\"6\" fill=\"{dorm}\"/><text x=\"404\" y=\"290\">dormant</text><text x=\"16\" y=\"316\" class=\"muted\">{note}</text></g>",
+        hot = palette::heating(),
+        steady = palette::steady(),
+        cool = palette::cooling(),
+        dorm = palette::dormant(),
+        dim = palette::dim(),
+        note = xml_escape(note),
+    )
+}
+
+/// Plugin function: validated graph JSON in, flame document out.
+#[oxdock_func(pure, name = "FLAME")]
+fn flame(graph_json: String) -> anyhow::Result<Value> {
+    Ok(Value::string(serde_json::to_string(&flame_rows(
+        &graph_json,
+    )?)?))
+}
+
+/// Render the heat flame for validated graph JSON. Same transport as the
+/// pie: embedded script emits markup into a temp workspace.
+pub fn render_flame_svg(graph_json: &str) -> anyhow::Result<String> {
+    let engine = engine();
+    let steps: Vec<oxdock_parser::Step> = oxdock! {
+        modules: [CHARTS],
+        IMPORT [CHARTS]
+        IMPORT [STD]
+        LET $doc_json: STRING = CHARTS::FLAME(#graph_json)
+        WRITE rows.json $doc_json
+        LET $doc: MAP<ANY> = LOAD_JSON("rows.json")
+        LET $style: STRING = CHARTS::CHART_STYLE()
+        WRITE out.svg $doc.header
+        APPEND out.svg $style
+        IF $doc.empty {
+            APPEND out.svg "<text x=\"16\" y=\"60\" font-size=\"14\" fill=\"{{ $doc.muted }}\">{{ $doc.msg }}</text>"
+        } ELSE {
+            APPEND out.svg "<rect x=\"{{ $doc.px }}\" y=\"{{ $doc.py }}\" width=\"{{ $doc.pw }}\" height=\"{{ $doc.ph }}\" rx=\"4\" fill=\"#222\"/>"
+            APPEND out.svg "<text x=\"28\" y=\"{{ $doc.pty }}\" class=\"lbl\">{{ $doc.port_label }}</text>"
+            APPEND out.svg "<text x=\"16\" y=\"{{ $doc.cap_y }}\" class=\"muted\">recent embers — 1d brightness under each repo</text>"
+            FOR $r: MAP<ANY> IN $doc.rows {
+                APPEND out.svg """
+                    <rect x="{{ $r.bx }}" y="{{ $doc.ry }}" width="{{ $r.bw }}" height="{{ $doc.rh }}" class="bar {{ $r.pulse }}" fill="{{ $r.color }}"><title>{{ $r.title }}</title></rect>
+                    """
+                IF $r.full {
+                    APPEND out.svg "<text x=\"{{ $r.tx }}\" y=\"{{ $doc.t1y }}\" class=\"lbl\">{{ $r.head }}</text>"
+                    APPEND out.svg "<text x=\"{{ $r.tx }}\" y=\"{{ $doc.t2y }}\" class=\"sub\">{{ $r.sub }}</text>"
+                } ELSE {
+                    IF $r.labeled {
+                        APPEND out.svg "<text x=\"{{ $r.tx }}\" y=\"{{ $doc.sty }}\" class=\"lbl\">{{ $r.short }}</text>"
+                    }
+                }
+                FOR $b: MAP<ANY> IN $r.branches {
+                    APPEND out.svg """
+                        <rect x="{{ $b.bx }}" y="{{ $doc.by }}" width="{{ $b.bw }}" height="{{ $doc.bh }}" class="bar {{ $b.pulse }}" fill="{{ $r.color }}" opacity="{{ $b.opacity }}"><title>{{ $b.title }}</title></rect>
+                        """
+                    IF $b.labeled {
+                        APPEND out.svg "<text x=\"{{ $b.tx }}\" y=\"{{ $doc.bty }}\" class=\"sub\">{{ $b.label }}</text>"
+                    }
+                }
+                APPEND out.svg """
+                    <rect x="{{ $r.bx }}" y="{{ $doc.ey }}" width="{{ $r.bw }}" height="{{ $doc.eh }}" rx="5" fill="none" stroke="{{ $r.color }}" stroke-width="1"/>
+                    <rect x="{{ $r.bx }}" y="{{ $doc.ey }}" width="{{ $r.ember }}" height="{{ $doc.eh }}" rx="5" fill="{{ $r.color }}" class="{{ $r.pulse }}"/>
+                    """
+            }
+            APPEND out.svg $doc.legend
+        }
+        APPEND out.svg $doc.footer
+        LET $check: STRING = READ out.svg
+        ASSERT_CONTAINS $check "<svg"
+        ASSERT_CONTAINS $check "</svg>"
+    };
+    let temp = oxdock::GuardedPath::tempdir().expect("tempdir");
+    let root = temp.as_guarded_path().clone();
+    engine.run_steps_without_snapshot(&root, &steps)?;
+    let resolver = oxdock::PathResolver::new(root.as_path(), root.as_path()).expect("resolver");
+    let out = root.join("out.svg").expect("out path");
+    Ok(resolver.read_to_string(&out).expect("read out"))
 }
 
 fn engine() -> Engine {
@@ -486,6 +913,8 @@ fn engine() -> Engine {
             FocusBars::registration(),
             Indicators::registration(),
             Portfolio::registration(),
+            ChartStyleFn::registration(),
+            Flame::registration(),
         ],
         types: vec![],
         record_schemas: vec![],
@@ -505,18 +934,20 @@ pub fn render_share_svg(graph_json: &str) -> anyhow::Result<String> {
         LET $rows_json: STRING = CHARTS::PIE_SLICES(#graph_json, 8)
         WRITE rows.json $rows_json
         LET $doc: MAP<ANY> = LOAD_JSON("rows.json")
+        LET $style: STRING = CHARTS::CHART_STYLE()
         WRITE out.svg $doc.header
+        APPEND out.svg $style
         IF $doc.empty {
             APPEND out.svg "<text x=\"{{ $doc.mx }}\" y=\"{{ $doc.my }}\" text-anchor=\"middle\" font-size=\"{{ $doc.fs }}\" fill=\"{{ $doc.muted }}\">{{ $doc.msg }}</text>"
         } ELSE {
             FOR $r: MAP<ANY> IN $doc.rows {
                 IF $r.circle {
                     APPEND out.svg """
-                        <circle cx="{{ $doc.cx }}" cy="{{ $doc.cy }}" r="{{ $doc.r }}" fill="{{ $r.color }}"><title>{{ $r.label }} {{ $r.pct }}</title></circle>
+                        <circle cx="{{ $doc.cx }}" cy="{{ $doc.cy }}" r="{{ $doc.r }}" fill="{{ $r.color }}" class="{{ $r.pulse }}"><title>{{ $r.label }} {{ $r.pct }}</title></circle>
                         """
                 } ELSE {
                     APPEND out.svg """
-                        <path d="{{ $r.d }}" fill="{{ $r.color }}"><title>{{ $r.label }} {{ $r.pct }}</title></path>
+                        <path d="{{ $r.d }}" fill="{{ $r.color }}" class="{{ $r.pulse }}"><title>{{ $r.label }} {{ $r.pct }}</title></path>
                         """
                 }
                 APPEND out.svg """
@@ -552,7 +983,9 @@ struct IndicatorRow {
     color: String,
     core_opacity: String,
     ring: bool,
-    period: String,
+    /// Shared breathing class (`pulse`, `pulse slow`, or empty).
+    /// Heating breathes fast, steady slow, cooling+dormant static.
+    pulse: String,
     cx: String,
 }
 
@@ -574,17 +1007,17 @@ const INDICATOR_CY: f64 = 22.0;
 const INDICATOR_R: f64 = 8.0;
 
 /// Heat color, stepped on the documented `commit_heat` bands: heating green,
-/// steady blue, cooling amber (still pulses, slow), dormant faint gray.
+/// steady blue, cooling amber, dormant faint gray.
 /// All stops from the shared palette.
-fn heat_color(h: f32) -> &'static str {
+fn heat_color(h: f32) -> String {
     if h > 1.5 {
-        palette::FOCUS_POSITIVE
+        palette::heating()
     } else if h > 0.5 {
-        palette::CATEGORICAL[1]
+        palette::steady()
     } else if h > 0.05 {
-        palette::CATEGORICAL[0]
+        palette::cooling()
     } else {
-        palette::OTHER
+        palette::other()
     }
 }
 
@@ -609,6 +1042,7 @@ fn indicator_rows() -> Vec<IndicatorRow> {
     BANDS
         .into_iter()
         .map(|(name, h)| {
+            let pulse = palette::heat_pulse(Some(h)).to_string();
             let norm = (h / 6.0).clamp(0.0, 1.0);
             IndicatorRow {
                 band: name.to_string(),
@@ -617,8 +1051,8 @@ fn indicator_rows() -> Vec<IndicatorRow> {
                 heat: format!("{h:.2}"),
                 color: heat_color(h).to_string(),
                 core_opacity: format!("{:.2}", 0.45 + 0.55 * norm as f64),
-                ring: h > 0.05,
-                period: format!("{:.1}s", 2.6 - norm as f64 * 1.8),
+                ring: !pulse.is_empty(),
+                pulse,
                 cx: String::new(),
             }
         })
@@ -646,9 +1080,10 @@ fn indicators(graph_json: String, only: String) -> anyhow::Result<Value> {
         r.cx = f1(i as f64 * INDICATOR_CELL + INDICATOR_CELL / 2.0);
     }
     doc.header = format!(
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"Helvetica, Arial, sans-serif\"><title>Status indicators</title><style>.ring{{transform-box:fill-box;transform-origin:center;animation:ping 1.6s ease-out infinite}}@keyframes ping{{0%{{transform:scale(1);opacity:.7}}100%{{transform:scale(2.4);opacity:0}}}}@media (prefers-reduced-motion:reduce){{.ring{{animation:none}}}}</style>",
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"{family}\"><title>Status indicators</title>",
         f1(doc.rows.len() as f64 * INDICATOR_CELL),
         f1(INDICATOR_CELL),
+        family = palette::family(),
     );
     Ok(Value::string(serde_json::to_string(&doc)?))
 }
@@ -665,12 +1100,19 @@ struct PortfolioDoc {
 /// Plugin function: portfolio page out. Static bands, caller-supplied
 /// fragment and image names — no paths live in any template or script.
 #[oxdock_func(pure, name = "PORTFOLIO")]
-fn portfolio(frag: String, share: String, focus: String, table: String) -> anyhow::Result<Value> {
+fn portfolio(
+    frag: String,
+    share: String,
+    focus: String,
+    flame: String,
+    table: String,
+) -> anyhow::Result<Value> {
     let header = format!(
-        "# portfolio-graph — render proof\n\n*Generated — do not hand-edit. Regenerate with `oxdock scripts/preview-indicators.oxfile`. Fragment carried verbatim; charts embedded as files.*\n\n## Map fragment\n\n{frag}\n## Commit share\n\n![share]({share})\n\n## Focus ranking\n\n![focus]({focus})\n\n",
+        "# portfolio-graph — render proof\n\n*Generated — do not hand-edit. Regenerate with `oxdock scripts/preview-indicators.oxfile`. Fragment carried verbatim; charts embedded as files.*\n\n## Map fragment\n\n{frag}\n## Commit share\n\n![share]({share})\n\n## Focus ranking\n\n![focus]({focus})\n\n## Heat flame\n\n![flame]({flame})\n\n",
         frag = frag.trim_end(),
         share = share,
         focus = focus,
+        flame = flame,
     );
     let doc = PortfolioDoc {
         header,
@@ -738,19 +1180,21 @@ pub fn render_preview_md(
     frag: &str,
     share: &str,
     focus: &str,
+    flame: &str,
     table: &str,
 ) -> anyhow::Result<String> {
     let engine = engine();
-    let (frag_arg, share_arg, focus_arg, table_arg) = (
+    let (frag_arg, share_arg, focus_arg, flame_arg, table_arg) = (
         frag.to_string(),
         share.to_string(),
         focus.to_string(),
+        flame.to_string(),
         table.to_string(),
     );
     let steps: Vec<oxdock_parser::Step> = oxdock! {
         modules: [CHARTS],
         IMPORT [STD, CHARTS]
-        LET $page_json: STRING = CHARTS::PORTFOLIO(#frag_arg, #share_arg, #focus_arg, #table_arg)
+        LET $page_json: STRING = CHARTS::PORTFOLIO(#frag_arg, #share_arg, #focus_arg, #flame_arg, #table_arg)
         WRITE rows.json $page_json
         LET $doc: MAP<ANY> = LOAD_JSON("rows.json")
         WRITE md.md $doc.header
@@ -776,11 +1220,13 @@ fn render_indicator_doc(only: &str) -> anyhow::Result<String> {
         LET $rows_json: STRING = CHARTS::INDICATORS(#graph_json, #only_arg)
         WRITE rows.json $rows_json
         LET $doc: MAP<ANY> = LOAD_JSON("rows.json")
+        LET $style: STRING = CHARTS::CHART_STYLE()
         WRITE out.svg $doc.header
+        APPEND out.svg $style
         FOR $r: MAP<ANY> IN $doc.rows {
             IF $r.ring {
                 APPEND out.svg """
-                    <circle cx="{{ $r.cx }}" cy="{{ $doc.cy }}" r="{{ $doc.dot_r }}" fill="none" stroke="{{ $r.color }}" stroke-width="{{ $doc.ring_w }}" class="ring" style="animation-duration:{{ $r.period }}"><title>{{ $r.label }} {{ $r.heat }}</title></circle>
+                    <circle cx="{{ $r.cx }}" cy="{{ $doc.cy }}" r="{{ $doc.dot_r }}" fill="none" stroke="{{ $r.color }}" stroke-width="{{ $doc.ring_w }}" class="{{ $r.pulse }}"><title>{{ $r.label }} {{ $r.heat }}</title></circle>
                     """
             } ELSE {
                 APPEND out.svg """
@@ -858,14 +1304,14 @@ mod tests {
         jzombie_graph::output::render_json(&Graph::new(nodes, vec![])).unwrap()
     }
 
-    fn graph_with_focus(scores: &[(&str, Option<f32>)]) -> String {
+    fn graph_with_focus<S: AsRef<str>>(scores: &[(S, Option<f32>)]) -> String {
         use jzombie_graph::graph::{Graph, Layer, Node};
         let nodes = scores
             .iter()
             .map(|(name, f)| Node {
-                id: format!("me/{name}"),
+                id: format!("me/{}", name.as_ref()),
                 owner: "me".into(),
-                name: (*name).into(),
+                name: name.as_ref().into(),
                 fork: false,
                 private: false,
                 upstream: None,
@@ -998,28 +1444,131 @@ mod tests {
     fn indicators_pulse_with_heat_static_when_dormant() {
         // Stepped ramp on the documented heat bands: heating green,
         // steady blue, cooling amber (still pulses), dormant faint.
-        assert_eq!(heat_color(6.0), palette::FOCUS_POSITIVE);
-        assert_eq!(heat_color(1.0), palette::CATEGORICAL[1]);
-        assert_eq!(heat_color(0.3), palette::CATEGORICAL[0]);
-        assert_eq!(heat_color(0.0), palette::OTHER);
+        assert_eq!(heat_color(6.0), palette::heating());
+        assert_eq!(heat_color(1.0), palette::steady());
+        assert_eq!(heat_color(0.3), palette::cooling());
+        assert_eq!(heat_color(0.0), palette::other());
     }
 
     #[test]
-    fn indicators_render_pure_css_pulse() {
+    fn indicators_render_shared_breathe() {
         let strip = render_indicators_svg().unwrap();
         assert!(strip.starts_with("<svg "));
         assert!(strip.ends_with("</svg>"));
-        // Embedded CSS keyframes — no SMIL, no scripts, no text:
+        // One shared style block — no SMIL, no scripts, no text, no ping:
         // the table around the badge names the repo.
-        assert!(strip.contains("@keyframes ping"));
-        assert!(strip.contains("animation-duration:1.7s"));
+        assert!(strip.contains("@keyframes breathe"));
+        assert!(!strip.contains("@keyframes ping"));
+        assert!(!strip.contains("style=\"animation-duration"));
         assert!(!strip.contains("<animate"));
         assert!(!strip.contains("<script"));
         assert!(!strip.contains("<text"));
-        // All four bands present, heating fastest.
+        // All four bands present; only heating + steady move.
         for band in ["heating", "steady", "cooling", "dormant"] {
             assert!(strip.contains(band), "missing {band}");
         }
+        assert_eq!(strip.matches("pulse slow").count(), 1);
+        assert_eq!(strip.matches("pulse\"").count(), 1);
+    }
+
+    #[test]
+    fn chart_style_is_the_single_source() {
+        // The DSL file owns the tokens; Rust only extracts the payload.
+        let css = chart_style().unwrap();
+        assert!(css.starts_with("<style>"));
+        assert!(css.ends_with("</style>"));
+        for token in [
+            ".bar{stroke:#fff;stroke-width:2;rx:4}",
+            ".pulse{animation:breathe",
+            ".slow{animation-duration:3.4s}",
+            "@keyframes breathe",
+            "prefers-reduced-motion",
+        ] {
+            assert!(css.contains(token), "missing {token}");
+        }
+        // Every chart embeds this exact block.
+        let g = graph_with(&[("a", 10)]);
+        for svg in [
+            render_share_svg(&g).unwrap(),
+            render_focus_svg(&graph_with_focus(&[("a", Some(2.0))])).unwrap(),
+            render_indicators_svg().unwrap(),
+            render_flame_svg(&g).unwrap(),
+        ] {
+            assert!(svg.contains(&css), "chart missing shared style");
+        }
+    }
+
+    #[test]
+    fn token_set_matches_style_oxfile() {
+        let mut names: Vec<&str> = super::palette::token_names();
+        names.sort_unstable();
+        assert_eq!(
+            names,
+            vec![
+                "cat3",
+                "cat4",
+                "cat5",
+                "cat6",
+                "cat7",
+                "cooling",
+                "dim",
+                "dormant",
+                "family",
+                "heating",
+                "ink",
+                "ink_on_bar",
+                "portfolio_bar",
+                "steady",
+            ]
+        );
+    }
+
+    #[test]
+    fn heat_pulse_steps_on_documented_bands() {
+        assert_eq!(palette::heat_pulse(Some(3.0)), "pulse");
+        assert_eq!(palette::heat_pulse(Some(1.0)), "pulse slow");
+        assert_eq!(palette::heat_pulse(Some(0.3)), "");
+        assert_eq!(palette::heat_pulse(Some(0.0)), "");
+        assert_eq!(palette::heat_pulse(None), "");
+        assert_eq!(heat_band(Some(3.0)), "heating");
+        assert_eq!(heat_band(Some(1.0)), "steady");
+        assert_eq!(heat_band(Some(0.3)), "cooling");
+        assert_eq!(heat_band(None), "dormant");
+    }
+
+    #[test]
+    fn flame_rows_are_pro_rata_and_honest() {
+        // Two repos, 3:1 split (c30 derives 6x c5: 180 + 60).
+        let g = graph_with(&[("big", 30), ("small", 10)]);
+        let doc = flame_rows(&g).unwrap();
+        assert!(!doc.empty);
+        assert_eq!(doc.rows.len(), 2);
+        let w0: f64 = doc.rows[0].bw.parse().unwrap();
+        let w1: f64 = doc.rows[1].bw.parse().unwrap();
+        assert!((w0 - 576.0).abs() < 0.2, "{w0}");
+        assert!((w1 - 192.0).abs() < 0.2, "{w1}");
+        // Portfolio label carries the total, not the shown sum.
+        assert!(doc.port_label.contains("240 commits / 30d"));
+        // Narrow bars fall to the footer key, never overlap.
+        let thin = graph_with(&[("huge", 100), ("sliver", 1)]);
+        let doc = flame_rows(&thin).unwrap();
+        assert!(!doc.rows[1].labeled);
+        assert!(doc.legend.contains("sliver"));
+    }
+
+    #[test]
+    fn flame_renders_shared_style_no_smoke() {
+        let g = graph_with(&[("big", 30), ("small", 10)]);
+        let svg = render_flame_svg(&g).unwrap();
+        assert!(svg.starts_with("<svg "));
+        assert!(svg.ends_with("</svg>"));
+        assert!(svg.contains("@keyframes breathe"));
+        assert!(!svg.contains("<animate"));
+        assert!(!svg.contains("<script"));
+        // Portfolio track + 2 repo bars + branch bars + 2 ember fills.
+        assert!(svg.contains("portfolio · 240 commits / 30d"));
+        assert!(svg.contains("recent embers"));
+        assert!(svg.contains("heating &gt;1.5"));
     }
 
     #[test]
@@ -1035,11 +1584,12 @@ mod tests {
     #[test]
     fn preview_page_carries_everything_verbatim() {
         let table = render_indicators_md().unwrap();
-        let md = render_preview_md("# Frag\n", "s.svg", "f.svg", &table).unwrap();
+        let md = render_preview_md("# Frag\n", "s.svg", "f.svg", "fl.svg", &table).unwrap();
         // Fragment verbatim, embeds by file name, indicator rows inlined.
         assert!(md.contains("# Frag\n"));
         assert!(md.contains("![share](s.svg)"));
         assert!(md.contains("![focus](f.svg)"));
+        assert!(md.contains("![flame](fl.svg)"));
         assert!(md.contains("| ![heating](indicators/heating.svg) | heating | 3.00 |"));
         assert!(md.contains("oxdock scripts/preview-indicators.oxfile"));
         assert!(md.ends_with("|\n"));
@@ -1067,11 +1617,8 @@ mod tests {
 
     #[test]
     fn focus_continues_ranking_below_top() {
-        let scores: Vec<(&str, Option<f32>)> = (0..20)
-            .map(|i| {
-                let name: &'static str = Box::leak(format!("r{i:02}").into_boxed_str());
-                (name, Some(10.0 - i as f32))
-            })
+        let scores: Vec<(String, Option<f32>)> = (0..20)
+            .map(|i| (format!("r{i:02}"), Some(10.0 - i as f32)))
             .collect();
         let g = graph_with_focus(&scores);
         let rows = focus_rows(&g, 12, 5).unwrap();
@@ -1138,8 +1685,8 @@ mod tests {
         for r in &rows {
             assert!(svg.contains(&format!("url(#{})", r.clip)));
         }
-        assert!(svg.contains(palette::INK));
-        assert!(svg.contains(palette::INK_ON_BAR));
+        assert!(svg.contains(palette::ink().as_str()));
+        assert!(svg.contains(palette::ink_on_bar().as_str()));
     }
 
     fn mixed_ownership_graph() -> String {
