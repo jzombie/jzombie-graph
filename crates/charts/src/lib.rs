@@ -30,6 +30,22 @@ fn chart_style() -> anyhow::Result<String> {
     Ok(line[start..end].to_string())
 }
 
+/// OxDock string-literal transport: `#var` interpolation inlines raw text
+/// into the script, so quotes/backslashes in data break parsing. Base64
+/// is escape-proof by construction; host funcs decode on entry.
+fn transport_in(raw: &str) -> String {
+    use base64::{Engine as _, engine::general_purpose::STANDARD as B64};
+    B64.encode(raw)
+}
+
+fn transport_out(b64: &str) -> anyhow::Result<String> {
+    use base64::{Engine as _, engine::general_purpose::STANDARD as B64};
+    let bytes = B64
+        .decode(b64)
+        .map_err(|e| anyhow::anyhow!("base64 transport: {e}"))?;
+    String::from_utf8(bytes).map_err(|e| anyhow::anyhow!("transport utf8: {e}"))
+}
+
 /// Plugin function: the shared style block out. Every chart template
 /// calls this and appends the result — one FUNC, four callers.
 #[oxdock_func(pure, name = "CHART_STYLE")]
@@ -419,6 +435,7 @@ fn focus_rows(graph_json: &str, n_top: usize, n_bottom: usize) -> anyhow::Result
 /// Plugin function: validated graph JSON in, focus-bars document out.
 #[oxdock_func(pure, name = "FOCUS_BARS")]
 fn focus_bars(graph_json: String, n_top: i64, n_bottom: i64) -> anyhow::Result<Value> {
+    let graph_json = transport_out(&graph_json)?;
     let rows = focus_rows(&graph_json, n_top.max(1) as usize, n_bottom.max(0) as usize)?;
     let h = 44.0 + rows.len() as f64 * 26.0 + 16.0;
     let doc = FocusDoc {
@@ -451,11 +468,12 @@ fn focus_bars(graph_json: String, n_top: i64, n_bottom: i64) -> anyhow::Result<V
 /// as the pie: embedded script emits markup into a temp workspace.
 pub fn render_focus_svg(graph_json: &str) -> anyhow::Result<String> {
     let engine = engine();
+    let arg = transport_in(graph_json);
     let steps: Vec<oxdock_parser::Step> = oxdock! {
         modules: [CHARTS],
         IMPORT [CHARTS]
         IMPORT [STD]
-        LET $rows_json: STRING = CHARTS::FOCUS_BARS(#graph_json, 12, 5)
+        LET $rows_json: STRING = CHARTS::FOCUS_BARS(#arg, 12, 5)
         WRITE rows.json $rows_json
         LET $doc: MAP<ANY> = LOAD_JSON("rows.json")
         WRITE out.svg $doc.header
@@ -492,6 +510,7 @@ pub fn render_focus_svg(graph_json: &str) -> anyhow::Result<String> {
 /// `paths::` constant; the script never names a data path.
 #[oxdock_func(pure, name = "PIE_SLICES")]
 fn pie_slices(graph_json: String, n: i64) -> anyhow::Result<Value> {
+    let graph_json = transport_out(&graph_json)?;
     let rows = share_rows(&graph_json, n.max(1) as usize)?;
     let lay = layout(rows.len());
     let doc = PieDoc {
@@ -519,16 +538,17 @@ fn pie_slices(graph_json: String, n: i64) -> anyhow::Result<Value> {
     Ok(Value::string(serde_json::to_string(&doc)?))
 }
 
-/// One repo bar: full label when it fits, short line when it almost
-/// does, tour reveal plus footer key below that. Never overlaps.
+/// One card: name, what it's about, activity, top work. Whisked through
+/// one at a time; the readout is the drilldown — no tiny bars to squint at.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 struct FlameRepo {
     rid: String,
     nav: String,
     tour_delay: String,
     title: String,
+    desc: String,
     stats: String,
-    top: String,
+    detail: String,
     share_w: String,
     color: String,
     pulse: String,
@@ -562,6 +582,7 @@ struct FlameDoc {
     l1y: String,
     l2y: String,
     l3y: String,
+    l4y: String,
     shy: String,
     shh: String,
     rows: Vec<FlameRepo>,
@@ -569,7 +590,7 @@ struct FlameDoc {
 
 /// Flame layout: the prototype's skeleton, widths now pro-rata real data.
 const FLAME_W: f64 = 800.0;
-const FLAME_H: f64 = 270.0;
+const FLAME_H: f64 = 284.0;
 const FLAME_X0: f64 = 16.0;
 const FLAME_TRACK: f64 = 768.0;
 const FLAME_TOPN: usize = 8;
@@ -621,12 +642,13 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
         dx: f1(FLAME_X0),
         dy: f1(100.0),
         dw: f1(FLAME_TRACK),
-        dh: f1(84.0),
+        dh: f1(104.0),
         lx: f1(FLAME_X0 + 16.0),
-        l1y: f1(128.0),
-        l2y: f1(150.0),
-        l3y: f1(164.0),
-        shy: f1(172.0),
+        l1y: f1(130.0),
+        l2y: f1(152.0),
+        l3y: f1(168.0),
+        l4y: f1(182.0),
+        shy: f1(190.0),
         shh: f1(6.0),
         rows: vec![],
     };
@@ -641,16 +663,34 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
         let heat = n.commit_heat.or_else(|| n.commit_heat());
         let band = heat_band(heat);
         let share = n.commits_30d as f64 / total as f64;
+        // About line: description trumps everything; truncate to one line.
+        let desc = n.description.as_deref().unwrap_or("").replace('\n', " ");
+        let desc = if desc.chars().count() > 120 {
+            desc.chars().take(119).collect::<String>() + "\u{2026}"
+        } else {
+            desc
+        };
+        let lang = n.language.as_deref().unwrap_or("");
         let stats = match heat {
             Some(h) => format!(
-                "{} commits \u{00b7} {:.1}% of portfolio \u{00b7} heat {h:.1} {band}",
+                "{} commits \u{00b7} {:.1}% of portfolio \u{00b7} heat {h:.1} {band}{}",
                 n.commits_30d,
-                share * 100.0
+                share * 100.0,
+                if lang.is_empty() {
+                    String::new()
+                } else {
+                    format!(" \u{00b7} {lang}")
+                }
             ),
             None => format!(
-                "{} commits \u{00b7} {:.1}% of portfolio \u{00b7} dormant",
+                "{} commits \u{00b7} {:.1}% of portfolio \u{00b7} dormant{}",
                 n.commits_30d,
-                share * 100.0
+                share * 100.0,
+                if lang.is_empty() {
+                    String::new()
+                } else {
+                    format!(" \u{00b7} {lang}")
+                }
             ),
         };
         // Top branches ride the card as text.
@@ -670,11 +710,28 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
             })
             .collect::<Vec<_>>()
             .join(", ");
-        let top = if top_txt.is_empty() {
+        // Keywords: hash-joined topics, capped with a +N tail.
+        let tags: String = if n.topics.is_empty() {
+            String::new()
+        } else {
+            let shown: Vec<String> = n.topics.iter().take(6).map(|t| format!("#{t}")).collect();
+            let mut s = shown.join(" ");
+            if n.topics.len() > 6 {
+                s.push_str(&format!(" +{}", n.topics.len() - 6));
+            }
+            s
+        };
+        let mut detail = if top_txt.is_empty() {
             String::new()
         } else {
             format!("top: {top_txt}")
         };
+        if !tags.is_empty() {
+            if !detail.is_empty() {
+                detail.push_str(" \u{00b7} ");
+            }
+            detail.push_str(&tags);
+        }
         // Recency wash: oldest→newest window marginals as stop offsets,
         // cool→hot left to right. Widths, not colors, carry the mix.
         let m5 = n.commits_5d.saturating_sub(n.commits_1d);
@@ -716,8 +773,9 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
                 format!("-{}s", f1(ri as f64 * 4.0))
             },
             title: xml_escape(&title),
+            desc: xml_escape(&desc),
             stats: xml_escape(&stats),
-            top: xml_escape(&top),
+            detail: xml_escape(&detail),
             share_w: f1(share * FLAME_TRACK),
             color: heat_color(heat.unwrap_or(0.0)),
             pulse: palette::heat_pulse(heat).to_string(),
@@ -762,12 +820,13 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
         dx: f1(FLAME_X0),
         dy: f1(100.0),
         dw: f1(FLAME_TRACK),
-        dh: f1(84.0),
+        dh: f1(104.0),
         lx: f1(FLAME_X0 + 16.0),
-        l1y: f1(128.0),
-        l2y: f1(150.0),
-        l3y: f1(164.0),
-        shy: f1(172.0),
+        l1y: f1(130.0),
+        l2y: f1(152.0),
+        l3y: f1(168.0),
+        l4y: f1(182.0),
+        shy: f1(190.0),
         shh: f1(6.0),
         rows,
     })
@@ -798,6 +857,7 @@ fn flame_legend(note: &str) -> String {
 /// Plugin function: validated graph JSON in, flame document out.
 #[oxdock_func(pure, name = "FLAME")]
 fn flame(graph_json: String) -> anyhow::Result<Value> {
+    let graph_json = transport_out(&graph_json)?;
     Ok(Value::string(serde_json::to_string(&flame_rows(
         &graph_json,
     )?)?))
@@ -807,11 +867,12 @@ fn flame(graph_json: String) -> anyhow::Result<Value> {
 /// pie: embedded script emits markup into a temp workspace.
 pub fn render_flame_svg(graph_json: &str) -> anyhow::Result<String> {
     let engine = engine();
+    let arg = transport_in(graph_json);
     let steps: Vec<oxdock_parser::Step> = oxdock! {
         modules: [CHARTS],
         IMPORT [CHARTS]
         IMPORT [STD]
-        LET $doc_json: STRING = CHARTS::FLAME(#graph_json)
+        LET $doc_json: STRING = CHARTS::FLAME(#arg)
         WRITE rows.json $doc_json
         LET $doc: MAP<ANY> = LOAD_JSON("rows.json")
         LET $style: STRING = CHARTS::CHART_STYLE()
@@ -827,8 +888,9 @@ pub fn render_flame_svg(graph_json: &str) -> anyhow::Result<String> {
                 APPEND out.svg "<g id=\"{{ $r.rid }}\" class=\"card {{ $r.pulse }}\" style=\"animation-duration:{{ $doc.tour_dur }}s;animation-delay:{{ $r.tour_delay }}\">"
                 APPEND out.svg "<rect x=\"{{ $doc.dx }}\" y=\"{{ $doc.dy }}\" width=\"{{ $doc.dw }}\" height=\"{{ $doc.dh }}\" rx=\"4\" fill=\"url(#grad-{{ $r.rid }})\"><title>{{ $r.title }}</title></rect>"
                 APPEND out.svg "<text x=\"{{ $doc.lx }}\" y=\"{{ $doc.l1y }}\" font-size=\"20\" font-weight=\"bold\" fill=\"#222\">{{ $r.nav }}</text>"
-                APPEND out.svg "<text x=\"{{ $doc.lx }}\" y=\"{{ $doc.l2y }}\" class=\"sub\">{{ $r.stats }}</text>"
-                APPEND out.svg "<text x=\"{{ $doc.lx }}\" y=\"{{ $doc.l3y }}\" class=\"muted\">{{ $r.top }}</text>"
+                APPEND out.svg "<text x=\"{{ $doc.lx }}\" y=\"{{ $doc.l2y }}\" class=\"dim\">{{ $r.desc }}</text>"
+                APPEND out.svg "<text x=\"{{ $doc.lx }}\" y=\"{{ $doc.l3y }}\" class=\"sub\">{{ $r.stats }}</text>"
+                APPEND out.svg "<text x=\"{{ $doc.lx }}\" y=\"{{ $doc.l4y }}\" class=\"muted\">{{ $r.detail }}</text>"
                 APPEND out.svg "<rect x=\"{{ $doc.dx }}\" y=\"{{ $doc.shy }}\" width=\"{{ $r.share_w }}\" height=\"{{ $doc.shh }}\" fill=\"{{ $r.color }}\"/>"
                 APPEND out.svg "</g>"
             }
@@ -871,10 +933,11 @@ fn engine() -> Engine {
 /// caller writes the bytes (so output paths stay in one place).
 pub fn render_share_svg(graph_json: &str) -> anyhow::Result<String> {
     let engine = engine();
+    let arg = transport_in(graph_json);
     let steps: Vec<oxdock_parser::Step> = oxdock! {
         modules: [CHARTS],
         IMPORT [STD, CHARTS]
-        LET $rows_json: STRING = CHARTS::PIE_SLICES(#graph_json, 8)
+        LET $rows_json: STRING = CHARTS::PIE_SLICES(#arg, 8)
         WRITE rows.json $rows_json
         LET $doc: MAP<ANY> = LOAD_JSON("rows.json")
         LET $style: STRING = CHARTS::CHART_STYLE()
@@ -1056,6 +1119,7 @@ fn portfolio(
     flame: String,
     table: String,
 ) -> anyhow::Result<Value> {
+    let frag = transport_out(&frag)?;
     let header = format!(
         "# portfolio-graph — render proof\n\n*Generated — do not hand-edit. Regenerate with `oxdock scripts/preview-indicators.oxfile`. Fragment carried verbatim; charts embedded as files.*\n\n## Map fragment\n\n{frag}\n## Commit share\n\n![share]({share})\n\n## Focus ranking\n\n![focus]({focus})\n\n## Heat flame\n\n![flame]({flame})\n\n",
         frag = frag.trim_end(),
@@ -1134,7 +1198,7 @@ pub fn render_preview_md(
 ) -> anyhow::Result<String> {
     let engine = engine();
     let (frag_arg, share_arg, focus_arg, flame_arg, table_arg) = (
-        frag.to_string(),
+        transport_in(frag),
         share.to_string(),
         focus.to_string(),
         flame.to_string(),
@@ -1476,6 +1540,32 @@ mod tests {
     }
 
     #[test]
+    fn transport_survives_quotes_and_backslashes() {
+        // PR titles brought `"` into the data and broke `#var`
+        // interpolation (raw inline). Base64 has no escapes to break.
+        let raw = "say \"hi\" \\ bye";
+        let back = transport_out(&transport_in(raw)).unwrap();
+        assert_eq!(back, raw);
+    }
+
+    #[test]
+    fn render_survives_quotes_in_data() {
+        // End to end through the template: quotes/backslashes in repo
+        // text must not break script parsing (the TPC-H title did).
+        // Description rides along unrendered (it only needs to survive);
+        // the quoted name proves interpolation is intact.
+        let mut v: serde_json::Value = serde_json::from_str(&graph_with(&[("q", 5)])).unwrap();
+        v["nodes"][0]["description"] = serde_json::Value::String("Add TPC-H post".into());
+        v["nodes"][0]["name"] = serde_json::Value::String("qu\"oted".into());
+        v["nodes"][0]["id"] = serde_json::Value::String("me/qu\"oted".into());
+        let g = serde_json::to_string(&v).unwrap();
+        let svg = render_share_svg(&g).unwrap();
+        assert!(svg.contains("qu&quot;oted"));
+        let svg = render_flame_svg(&g).unwrap();
+        assert!(svg.contains("qu&quot;oted"));
+    }
+
+    #[test]
     fn heat_pulse_steps_on_documented_bands() {
         assert_eq!(palette::heat_pulse(Some(3.0)), "pulse");
         assert_eq!(palette::heat_pulse(Some(1.0)), "pulse slow");
@@ -1505,6 +1595,9 @@ mod tests {
         // Every repo gets a card with its readout, however small.
         assert!(svg.contains(">small<"));
         assert!(svg.contains("60 commits"));
+        // Recency gradients: oldest window dormant, newest heating.
+        assert!(svg.contains("grad-r0"));
+        assert!(svg.contains("stop-color=\"#009E73\""));
     }
 
     #[test]

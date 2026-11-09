@@ -55,15 +55,19 @@ fn node(name: &str, c1: u32, c5: u32, c15: u32, c30: u32, branches: Vec<BranchHe
 
 #[test]
 fn flame_pro_rata_snapshot() {
+    let mut big = node(
+        "big",
+        6,
+        55,
+        64,
+        81,
+        vec![branch("main", true, 0, 1, 10, 27)],
+    );
+    big.description = Some("Heat sketch for the portfolio map".into());
+    big.topics = vec!["viz".into(), "svg".into()];
+    big.language = Some("Rust".into());
     let nodes = vec![
-        node(
-            "big",
-            6,
-            55,
-            64,
-            81,
-            vec![branch("main", true, 0, 1, 10, 27)],
-        ),
+        big,
         node("small", 0, 0, 0, 3, vec![branch("main", true, 0, 0, 0, 3)]),
         node("quiet", 0, 0, 0, 0, vec![]),
     ];
@@ -73,6 +77,9 @@ fn flame_pro_rata_snapshot() {
     assert!(svg.ends_with("</svg>"));
     assert!(svg.contains("portfolio · 84 commits / 30d"));
     assert!(svg.contains("top: main (27)"));
+    assert!(svg.contains("Heat sketch for the portfolio map"));
+    assert!(svg.contains("#viz #svg"));
+    assert!(svg.contains("Rust"));
     assert!(!svg.contains("quiet"));
     // One card per repo, heating pulse on the hot one.
     assert_eq!(svg.matches("class=\"card pulse\"").count(), 1);
