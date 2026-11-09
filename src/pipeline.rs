@@ -96,6 +96,12 @@ pub async fn collect_providers(
         .collect()
 }
 
+/// Majority-failure gate: per-repo fail-open covers flakes, but when most
+/// probes fail the query or token is broken — abort, never zero the live file.
+fn velocity_blackout(failures: u32, total: usize) -> bool {
+    total > 0 && failures * 2 > total as u32
+}
+
 pub async fn collect_live(
     user: Option<String>,
     org: Option<String>,
@@ -146,8 +152,7 @@ pub async fn collect_live(
     // (1 SHA + 1 tree + root manifests + member Cargo.tomls, uncapped) then the
     // structure pass (1 tree gates every probe; workflows<=10 + members<=10 +
     // rs<=10; +1 parent fetch for forks missing it — the enumerate endpoint
-    // returns parent:null; +2 trailing-window commit-velocity probes
-    // (5d heat, 30d baseline).
+    // returns parent:null; +1 GraphQL velocity call (per-branch 1d/5d/15d/30d).
     // Typical ~26/repo; sequential today, fan-out in 1.1.
     const WORKFLOW_FILES_CAP: usize = 10;
     const MEMBER_MANIFEST_CAP: usize = 10;
@@ -184,6 +189,9 @@ pub async fn collect_live(
     let mut all_edges: Vec<Edge> = vec![];
     // Briefing digest lines: every phantom nullification + lockfile gate drop.
     let mut digest: Vec<String> = vec![];
+    // Velocity probe failures: per-repo fail-open covers flakes, but a
+    // majority failing means the probe/token is broken — gate below aborts.
+    let mut velocity_failures: u32 = 0;
 
     let now = chrono::Utc::now();
     for (i, repo) in repos.iter().enumerate() {
@@ -225,9 +233,13 @@ pub async fn collect_live(
             .await
         {
             Ok(v) => v,
-            Err(_) => {
+            Err(e) => {
+                // Carry the cause: a bare note hid a query-wide breakage
+                // (every probe failing identically) behind 97 zeros.
+                velocity_failures += 1;
+                let why: String = format!("{e:#}").chars().take(150).collect();
                 digest.push(format!(
-                    "{}: commit velocity unavailable — heat fail-open 0",
+                    "{}: commit velocity unavailable ({why}) — heat fail-open 0",
                     repo.full_name
                 ));
                 Vec::new()
@@ -682,6 +694,15 @@ pub async fn collect_live(
         }
     }
     graph::apply_visibility(&mut nodes, &all_edges);
+    // Systematic probe failure aborts the sweep: a majority failing means
+    // the probe itself (or the token) is broken — writing would wipe the
+    // live file with zeros. Flakes still fail open per repo above.
+    if velocity_blackout(velocity_failures, repos.len()) {
+        anyhow::bail!(
+            "velocity probe failed on {velocity_failures}/{} repos — aborting instead of writing zeros",
+            repos.len()
+        );
+    }
     graph::apply_layers(&mut nodes, &all_edges);
     let mut g = Graph::new(nodes, all_edges);
     g.velocity_scope = velocity_scope;
@@ -722,6 +743,17 @@ pub fn cut_pristine_fork_edges(nodes: &[Node], all_edges: &mut Vec<Edge>) -> usi
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn velocity_blackout_gates_majority_failure() {
+        // Flakes pass through; a broken probe aborts instead of zeroing.
+        assert!(!velocity_blackout(0, 97));
+        assert!(!velocity_blackout(3, 97));
+        assert!(!velocity_blackout(48, 97));
+        assert!(velocity_blackout(49, 97));
+        assert!(velocity_blackout(97, 97));
+        assert!(!velocity_blackout(0, 0));
+    }
 
     fn test_graph_with_private() -> Graph {
         let mut nodes = vec![

@@ -569,6 +569,38 @@ pub struct BranchVelocity {
     pub latest_overall: Option<DateTime<Utc>>,
 }
 
+/// GitTimestamp shape GitHub accepts: seconds precision, Zulu suffix.
+/// `DateTime::to_rfc3339()` emits fractional seconds + `+00:00`, which the
+/// API rejects — that fail-opened a whole sweep to all-zero velocity.
+fn git_timestamp(dt: &DateTime<Utc>) -> String {
+    dt.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
+}
+
+/// The per-branch velocity query, counted open/close by test below.
+/// (A missing final brace once zeroed a whole sweep — the parser error
+/// points at end-of-input, which reads as nothing wrong.)
+fn velocity_query() -> &'static str {
+    r#"query($owner: String!, $name: String!, $w1: GitTimestamp!, $w5: GitTimestamp!, $w15: GitTimestamp!, $w30: GitTimestamp!) {
+  repository(owner: $owner, name: $name) {
+    refs(first: 100, refPrefix: "refs/heads/") {
+      nodes {
+        name
+        target {
+          oid
+          ... on Commit {
+            w1: history(first: 1, since: $w1) { totalCount }
+            w5: history(first: 1, since: $w5) { totalCount edges { node { committedDate } } }
+            w15: history(first: 1, since: $w15) { totalCount }
+            w30: history(first: 1, since: $w30) { totalCount edges { node { committedDate } } }
+            latest: history(first: 1) { edges { node { committedDate } } }
+          }
+        }
+      }
+    }
+  }
+}"#
+}
+
 impl GitHubClient {
     /// Per-branch velocity in one HTTP request (GraphQL): 1d/5d/15d/30d
     /// counts + head SHA + newest dates, up to 100 branches. The 5d/30d
@@ -580,9 +612,9 @@ impl GitHubClient {
         name: &str,
         now: &DateTime<Utc>,
     ) -> Result<Vec<BranchVelocity>> {
-        let ago = |d: i64| (*now - chrono::Duration::days(d)).to_rfc3339();
+        let ago = |d: i64| git_timestamp(&(*now - chrono::Duration::days(d)));
         let body = serde_json::json!({
-            "query": "query($owner: String!, $name: String!, $w1: GitTimestamp!, $w5: GitTimestamp!, $w15: GitTimestamp!, $w30: GitTimestamp!) { repository(owner: $owner, name: $name) { refs(first: 100, refPrefix: \"refs/heads/\") { nodes { name target { oid ... on Commit { w1: history(first: 1, since: $w1) { totalCount } w5: history(first: 1, since: $w5) { totalCount edges { node { committedDate } } } w15: history(first: 1, since: $w15) { totalCount } w30: history(first: 1, since: $w30) { totalCount edges { node { committedDate } } } latest: history(first: 1) { edges { node { committedDate } } } } } } } }",
+            "query": velocity_query(),
             "variables": {
                 "owner": owner,
                 "name": name,
@@ -714,6 +746,35 @@ mod tests {
         assert!(parse_branch_velocities(&empty).unwrap().is_empty());
         let err = serde_json::json!({"data": null, "errors": [{"message": "boom"}]});
         assert!(parse_branch_velocities(&err).is_err());
+    }
+
+    #[test]
+    fn velocity_timestamps_are_git_timestamp_shaped() {
+        // `to_rfc3339()` emits fractional seconds + `+00:00`; GitHub
+        // rejects that shape, which zeroed a whole sweep (Nov 2026).
+        let now = chrono::Utc::now();
+        let s = super::git_timestamp(&now);
+        assert!(s.ends_with('Z'), "{s}");
+        assert!(!s.contains('.') && !s.contains('+'), "{s}");
+    }
+
+    #[test]
+    fn velocity_query_is_balanced_and_complete() {
+        // A dropped final brace zeroed a whole sweep: the parser error
+        // points at end-of-input, easy to misread as a timestamp problem.
+        let q = super::velocity_query();
+        assert_eq!(q.matches('{').count(), q.matches('}').count());
+        for want in [
+            "refs(first: 100",
+            "history",
+            "GitTimestamp",
+            "committedDate",
+        ] {
+            assert!(q.contains(want), "{want}");
+        }
+        for alias in ["w1:", "w5:", "w15:", "w30:", "latest:"] {
+            assert!(q.contains(alias), "{alias}");
+        }
     }
 
     #[test]
