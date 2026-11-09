@@ -1,8 +1,27 @@
 # jzombie-graph
 
-A map of my GitHub portfolio: which of my repos depend on which of my other repos. It collects the data and draws it. Generated files live in the repo (see `src/paths.rs` — one source of truth): `json/` for data, `svg/` + `markdown/` for rendering, `preview/` for the proof page. The nightly sweep regenerates and commits them.
+Nightly self-portrait of my GitHub portfolio: real dependency edges (manifest, workflow, docs) plus a self-normalized Developer Focus gauge ranking where attention is going. Counts live in the data, not in this prose: every rebuild refreshes the proof page under `preview/` with repo and edge totals, 30d commits and comments, open and closed threads touched, and top languages. Nothing here is hand-counted.
 
-Own repo, personal scope. `publish = false` — internal tool, never published to crates.io.
+## Where attention is going (rebuilt nightly)
+
+[![Developer Focus](svg/portfolio-graph-developer-focus.svg)](preview/portfolio-graph.md)
+
+[![Commit share](svg/portfolio-graph-share.svg)](preview/portfolio-graph.md)
+
+Full proof with map, flame, table, and machine-readable data: [`preview/portfolio-graph.md`](preview/portfolio-graph.md). Raw JSON: [`json/portfolio-graph.json`](json/portfolio-graph.json).
+
+Own repo, personal scope. `publish = false` — internal tool, never published to crates.io. Private repos are stripped from default output, so the committed files are safe to publish; `--include-private` is local-briefing only and never committed.
+
+## Quickstart
+
+```bash
+export JZOMBIE_GRAPH_TOKEN=ghp_...
+cargo run -- --user jzombie                              # sweep: json/portfolio-graph.json + schema
+cargo run -p jzombie-graph-cartographer                  # map fragment: markdown/fragments/portfolio-graph.md
+cargo run -p jzombie-graph-charts                        # share pie; add --chart focus | flame | indicators | preview
+cargo run -- --format focus                              # offline focus ranking, no API calls
+oxdock scripts/preview-indicators.oxfile                 # full proof page: preview/portfolio-graph.md
+```
 
 ## Regenerate the JSON
 
@@ -21,8 +40,6 @@ cargo run -p jzombie-graph-cartographer
 
 Local only, no API calls. Reads `json/portfolio-graph.json`, writes the clickable `<pre>` fragment to `markdown/fragments/portfolio-graph.md`. Piped stdin still wins when present; `--stdout` prints instead.
 
-Local only, no API calls. Reads the fresh JSON, writes the clickable `<pre>` fragment. Generated files commit like source — the nightly rebuilds them.
-
 ## Regenerate the charts
 
 ```bash
@@ -31,8 +48,6 @@ cargo run -p jzombie-graph-charts -- --chart focus
 ```
 
 Local only, no API calls. Reads the fresh JSON, writes the commit-share pie and the focus bars to `svg/`. Colors come from the shared `charts::palette` module so every chart reads as one family; bytes pinned by snapshot tests.
-
-Local only, no API calls. Reads the fresh JSON, writes the commit-share pie. Colors come from the shared `charts::palette` module so every chart reads as one family; bytes pinned by snapshot tests.
 
 ## Developer Focus (offline, no API calls)
 
