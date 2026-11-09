@@ -2,6 +2,8 @@
 
 Nightly self-portrait of my GitHub portfolio: real dependency edges (manifest, workflow, docs) plus a self-normalized Developer Focus gauge ranking where attention is going. Counts live in the data, not in this prose: every rebuild refreshes the proof page under `preview/` with repo and edge totals, 30d commits and comments, open and closed threads touched, and top languages. Nothing here is hand-counted.
 
+Code and data live here together. The collector, renderers, and lanes in this repo are the program; `json/`, `svg/`, `markdown/`, and `preview/` are its latest output, committed back by the nightly run. Reading this repo at HEAD is reading the freshest sweep: the code that produced the data sits next to the data it produced.
+
 ## Where attention is going (rebuilt nightly)
 
 [![Developer Focus](svg/portfolio-graph-developer-focus.svg)](preview/portfolio-graph.md)
