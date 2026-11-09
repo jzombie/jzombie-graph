@@ -126,6 +126,12 @@ fn f1(x: f64) -> String {
     format!("{x:.1}")
 }
 
+/// Scale factors ride at 4 decimals: a 1-decimal rounding on a 276px bar
+/// is an 8px tiling error. Positions stay f1 (absolute, no compounding).
+fn f4(x: f64) -> String {
+    format!("{x:.4}")
+}
+
 /// Rows for the commit-share pie: own-work repos only, via the shared
 /// `is_own_work` filter — pristine forks you never contributed to never
 /// slice. Top-`n` plus an `Other` bucket, with pie geometry precomputed.
@@ -536,12 +542,17 @@ struct FlameBranch {
 /// footer-key entry below 40px (never overlapping neighbors).
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 struct FlameRepo {
+    rid: String,
+    nav: String,
+    tour_delay: String,
     title: String,
     head: String,
     sub: String,
     short: String,
+    exlabel: String,
     full: bool,
     labeled: bool,
+    reveal: bool,
     color: String,
     pulse: String,
     bx: String,
@@ -561,6 +572,11 @@ struct FlameDoc {
     empty: bool,
     msg: String,
     muted: String,
+    fw: String,
+    fh: String,
+    tour_dur: String,
+    tour_y: String,
+    acc_css: String,
     // Layout values, so the template carries no coordinates.
     px: String,
     py: String,
@@ -599,6 +615,34 @@ fn heat_band(h: Option<f32>) -> &'static str {
     }
 }
 
+/// Distinctive tail after the last dash, for tight bars.
+fn last_dash(name: &str) -> &str {
+    let tail = name.rsplit('-').next().unwrap_or(name);
+    if tail == name { name } else { tail }
+}
+
+/// Short repo label: full name, else the distinctive dash tail, else a stub.
+fn flame_short(name: &str, w: f64) -> String {
+    let est = |s: &str| s.chars().count() as f64 * 5.5 + 8.0;
+    if est(name) <= w {
+        return name.to_string();
+    }
+    let tail = last_dash(name);
+    if tail != name && est(tail) <= w {
+        return tail.to_string();
+    }
+    truncate_to(name, ((w - 8.0) / 5.5).floor().max(0.0) as usize)
+}
+
+/// A stub of under five real chars reads as noise: tail-key it instead.
+fn flame_labeled(name: &str, w: f64) -> bool {
+    if w < 32.0 {
+        return false;
+    }
+    let s = flame_short(name, w);
+    s.chars().filter(|c| *c != '\u{2026}').count() >= 5
+}
+
 fn truncate_to(name: &str, max: usize) -> String {
     let chars: Vec<char> = name.chars().collect();
     if chars.len() <= max.max(1) {
@@ -608,6 +652,84 @@ fn truncate_to(name: &str, max: usize) -> String {
         .iter()
         .collect::<String>()
         + "…"
+}
+
+/// Accordion choreography: per-repo translate + scale keyframes, stops
+/// at every focus slot. Only repo k expands during slot k; the rest
+/// hold or yield pro-rata. Ease-in-out keeps the motion gradual.
+/// Expanded span per repo; already-wide repos hold their ground.
+fn expand(widths: &[f64]) -> Vec<f64> {
+    widths
+        .iter()
+        .map(|w| w.max((w * 2.0 + 20.0).min(FLAME_TRACK * 0.6)))
+        .collect()
+}
+
+fn accordion_css(widths: &[f64], exp: &[f64], n: usize) -> String {
+    let mut css = String::new();
+    let total: f64 = widths.iter().sum();
+    // Widths + left edges per focus slot.
+    let mut slot_w: Vec<Vec<f64>> = vec![];
+    let mut slot_x: Vec<Vec<f64>> = vec![];
+    for k in 0..n {
+        let d = exp[k] - widths[k];
+        let mut ws: Vec<f64> = widths
+            .iter()
+            .enumerate()
+            .map(|(j, w)| {
+                if j == k {
+                    exp[k]
+                } else {
+                    // Slivers never vanish entirely; the expanded repo
+                    // absorbs the rounding so the track stays exact.
+                    (w - d * w / (total - widths[k])).max(6.0)
+                }
+            })
+            .collect();
+        ws[k] += FLAME_TRACK - ws.iter().sum::<f64>();
+        let mut xs = vec![0.0; n];
+        let mut x = FLAME_X0;
+        for (j, w) in ws.iter().enumerate() {
+            xs[j] = x;
+            x += w;
+        }
+        slot_w.push(ws);
+        slot_x.push(xs);
+    }
+    let mut base_x = vec![0.0; n];
+    let mut x = FLAME_X0;
+    for (j, w) in widths.iter().enumerate() {
+        base_x[j] = x;
+        x += w;
+    }
+    let dur = f1(n as f64 * 4.0);
+    for j in 0..n {
+        css.push_str(&format!(
+            ".acc-t-r{j}{{animation:acct-r{j} {dur}s ease-in-out infinite}}.acc-s-r{j}{{animation:accs-r{j} {dur}s ease-in-out infinite}}"
+        ));
+        css.push_str(&format!("@keyframes acct-r{j}{{"));
+        for m in 0..=n {
+            let k = m % n;
+            css.push_str(&format!(
+                "{}%{{transform:translateX({}px)}}",
+                f1(m as f64 * 100.0 / n as f64),
+                f1(slot_x[k][j] - base_x[j])
+            ));
+        }
+        css.push('}');
+        css.push_str(&format!("@keyframes accs-r{j}{{"));
+        for m in 0..=n {
+            let k = m % n;
+            let f = slot_w[k][j] / widths[j];
+            css.push_str(&format!(
+                "{}%{{transform:scaleX({})}}",
+                f1(m as f64 * 100.0 / n as f64),
+                f4(f)
+            ));
+        }
+        css.push('}');
+    }
+    css
 }
 
 /// Flame rows: portfolio totals, top-8 repos by 30d share, top-2 live
@@ -633,8 +755,13 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
         footer: "</svg>".to_string(),
         port_label: String::new(),
         empty: true,
+        fw: f1(FLAME_W),
+        fh: f1(FLAME_H),
         msg: "No commits in trailing 30d".to_string(),
         muted: palette::muted(),
+        tour_dur: String::new(),
+        tour_y: f1(270.0),
+        acc_css: String::new(),
         px: String::new(),
         py: String::new(),
         pw: String::new(),
@@ -681,7 +808,8 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
     let mut tail: Vec<String> = vec![];
     let mut x = FLAME_X0;
     let mut rows: Vec<FlameRepo> = vec![];
-    for (n, w) in shown.iter().zip(ws.iter()) {
+    let ex = expand(&ws);
+    for (ri, (n, w)) in shown.iter().zip(ws.iter()).enumerate() {
         let bx = x;
         x += w;
         let heat = n.commit_heat.or_else(|| n.commit_heat());
@@ -692,8 +820,8 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
         };
         let head = xml_escape(&head);
         let full = head.chars().count() as f64 * 6.3 + 12.0 <= *w;
-        let labeled = *w >= 40.0;
-        if !full && !labeled {
+        let labeled = full || flame_labeled(&n.name, *w);
+        if !labeled {
             tail.push(format!(
                 "{} · {} · {band}",
                 xml_escape(&n.name),
@@ -720,11 +848,7 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
                 b.commits_30d,
             );
             branches.push(FlameBranch {
-                label: if show {
-                    xml_escape(&text)
-                } else {
-                    String::new()
-                },
+                label: xml_escape(&text),
                 labeled: show,
                 title: xml_escape(&format!(
                     "{}/{} · {} commits/30d",
@@ -743,6 +867,13 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
             bxx += bw;
         }
         rows.push(FlameRepo {
+            rid: format!("r{ri}"),
+            nav: xml_escape(&n.name),
+            tour_delay: if ri == 0 {
+                "0s".to_string()
+            } else {
+                format!("-{}s", f1(ri as f64 * 4.0))
+            },
             title: xml_escape(&match heat {
                 Some(h) => format!(
                     "{} · {} commits/30d · heat {h:.2} {band}",
@@ -752,9 +883,17 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
             }),
             head,
             sub: format!("{} commits", n.commits_30d),
-            short: xml_escape(&truncate_to(&n.name, ((*w - 12.0) / 6.3).floor() as usize)),
+            short: xml_escape(&flame_short(&n.name, *w)),
+            exlabel: xml_escape(&flame_short(&n.name, ex[ri])),
             full,
-            labeled,
+            labeled: full || flame_labeled(&n.name, *w),
+            reveal: !full
+                && !flame_labeled(&n.name, *w)
+                && flame_short(&n.name, *w)
+                    .chars()
+                    .filter(|c| *c != '…')
+                    .count()
+                    > 1,
             color: heat_color(heat.unwrap_or(0.0)).to_string(),
             pulse: palette::heat_pulse(heat).to_string(),
             bx: f1(bx),
@@ -792,6 +931,11 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
         footer: "</svg>".to_string(),
         port_label: xml_escape(&port_label),
         empty: false,
+        fw: f1(FLAME_W),
+        fh: f1(FLAME_H),
+        tour_dur: f1(shown.len() as f64 * 4.0),
+        tour_y: f1(270.0),
+        acc_css: accordion_css(&ws, &expand(&ws), rows.len()),
         msg: String::new(),
         muted: palette::muted(),
         px: f1(FLAME_X0),
@@ -816,7 +960,7 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
 
 fn flame_header() -> String {
     format!(
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"{family}\"><title>Portfolio heat flame</title><text x=\"16\" y=\"24\" font-size=\"14\" font-weight=\"bold\" fill=\"{ink}\">portfolio heat</text><text x=\"16\" y=\"40\" class=\"muted\">width = 30d share · color = heat band · pulse = heating only</text>",
+        "<svg class=\"flame-svg\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"{family}\"><title>Portfolio heat flame</title><text x=\"16\" y=\"24\" font-size=\"14\" font-weight=\"bold\" fill=\"{ink}\">portfolio heat</text><text x=\"16\" y=\"40\" class=\"muted\">width = 30d share · color = heat band · pulse = heating only</text>",
         f1(FLAME_W),
         f1(FLAME_H),
         ink = palette::portfolio_bar(),
@@ -864,18 +1008,13 @@ pub fn render_flame_svg(graph_json: &str) -> anyhow::Result<String> {
             APPEND out.svg "<rect x=\"{{ $doc.px }}\" y=\"{{ $doc.py }}\" width=\"{{ $doc.pw }}\" height=\"{{ $doc.ph }}\" rx=\"4\" fill=\"#222\"/>"
             APPEND out.svg "<text x=\"28\" y=\"{{ $doc.pty }}\" class=\"lbl\">{{ $doc.port_label }}</text>"
             APPEND out.svg "<text x=\"16\" y=\"{{ $doc.cap_y }}\" class=\"muted\">recent embers — 1d brightness under each repo</text>"
+            APPEND out.svg "<style>{{ $doc.acc_css }}</style>"
             FOR $r: MAP<ANY> IN $doc.rows {
+                APPEND out.svg "<g class=\"repo acc-t acc-t-{{ $r.rid }}\">"
+                APPEND out.svg "<g class=\"acc-s acc-s-{{ $r.rid }}\">"
                 APPEND out.svg """
                     <rect x="{{ $r.bx }}" y="{{ $doc.ry }}" width="{{ $r.bw }}" height="{{ $doc.rh }}" class="bar {{ $r.pulse }}" fill="{{ $r.color }}"><title>{{ $r.title }}</title></rect>
                     """
-                IF $r.full {
-                    APPEND out.svg "<text x=\"{{ $r.tx }}\" y=\"{{ $doc.t1y }}\" class=\"lbl\">{{ $r.head }}</text>"
-                    APPEND out.svg "<text x=\"{{ $r.tx }}\" y=\"{{ $doc.t2y }}\" class=\"sub\">{{ $r.sub }}</text>"
-                } ELSE {
-                    IF $r.labeled {
-                        APPEND out.svg "<text x=\"{{ $r.tx }}\" y=\"{{ $doc.sty }}\" class=\"lbl\">{{ $r.short }}</text>"
-                    }
-                }
                 FOR $b: MAP<ANY> IN $r.branches {
                     APPEND out.svg """
                         <rect x="{{ $b.bx }}" y="{{ $doc.by }}" width="{{ $b.bw }}" height="{{ $doc.bh }}" class="bar {{ $b.pulse }}" fill="{{ $r.color }}" opacity="{{ $b.opacity }}"><title>{{ $b.title }}</title></rect>
@@ -888,6 +1027,23 @@ pub fn render_flame_svg(graph_json: &str) -> anyhow::Result<String> {
                     <rect x="{{ $r.bx }}" y="{{ $doc.ey }}" width="{{ $r.bw }}" height="{{ $doc.eh }}" rx="5" fill="none" stroke="{{ $r.color }}" stroke-width="1"/>
                     <rect x="{{ $r.bx }}" y="{{ $doc.ey }}" width="{{ $r.ember }}" height="{{ $doc.eh }}" rx="5" fill="{{ $r.color }}" class="{{ $r.pulse }}"/>
                     """
+                APPEND out.svg "</g>"
+                IF $r.full {
+                    APPEND out.svg "<text x=\"{{ $r.tx }}\" y=\"{{ $doc.t1y }}\" class=\"lbl\">{{ $r.head }}</text>"
+                    APPEND out.svg "<text x=\"{{ $r.tx }}\" y=\"{{ $doc.t2y }}\" class=\"sub\">{{ $r.sub }}</text>"
+                } ELSE {
+                    IF $r.labeled {
+                        APPEND out.svg "<text x=\"{{ $r.tx }}\" y=\"{{ $doc.sty }}\" class=\"lbl\">{{ $r.short }}</text>"
+                    } ELSE {
+                        IF $r.reveal {
+                            APPEND out.svg "<text x=\"{{ $r.tx }}\" y=\"{{ $doc.sty }}\" class=\"lbl tour-cap\" style=\"animation-duration:{{ $doc.tour_dur }}s;animation-delay:{{ $r.tour_delay }}\">{{ $r.exlabel }}</text>"
+                        }
+                    }
+                }
+                APPEND out.svg "</g>"
+            }
+            FOR $r: MAP<ANY> IN $doc.rows {
+                APPEND out.svg "<text x=\"16\" y=\"{{ $doc.tour_y }}\" class=\"dim tour-cap\" style=\"animation-duration:{{ $doc.tour_dur }}s;animation-delay:{{ $r.tour_delay }}\">{{ $r.title }}</text>"
             }
             APPEND out.svg $doc.legend
         }
@@ -1534,6 +1690,26 @@ mod tests {
         assert_eq!(heat_band(Some(1.0)), "steady");
         assert_eq!(heat_band(Some(0.3)), "cooling");
         assert_eq!(heat_band(None), "dormant");
+    }
+
+    #[test]
+    fn tour_cycles_every_repo() {
+        // One slot per repo, 4s each; delays stagger the shared keyframes.
+        let g = graph_with(&[("big", 30), ("small", 10)]);
+        let doc = flame_rows(&g).unwrap();
+        assert_eq!(doc.tour_dur, "8.0");
+        assert_eq!(doc.rows[0].tour_delay, "0s");
+        assert_eq!(doc.rows[1].tour_delay, "-4.0s");
+        let svg = render_flame_svg(&g).unwrap();
+        assert!(svg.contains("@keyframes acct-r0"));
+        assert!(svg.contains("@keyframes accs-r1"));
+        assert!(svg.contains(".acc-t-r1{animation:acct-r1 8.0s ease-in-out infinite}"));
+        assert!(svg.contains("animation-delay:-4.0s"));
+        assert!(!svg.contains("tour-band"));
+        // Reduced-motion kills the accordion; base layout survives.
+        assert!(svg.contains(".flame-svg .acc-t,.flame-svg .acc-s{animation:none}"));
+        // Narrow bars still tour: the caption carries the full readout.
+        assert!(svg.contains(">small \u{00b7} 60 commits/30d"));
     }
 
     #[test]
