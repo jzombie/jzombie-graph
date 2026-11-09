@@ -74,6 +74,11 @@ struct Cli {
     /// only at 60/hr; private transit and traffic tiers still need a token.
     #[arg(long, default_value_t = false)]
     allow_unauthenticated: bool,
+
+    /// Gauge scope: headlines sum all branches, or default-branch-only.
+    /// `branch_heat` always carries every branch either way.
+    #[arg(long, value_enum, default_value = "all")]
+    velocity_scope: jzombie_graph::graph::VelocityScope,
 }
 
 #[tokio::main]
@@ -122,6 +127,7 @@ async fn main() -> Result<()> {
             cli.repos.clone().unwrap_or_default(),
             &cli.token,
             cli.allow_unauthenticated,
+            cli.velocity_scope,
         )
         .await?
     } else {

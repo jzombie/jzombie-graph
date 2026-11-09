@@ -1,10 +1,12 @@
 ---
 source: tests/snapshot_graph.rs
+assertion_line: 194
 expression: "&pub_g"
 ---
 {
   "schema_version": 5,
   "generated_at": "1970-01-01T00:00:00Z",
+  "velocity_scope": "all",
   "nodes": [
     {
       "id": "me/hub",
@@ -31,13 +33,30 @@ expression: "&pub_g"
       "has_llms_txt": true,
       "has_agents_md": true,
       "has_license_file": true,
-      "commits_5d": 2,
-      "commits_30d": 12,
-      "commit_heat": 1.0,
-      "focus": 1.0,
+      "commits_1d": 4,
+      "commits_5d": 7,
+      "commits_15d": 11,
+      "commits_30d": 17,
+      "commit_heat": 3.6078432,
+      "focus": 3.6078432,
       "last_commit_at": "1970-01-01T00:00:00Z",
-      "branches": [
-        "main"
+      "branch_heat": [
+        {
+          "branch": "main",
+          "is_default": true,
+          "commits_1d": 1,
+          "commits_5d": 2,
+          "commits_15d": 6,
+          "commits_30d": 12
+        },
+        {
+          "branch": "next",
+          "is_default": false,
+          "commits_1d": 3,
+          "commits_5d": 5,
+          "commits_15d": 5,
+          "commits_30d": 5
+        }
       ],
       "layer": "application",
       "visible": true,
@@ -57,11 +76,11 @@ expression: "&pub_g"
       "forks_count": 0,
       "open_issues": 0,
       "size_kb": 0,
+      "commits_1d": 0,
       "commits_5d": 0,
+      "commits_15d": 0,
       "commits_30d": 0,
-      "branches": [
-        "main"
-      ],
+      "branch_heat": [],
       "layer": "foundation",
       "visible": true,
       "visible_reason": "tier3: >=1 portfolio edge"
@@ -80,11 +99,11 @@ expression: "&pub_g"
       "forks_count": 0,
       "open_issues": 0,
       "size_kb": 0,
+      "commits_1d": 0,
       "commits_5d": 0,
+      "commits_15d": 0,
       "commits_30d": 0,
-      "branches": [
-        "main"
-      ],
+      "branch_heat": [],
       "layer": "isolated",
       "visible": false,
       "visible_reason": "fork: neither diverged nor load-bearing"
@@ -103,11 +122,11 @@ expression: "&pub_g"
       "forks_count": 0,
       "open_issues": 0,
       "size_kb": 0,
+      "commits_1d": 0,
       "commits_5d": 0,
+      "commits_15d": 0,
       "commits_30d": 0,
-      "branches": [
-        "main"
-      ],
+      "branch_heat": [],
       "layer": "foundation",
       "visible": true,
       "visible_reason": "fork: diverged (ahead of upstream), has portfolio edge"

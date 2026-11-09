@@ -23,6 +23,11 @@
       "type": "integer",
       "format": "uint32",
       "minimum": 0
+    },
+    "velocity_scope": {
+      "description": "Gauge scope the headlines were summed under. Always recorded so\naudits know whether `commits_*` cover all branches or the default.",
+      "$ref": "#/$defs/VelocityScope",
+      "default": "all"
     }
   },
   "required": [
@@ -32,6 +37,46 @@
     "edges"
   ],
   "$defs": {
+    "BranchHeat": {
+      "description": "Per-branch velocity, hottest first. Stored raw counts (same rule as\nthe top-level gauges: inputs frozen, heat derivable on read).",
+      "type": "object",
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "commits_15d": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "commits_1d": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "commits_30d": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "commits_5d": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "is_default": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "branch",
+        "is_default",
+        "commits_1d",
+        "commits_5d",
+        "commits_15d",
+        "commits_30d"
+      ]
+    },
     "Edge": {
       "type": "object",
       "properties": {
@@ -111,11 +156,12 @@
         "archived": {
           "type": "boolean"
         },
-        "branches": {
-          "description": "Branches observed during collection.",
+        "branch_heat": {
+          "description": "Per-branch velocity, hottest first. The headline gauges below sum\nacross branches (feature work counts — a weeks-long branch is real\nvelocity); this breakdown shows where it landed and flags the\ndefault branch. Replaces the old branch-name list. Sums double-count\nmerged commits (reachable from two refs); it reads activity, not\nunique work.",
           "type": "array",
+          "default": [],
           "items": {
-            "type": "string"
+            "$ref": "#/$defs/BranchHeat"
           }
         },
         "commit_heat": {
@@ -126,6 +172,19 @@
           ],
           "format": "float"
         },
+        "commits_15d": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "commits_1d": {
+          "description": "Commit velocity: 1d/5d/15d/30d commit counts summed across all\nbranches in one GraphQL call; fail-open 0. `commit_heat()` means\nthe three sub-window pro-rata heats against the 30d baseline, so\na flat repo reads 1.0 in every window.",
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
         "commits_30d": {
           "type": "integer",
           "format": "uint32",
@@ -133,7 +192,6 @@
           "minimum": 0
         },
         "commits_5d": {
-          "description": "Commit velocity: commits to the default branch in the trailing 5\ndays (heat) and trailing 30 days (baseline). 2 extra API calls per\nrepo; fail-open 0. `commit_heat()` compares the two so naturally-busy\nrepos don't auto-win — a repo is judged against itself.",
           "type": "integer",
           "format": "uint32",
           "default": 0,
@@ -197,7 +255,7 @@
           ]
         },
         "last_commit_at": {
-          "description": "Latest default-branch commit date (from the velocity probes; one\nunbounded probe only when the 30d window is empty). Idle and focus\nmeasure from here — repo-level `pushed_at` moves on any branch push\nand would read 0 idle while main sat still.",
+          "description": "Latest commit date across all branches (newest 30d date, else the\noverall newest). Idle and focus measure from here — feature work\ncounts, so a live branch keeps the repo warm while main sits still.",
           "type": [
             "string",
             "null"
@@ -283,8 +341,15 @@
         "name",
         "fork",
         "private",
-        "branches",
         "visible"
+      ]
+    },
+    "VelocityScope": {
+      "description": "Gauge scope: all branches or default-branch-only. CLI-selectable;\nfrozen into the JSON so audits know what the headlines sum.\n`branch_heat` always carries every branch either way.",
+      "type": "string",
+      "enum": [
+        "all",
+        "default"
       ]
     }
   }

@@ -547,84 +547,110 @@ impl GitHubClient {
         Ok(Some(AheadBy { raw, own }))
     }
 
-    /// Trailing-window commit velocity (default branch): total commits
-    /// with `since`, via `per_page=1` — the count comes off the
-    /// `Link: rel="last"` page number, no pagination walks. Also returns
-    /// the newest commit's date in the window (first item): whenever the
-    /// window is non-empty that IS the latest default-branch commit.
-    /// `since=None` means unbounded (latest commit overall). One call per
-    /// window per repo. Empty repos (409) and errors are the caller's
-    /// fail-open, never fatal here.
-    pub async fn commit_count_since(
-        &self,
-        full_name: &str,
-        branch: &str,
-        since: Option<&DateTime<Utc>>,
-    ) -> Result<(u32, Option<DateTime<Utc>>)> {
-        let mut url = format!(
-            "{}/repos/{full_name}/commits?sha={branch}&per_page=1",
-            self.api_base
-        );
-        if let Some(s) = since {
-            url.push_str("&since=");
-            url.push_str(&s.to_rfc3339());
-        }
-        let resp = self.http.get(&url).send().await?;
-        if !resp.status().is_success() {
-            anyhow::bail!("{url}: HTTP {}", resp.status());
-        }
-        let link = resp
-            .headers()
-            .get(reqwest::header::LINK)
-            .and_then(|v| v.to_str().ok())
-            .map(|s| s.to_string());
-        let body: serde_json::Value = resp.json().await?;
-        let items = body.as_array().cloned().unwrap_or_default();
-        let n = parse_commit_total(link.as_deref(), items.len());
-        Ok((n, latest_commit_date(&items)))
-    }
-
     #[allow(dead_code)]
     pub fn token_len(&self) -> usize {
         self.token.len()
     }
 }
 
-/// Total commits from a `per_page=1` commits listing: the `rel="last"`
-/// page number IS the count (one commit per page). No Link header means
-/// a single short page — the body length (0 or 1) is the total.
-pub fn parse_commit_total(link: Option<&str>, body_len: usize) -> u32 {
-    if let Some(h) = link {
-        for part in h.split(',') {
-            let mut segs = part.split(';');
-            let url = segs.next().unwrap_or("").trim();
-            if !segs.any(|s| s.trim() == r#"rel="last""#) {
-                continue;
-            }
-            let u = url.trim_start_matches('<').trim_end_matches('>');
-            for q in u.split(&['?', '&'][..]) {
-                if let Some(n) = q.strip_prefix("page=")
-                    && let Ok(v) = n.parse::<u32>()
-                {
-                    return v;
-                }
-            }
-        }
-    }
-    body_len.min(1) as u32
+/// Per-branch velocity from one GraphQL call: head SHA, 5d/30d counts,
+/// newest 30d date, newest date overall. One HTTP request for up to 100
+/// branches — the REST equivalent is a call per branch per window.
+/// The gauge stays default-branch-only; the pipeline picks that entry.
+#[derive(Debug, Clone)]
+pub struct BranchVelocity {
+    pub name: String,
+    pub head_sha: String,
+    pub commits_1d: u32,
+    pub commits_5d: u32,
+    pub commits_15d: u32,
+    pub commits_30d: u32,
+    pub latest_30d: Option<DateTime<Utc>>,
+    pub latest_overall: Option<DateTime<Utc>>,
 }
 
-/// Newest commit date from a `per_page=1` commits listing: the first item
-/// is the latest commit, preferring the committer date (what landed) with
-/// author-date fallback. None when the window is empty.
-pub fn latest_commit_date(items: &[serde_json::Value]) -> Option<DateTime<Utc>> {
-    let commit = items.first()?.get("commit")?;
-    let s = commit
-        .get("committer")
-        .and_then(|c| c.get("date"))
-        .or_else(|| commit.get("author").and_then(|a| a.get("date")))?
-        .as_str()?;
-    s.parse::<DateTime<Utc>>().ok()
+impl GitHubClient {
+    /// Per-branch velocity in one HTTP request (GraphQL): 1d/5d/15d/30d
+    /// counts + head SHA + newest dates, up to 100 branches. The 5d/30d
+    /// pair feeds the gauge; 1d/15d are observational granularity.
+    /// Errors are the caller's fail-open.
+    pub async fn branch_velocities(
+        &self,
+        owner: &str,
+        name: &str,
+        now: &DateTime<Utc>,
+    ) -> Result<Vec<BranchVelocity>> {
+        let ago = |d: i64| (*now - chrono::Duration::days(d)).to_rfc3339();
+        let body = serde_json::json!({
+            "query": "query($owner: String!, $name: String!, $w1: GitTimestamp!, $w5: GitTimestamp!, $w15: GitTimestamp!, $w30: GitTimestamp!) { repository(owner: $owner, name: $name) { refs(first: 100, refPrefix: \"refs/heads/\") { nodes { name target { oid ... on Commit { w1: history(first: 1, since: $w1) { totalCount } w5: history(first: 1, since: $w5) { totalCount edges { node { committedDate } } } w15: history(first: 1, since: $w15) { totalCount } w30: history(first: 1, since: $w30) { totalCount edges { node { committedDate } } } latest: history(first: 1) { edges { node { committedDate } } } } } } } }",
+            "variables": {
+                "owner": owner,
+                "name": name,
+                "w1": ago(1),
+                "w5": ago(5),
+                "w15": ago(15),
+                "w30": ago(30),
+            },
+        });
+        let url = format!("{}/graphql", self.api_base);
+        let resp = self.http.post(&url).json(&body).send().await?;
+        if !resp.status().is_success() {
+            anyhow::bail!("{url}: HTTP {}", resp.status());
+        }
+        let value: serde_json::Value = resp.json().await?;
+        parse_branch_velocities(&value)
+    }
+}
+
+/// Pure parse for `branch_velocities`: non-commit targets skipped,
+/// GraphQL `errors` with null data is an error, empty nodes is empty.
+fn parse_branch_velocities(value: &serde_json::Value) -> Result<Vec<BranchVelocity>> {
+    if value.get("data").is_none_or(|d| d.is_null()) && value.get("errors").is_some() {
+        anyhow::bail!("graphql errors: {}", value["errors"]);
+    }
+    fn count(n: &serde_json::Value, key: &str) -> Option<u32> {
+        n.pointer(&format!("/target/{key}/totalCount"))
+            .and_then(|c| c.as_u64())
+            .map(|c| c.min(u32::MAX as u64) as u32)
+    }
+    fn newest(n: &serde_json::Value, key: &str) -> Option<DateTime<Utc>> {
+        n.pointer(&format!("/target/{key}/edges"))
+            .and_then(|e| e.as_array())
+            .and_then(|a| a.first())
+            .and_then(|e| e.pointer("/node/committedDate"))
+            .and_then(|d| d.as_str())
+            .and_then(|s| s.parse::<DateTime<Utc>>().ok())
+    }
+    let mut out = Vec::new();
+    let nodes = value
+        .pointer("/data/repository/refs/nodes")
+        .and_then(|n| n.as_array());
+    for n in nodes.into_iter().flatten() {
+        let (Some(name), Some(c1), Some(c5), Some(c15), Some(c30)) = (
+            n.get("name").and_then(|s| s.as_str()),
+            count(n, "w1"),
+            count(n, "w5"),
+            count(n, "w15"),
+            count(n, "w30"),
+        ) else {
+            continue;
+        };
+        out.push(BranchVelocity {
+            name: name.to_string(),
+            head_sha: n
+                .pointer("/target/oid")
+                .and_then(|s| s.as_str())
+                .unwrap_or_default()
+                .to_string(),
+            commits_1d: c1,
+            commits_5d: c5,
+            commits_15d: c15,
+            commits_30d: c30,
+            latest_30d: newest(n, "w30"),
+            latest_overall: newest(n, "latest"),
+        });
+    }
+    Ok(out)
 }
 
 #[cfg(test)]
@@ -639,29 +665,55 @@ mod tests {
     }
 
     #[test]
-    fn commit_total_from_link_last_page() {
-        use super::parse_commit_total;
-        let link = r#"<https://api.github.com/repos/me/r/commits?since=x&per_page=1&page=2>; rel="next", <https://api.github.com/repos/me/r/commits?since=x&per_page=1&page=17>; rel="last""#;
-        assert_eq!(parse_commit_total(Some(link), 1), 17);
-        assert_eq!(parse_commit_total(None, 1), 1);
-        assert_eq!(parse_commit_total(None, 0), 0);
-        assert_eq!(parse_commit_total(Some(r#"<u?page=3>; rel="next""#), 1), 1);
-    }
-
-    #[test]
-    fn commit_date_prefers_committer() {
-        use super::latest_commit_date;
-        let items = serde_json::json!([
-            {"commit": {"committer": {"date": "2026-11-07T10:00:00Z"}, "author": {"date": "2026-11-06T10:00:00Z"}}}
-        ]);
-        let got = latest_commit_date(items.as_array().unwrap()).unwrap();
-        assert_eq!(got.to_rfc3339(), "2026-11-07T10:00:00+00:00");
-        let author_only = serde_json::json!([
-            {"commit": {"author": {"date": "2026-11-06T10:00:00Z"}}}
-        ]);
-        let arr = author_only.as_array().unwrap();
-        assert!(latest_commit_date(arr).is_some());
-        assert_eq!(latest_commit_date(&[]), None);
+    fn branch_velocities_parse_all_branches() {
+        use super::parse_branch_velocities;
+        let v = serde_json::json!({
+            "data": {"repository": {"refs": {"nodes": [
+                {"name": "main", "target": {"oid": "aaa",
+                    "w1": {"totalCount": 2},
+                    "w5": {"totalCount": 12, "edges": [{"node": {"committedDate": "2026-11-07T10:00:00Z"}}]},
+                    "w15": {"totalCount": 20},
+                    "w30": {"totalCount": 30, "edges": [{"node": {"committedDate": "2026-11-07T10:00:00Z"}}]},
+                    "latest": {"edges": [{"node": {"committedDate": "2026-11-07T10:00:00Z"}}]}}},
+                {"name": "quiet", "target": {"oid": "bbb",
+                    "w1": {"totalCount": 0},
+                    "w5": {"totalCount": 0, "edges": []},
+                    "w15": {"totalCount": 1},
+                    "w30": {"totalCount": 0, "edges": []},
+                    "latest": {"edges": [{"node": {"committedDate": "2026-01-01T00:00:00Z"}}]}}},
+                {"name": "tag-ref", "target": null},
+            ]}}}
+        });
+        // Non-commit targets skipped, no error.
+        let got = parse_branch_velocities(&v).unwrap();
+        assert_eq!(got.len(), 2);
+        assert_eq!(got[0].name, "main");
+        assert_eq!(got[0].head_sha, "aaa");
+        assert_eq!(
+            (
+                got[0].commits_1d,
+                got[0].commits_5d,
+                got[0].commits_15d,
+                got[0].commits_30d
+            ),
+            (2, 12, 20, 30)
+        );
+        assert!(got[0].latest_30d.is_some() && got[0].latest_overall.is_some());
+        // Empty windows: zeros, no 30d date, overall kept.
+        assert_eq!(
+            (
+                got[1].commits_1d,
+                got[1].commits_5d,
+                got[1].commits_15d,
+                got[1].commits_30d
+            ),
+            (0, 0, 1, 0)
+        );
+        assert!(got[1].latest_30d.is_none() && got[1].latest_overall.is_some());
+        let empty = serde_json::json!({"data": {"repository": {"refs": {"nodes": []}}}});
+        assert!(parse_branch_velocities(&empty).unwrap().is_empty());
+        let err = serde_json::json!({"data": null, "errors": [{"message": "boom"}]});
+        assert!(parse_branch_velocities(&err).is_err());
     }
 
     #[test]

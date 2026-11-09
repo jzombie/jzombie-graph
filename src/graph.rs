@@ -73,6 +73,38 @@ impl std::fmt::Display for Layer {
     }
 }
 
+/// Gauge scope: all branches or default-branch-only. CLI-selectable;
+/// frozen into the JSON so audits know what the headlines sum.
+/// `branch_heat` always carries every branch either way.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema, clap::ValueEnum,
+)]
+#[serde(rename_all = "lowercase")]
+pub enum VelocityScope {
+    #[default]
+    All,
+    Default,
+}
+
+impl VelocityScope {
+    /// In-scope check: everything under `All`, only the default under `Default`.
+    pub fn includes(self, default_branch: &str, branch: &str) -> bool {
+        matches!(self, VelocityScope::All) || branch == default_branch
+    }
+}
+
+/// Per-branch velocity, hottest first. Stored raw counts (same rule as
+/// the top-level gauges: inputs frozen, heat derivable on read).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct BranchHeat {
+    pub branch: String,
+    pub is_default: bool,
+    pub commits_1d: u32,
+    pub commits_5d: u32,
+    pub commits_15d: u32,
+    pub commits_30d: u32,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Node {
     /// Canonical id: `owner/repo` full name.
@@ -127,12 +159,16 @@ pub struct Node {
     pub has_agents_md: bool,
     #[serde(default, skip_serializing_if = "is_false")]
     pub has_license_file: bool,
-    /// Commit velocity: commits to the default branch in the trailing 5
-    /// days (heat) and trailing 30 days (baseline). 2 extra API calls per
-    /// repo; fail-open 0. `commit_heat()` compares the two so naturally-busy
-    /// repos don't auto-win — a repo is judged against itself.
+    /// Commit velocity: 1d/5d/15d/30d commit counts summed across all
+    /// branches in one GraphQL call; fail-open 0. `commit_heat()` means
+    /// the three sub-window pro-rata heats against the 30d baseline, so
+    /// a flat repo reads 1.0 in every window.
+    #[serde(default)]
+    pub commits_1d: u32,
     #[serde(default)]
     pub commits_5d: u32,
+    #[serde(default)]
+    pub commits_15d: u32,
     #[serde(default)]
     pub commits_30d: u32,
     /// Captured commit heat as of `generated_at` (same formula as
@@ -145,14 +181,19 @@ pub struct Node {
     /// it live from the inputs above.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub focus: Option<f32>,
-    /// Latest default-branch commit date (from the velocity probes; one
-    /// unbounded probe only when the 30d window is empty). Idle and focus
-    /// measure from here — repo-level `pushed_at` moves on any branch push
-    /// and would read 0 idle while main sat still.
+    /// Latest commit date across all branches (newest 30d date, else the
+    /// overall newest). Idle and focus measure from here — feature work
+    /// counts, so a live branch keeps the repo warm while main sits still.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_commit_at: Option<DateTime<Utc>>,
-    /// Branches observed during collection.
-    pub branches: Vec<String>,
+    /// Per-branch velocity, hottest first. The headline gauges below sum
+    /// across branches (feature work counts — a weeks-long branch is real
+    /// velocity); this breakdown shows where it landed and flags the
+    /// default branch. Replaces the old branch-name list. Sums double-count
+    /// merged commits (reachable from two refs); it reads activity, not
+    /// unique work.
+    #[serde(default)]
+    pub branch_heat: Vec<BranchHeat>,
     /// Structural role, set once at ingestion by `apply_layers` on the
     /// true graph (private transit included) and preserved verbatim by
     /// `public_subgraph` — so the value is identical in the briefing
@@ -168,17 +209,32 @@ pub struct Node {
     pub visible_reason: Option<String>,
 }
 
+/// Pro-rata heat from raw window counts: mean of the 1d/5d/15d heats
+/// against the 30d baseline. Single formula — `Node::commit_heat` and the
+/// collect path both call this, never a copy.
+pub fn commit_heat_from_windows(c1: u32, c5: u32, c15: u32, c30: u32) -> Option<f32> {
+    if c30 == 0 {
+        return None;
+    }
+    let base = c30 as f32 / 30.0;
+    let h = |c: u32, w: f32| c as f32 / (w * base);
+    Some((h(c1, 1.0) + h(c5, 5.0) + h(c15, 15.0)) / 3.0)
+}
+
 impl Node {
-    /// Commit heat (self-normalized, never scored): trailing-5d commits
-    /// against the repo's own trailing-30d baseline (pro-rata: a flat
-    /// repo would put ~1/6 of its 30d commits in any 5d slice).
-    /// Above 1.5 heating, ~1.0 steady, below 0.5 cooling. None means no
-    /// 30d baseline — dormant when `commits_5d` is also 0, fresh otherwise.
+    /// Commit heat (self-normalized, never scored): mean of the 1d/5d/15d
+    /// pro-rata heats against the trailing-30d baseline (a flat repo puts
+    /// ~w/30 of its 30d commits in any w-day slice, so every window reads
+    /// 1.0 and the mean stays 1.0). Above 1.5 heating, ~1.0 steady, below
+    /// 0.5 cooling. None means no 30d baseline — dormant when the windows
+    /// are also 0, fresh otherwise.
     pub fn commit_heat(&self) -> Option<f32> {
-        if self.commits_30d == 0 {
-            return None;
-        }
-        Some(self.commits_5d as f32 * 6.0 / self.commits_30d as f32)
+        commit_heat_from_windows(
+            self.commits_1d,
+            self.commits_5d,
+            self.commits_15d,
+            self.commits_30d,
+        )
     }
 
     /// Whole days since the default branch last moved, if known.
@@ -217,6 +273,10 @@ pub struct Edge {
 pub struct Graph {
     pub schema_version: u32,
     pub generated_at: DateTime<Utc>,
+    /// Gauge scope the headlines were summed under. Always recorded so
+    /// audits know whether `commits_*` cover all branches or the default.
+    #[serde(default)]
+    pub velocity_scope: VelocityScope,
     pub nodes: Vec<Node>,
     pub edges: Vec<Edge>,
 }
@@ -243,6 +303,7 @@ impl Graph {
         Self {
             schema_version: SCHEMA_VERSION,
             generated_at: Utc::now(),
+            velocity_scope: VelocityScope::All,
             nodes,
             edges,
         }
@@ -501,11 +562,13 @@ mod tests {
             has_llms_txt: false,
             has_agents_md: false,
             has_license_file: false,
-            branches: vec!["main".into()],
+            branch_heat: vec![],
             visible: false,
             visible_reason: None,
             layer: Layer::Isolated,
+            commits_1d: 0,
             commits_5d: 0,
+            commits_15d: 0,
             commits_30d: 0,
             commit_heat: None,
             focus: None,
@@ -670,16 +733,22 @@ mod tests {
     #[test]
     fn commit_heat_compares_5d_against_own_30d_baseline() {
         let mut n = node("me/a", false, false, None);
-        // 12 in 5d vs 12 in 30d: 6x the flat share — heating.
-        n.commits_5d = 12;
-        n.commits_30d = 12;
-        assert!((n.commit_heat().unwrap() - 6.0).abs() < 1e-6);
-        // 2 in 5d vs 12 in 30d: exactly the flat share — steady.
-        n.commits_5d = 2;
+        // Recent-heavy: 2/1d, 10/5d, 20/15d vs 30/30d — heating.
+        n.commits_1d = 2;
+        n.commits_5d = 10;
+        n.commits_15d = 20;
+        n.commits_30d = 30;
+        assert!((n.commit_heat().unwrap() - 1.7778).abs() < 1e-4);
+        // Flat: every window at its pro-rata share — steady 1.0.
+        n.commits_1d = 1;
+        n.commits_5d = 5;
+        n.commits_15d = 15;
         assert!((n.commit_heat().unwrap() - 1.0).abs() < 1e-6);
-        // No 30d baseline: no ratio (dormant when 5d is 0 too).
-        n.commits_30d = 0;
+        // No 30d baseline: no ratio (dormant when windows are 0 too).
+        n.commits_1d = 0;
         n.commits_5d = 0;
+        n.commits_15d = 0;
+        n.commits_30d = 0;
         assert_eq!(n.commit_heat(), None);
         // Fresh (activity, no baseline): still None — check commits_5d.
         n.commits_5d = 3;
@@ -692,12 +761,16 @@ mod tests {
         let now = chrono::Utc.with_ymd_and_hms(2026, 11, 8, 12, 0, 0).unwrap();
         let mut n = node("me/a", false, false, None);
         // Flat baseline, pushed today: 1.0 - 0 = 1.0.
-        n.commits_5d = 2;
-        n.commits_30d = 12;
+        n.commits_1d = 1;
+        n.commits_5d = 5;
+        n.commits_15d = 15;
+        n.commits_30d = 30;
         n.pushed_at = Some(now);
         assert!((n.focus(&now).unwrap() - 1.0).abs() < 1e-6);
         // Same velocity, quiet 60 days: 0.0 - 2.0 = -2.0.
+        n.commits_1d = 0;
         n.commits_5d = 0;
+        n.commits_15d = 0;
         n.commits_30d = 4;
         n.pushed_at = Some(now - chrono::Duration::days(60));
         assert!((n.focus(&now).unwrap() + 2.0).abs() < 1e-6);

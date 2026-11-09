@@ -117,7 +117,19 @@ pub fn render_dump(graph: &Graph) -> String {
             n.upstream.as_deref().unwrap_or("-"),
             n.ahead_by.map(|v| v.to_string()).unwrap_or("-".into()),
         ));
-        s.push_str(&format!("  branches: [{}]\n", n.branches.join(", ")));
+        let heat: Vec<String> = n
+            .branch_heat
+            .iter()
+            .map(|b| {
+                format!(
+                    "{}{}:{}",
+                    b.branch,
+                    if b.is_default { "*" } else { "" },
+                    b.commits_30d
+                )
+            })
+            .collect();
+        s.push_str(&format!("  branches: [{}]\n", heat.join(", ")));
         s.push_str(&format!(
             "  about: desc={} lang={} topics=[{}] home={}\n",
             n.description.as_deref().unwrap_or("-"),
@@ -281,12 +293,14 @@ mod tests {
                 has_llms_txt: true,
                 has_agents_md: false,
                 has_license_file: true,
+                commits_1d: 0,
                 commits_5d: 0,
+                commits_15d: 0,
                 commits_30d: 0,
                 commit_heat: None,
                 focus: None,
                 last_commit_at: None,
-                branches: vec!["main".into()],
+                branch_heat: vec![],
                 visible: true,
                 visible_reason: Some("tier3: >=1 portfolio edge".into()),
                 layer: crate::graph::Layer::Isolated,
@@ -315,12 +329,14 @@ mod tests {
                 has_llms_txt: false,
                 has_agents_md: false,
                 has_license_file: false,
+                commits_1d: 0,
                 commits_5d: 0,
+                commits_15d: 0,
                 commits_30d: 0,
                 commit_heat: None,
                 focus: None,
                 last_commit_at: None,
-                branches: vec!["main".into()],
+                branch_heat: vec![],
                 visible: true,
                 visible_reason: Some("tier3: >=1 portfolio edge".into()),
                 layer: crate::graph::Layer::Isolated,
@@ -365,8 +381,10 @@ mod tests {
         let now = chrono::Utc.with_ymd_and_hms(2026, 11, 8, 12, 0, 0).unwrap();
         let mut g = fixture();
         // a: flat baseline, pushed now → focus 1.00.
-        g.nodes[0].commits_5d = 2;
-        g.nodes[0].commits_30d = 12;
+        g.nodes[0].commits_1d = 1;
+        g.nodes[0].commits_5d = 5;
+        g.nodes[0].commits_15d = 15;
+        g.nodes[0].commits_30d = 30;
         g.nodes[0].pushed_at = Some(now);
         // b: dormant 250 days → deep negative.
         g.nodes[1].commits_5d = 0;

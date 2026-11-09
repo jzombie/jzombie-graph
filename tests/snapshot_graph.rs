@@ -33,12 +33,14 @@ fn node(id: &str, fork: bool, private: bool, ahead_by: Option<u32>) -> Node {
         has_llms_txt: false,
         has_agents_md: false,
         has_license_file: false,
+        commits_1d: 0,
         commits_5d: 0,
+        commits_15d: 0,
         commits_30d: 0,
         commit_heat: None,
         focus: None,
         last_commit_at: None,
-        branches: vec!["main".into()],
+        branch_heat: vec![],
         visible: false,
         visible_reason: None,
         layer: jzombie_graph::graph::Layer::Isolated,
@@ -74,10 +76,30 @@ fn snapshot_reference_portfolio() {
     // Velocity contract: the hub carries captured gauges so the snapshot
     // locks their JSON shape (computed by the same methods collection uses,
     // against the normalized clock below — deterministic).
-    nodes[0].commits_5d = 2;
-    nodes[0].commits_30d = 12;
+    nodes[0].commits_1d = 4;
+    nodes[0].commits_5d = 7;
+    nodes[0].commits_15d = 11;
+    nodes[0].commits_30d = 17;
     nodes[0].pushed_at = Some(chrono::DateTime::from_timestamp(0, 0).unwrap());
     nodes[0].last_commit_at = nodes[0].pushed_at;
+    nodes[0].branch_heat = vec![
+        graph::BranchHeat {
+            branch: "main".into(),
+            is_default: true,
+            commits_1d: 1,
+            commits_5d: 2,
+            commits_15d: 6,
+            commits_30d: 12,
+        },
+        graph::BranchHeat {
+            branch: "next".into(),
+            is_default: false,
+            commits_1d: 3,
+            commits_5d: 5,
+            commits_15d: 5,
+            commits_30d: 5,
+        },
+    ];
     nodes[0].commit_heat = nodes[0].commit_heat();
     nodes[0].focus = nodes[0].focus(&nodes[0].pushed_at.unwrap());
     let edges = vec![

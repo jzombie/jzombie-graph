@@ -102,6 +102,7 @@ pub async fn collect_live(
     explicit_repos: Vec<String>,
     token: &str,
     allow_unauthenticated: bool,
+    velocity_scope: graph::VelocityScope,
 ) -> Result<Graph> {
     let client = GitHubClient::with_base_optional(
         token.to_string(),
@@ -184,8 +185,7 @@ pub async fn collect_live(
     // Briefing digest lines: every phantom nullification + lockfile gate drop.
     let mut digest: Vec<String> = vec![];
 
-    let five_days_ago = chrono::Utc::now() - chrono::Duration::days(5);
-    let thirty_days_ago = five_days_ago - chrono::Duration::days(25);
+    let now = chrono::Utc::now();
     for (i, repo) in repos.iter().enumerate() {
         eprintln!(
             "[{}/{}] {} @{} …",
@@ -214,80 +214,111 @@ pub async fn collect_live(
             }
             Err(_) => None,
         };
-        // Trailing-window commit velocity: 5d heat vs its own 30d
-        // baseline (self-normalized, so busy repos don't auto-win).
+        // Velocity in one GraphQL call: per-branch 1d/5d/15d/30d counts +
+        // head SHAs + newest dates. Headline gauges sum the in-scope
+        // branches (`--velocity-scope`, default all); branch_heat keeps
+        // every branch regardless. The default head SHA rides the same
+        // response, so no separate branch_sha call.
         // Fail-open 0 with a digest note — a silent 0 would read as dead.
-        let (commits_5d, _) = match client
-            .commit_count_since(&repo.full_name, &repo.default_branch, Some(&five_days_ago))
+        let velocities = match client
+            .branch_velocities(&repo.owner, &repo.name, &now)
             .await
         {
             Ok(v) => v,
             Err(_) => {
                 digest.push(format!(
-                    "{}: 5d commit velocity unavailable — heat fail-open 0",
+                    "{}: commit velocity unavailable — heat fail-open 0",
                     repo.full_name
                 ));
-                (0, None)
+                Vec::new()
             }
         };
-        let (commits_30d, latest_30d) = match client
-            .commit_count_since(
-                &repo.full_name,
-                &repo.default_branch,
-                Some(&thirty_days_ago),
-            )
-            .await
-        {
-            Ok(v) => v,
-            Err(_) => {
-                digest.push(format!(
-                    "{}: 30d commit velocity unavailable — baseline fail-open 0",
-                    repo.full_name
-                ));
-                (0, None)
-            }
+        let mut branch_heat: Vec<graph::BranchHeat> = velocities
+            .iter()
+            .map(|b| graph::BranchHeat {
+                branch: b.name.clone(),
+                is_default: b.name == repo.default_branch,
+                commits_1d: b.commits_1d,
+                commits_5d: b.commits_5d,
+                commits_15d: b.commits_15d,
+                commits_30d: b.commits_30d,
+            })
+            .collect();
+        branch_heat.sort_by(|a, b| {
+            b.commits_30d
+                .cmp(&a.commits_30d)
+                .then(b.commits_5d.cmp(&a.commits_5d))
+                .then(a.branch.cmp(&b.branch))
+        });
+        let default_v = velocities.iter().find(|b| b.name == repo.default_branch);
+        if default_v.is_none() && !velocities.is_empty() {
+            digest.push(format!(
+                "{}: default branch missing from refs — tree probes blind",
+                repo.full_name
+            ));
+        }
+        let in_scope = |b: &crate::github::BranchVelocity| {
+            velocity_scope.includes(&repo.default_branch, &b.name)
         };
-        // Latest default-branch commit: the 30d window's newest IS the
-        // newest overall when non-empty. Only empty baselines need one
-        // unbounded probe (dormant repos — exactly where idle matters).
-        // `pushed_at` is repo-level (any branch); idle measures default.
+        let (commits_1d, commits_5d, commits_15d, commits_30d, latest_30d, latest_overall, b_sha) =
+            match default_v {
+                Some(b) => (
+                    velocities
+                        .iter()
+                        .filter(|v| in_scope(v))
+                        .map(|v| v.commits_1d)
+                        .sum(),
+                    velocities
+                        .iter()
+                        .filter(|v| in_scope(v))
+                        .map(|v| v.commits_5d)
+                        .sum(),
+                    velocities
+                        .iter()
+                        .filter(|v| in_scope(v))
+                        .map(|v| v.commits_15d)
+                        .sum(),
+                    velocities
+                        .iter()
+                        .filter(|v| in_scope(v))
+                        .map(|v| v.commits_30d)
+                        .sum(),
+                    velocities
+                        .iter()
+                        .filter(|v| in_scope(v))
+                        .filter_map(|v| v.latest_30d)
+                        .max(),
+                    velocities
+                        .iter()
+                        .filter(|v| in_scope(v))
+                        .filter_map(|v| v.latest_overall)
+                        .max(),
+                    b.head_sha.clone(),
+                ),
+                None => (0, 0, 0, 0, None, None, String::new()),
+            };
+        // Latest commit anywhere: the 30d window's newest IS the newest
+        // overall when non-empty. Only empty baselines use the overall
+        // newest (dormant repos — exactly where idle matters). Feature
+        // work counts, so a live branch keeps the repo warm.
         let last_commit_at = match latest_30d {
             Some(d) => Some(d),
-            None if commits_30d == 0 => match client
-                .commit_count_since(&repo.full_name, &repo.default_branch, None)
-                .await
-            {
-                Ok((_, d)) => d,
-                Err(_) => {
-                    digest.push(format!(
-                        "{}: latest-commit probe unavailable — idle falls back to pushed_at",
-                        repo.full_name
-                    ));
-                    None
-                }
-            },
+            None if commits_30d == 0 => latest_overall,
             None => None,
         };
         // Captured gauges as of collection (frozen into the JSON; live
-        // paths recompute from the inputs above).
-        let commit_heat = if commits_30d == 0 {
-            None
-        } else {
-            Some(commits_5d as f32 * 6.0 / commits_30d as f32)
-        };
+        // paths recompute from the inputs above via the same formula).
+        let commit_heat =
+            graph::commit_heat_from_windows(commits_1d, commits_5d, commits_15d, commits_30d);
         let focus = last_commit_at.or(repo.pushed_at).map(|t| {
             let idle = (chrono::Utc::now() - t).num_days().max(0) as f32;
             commit_heat.unwrap_or(0.0) - idle / 30.0
         });
-        // Default-branch-only collection: one branch scanned, period.
-        // Unmerged branch deps are proposals, not structure; a repo that
-        // develops on `next` while `main` lags needs a per-repo override,
-        // not a sweep. `declaring_branches` still records the single branch.
+        // Structure stays default-branch: manifests/trees/edges come from
+        // the default tree (proposals aren't structure). Velocity is
+        // all-branch (branch_heat); `declaring_branches` still records the
+        // single branch the manifests were read from.
         let b_name = repo.default_branch.clone();
-        let b_sha: String = client
-            .branch_sha(&repo.full_name, &b_name)
-            .await
-            .unwrap_or_default();
         let branch_names: Vec<String> = vec![b_name.clone()];
 
         // Manifests/etc. from the default branch; each edge carries it.
@@ -618,12 +649,14 @@ pub async fn collect_live(
             has_llms_txt,
             has_agents_md,
             has_license_file,
+            commits_1d,
             commits_5d,
+            commits_15d,
             commits_30d,
             commit_heat,
             focus,
             last_commit_at,
-            branches: branch_names,
+            branch_heat,
             visible: false, // computed below
             visible_reason: None,
             layer: graph::Layer::Isolated, // computed below via apply_layers
@@ -650,7 +683,8 @@ pub async fn collect_live(
     }
     graph::apply_visibility(&mut nodes, &all_edges);
     graph::apply_layers(&mut nodes, &all_edges);
-    let g = Graph::new(nodes, all_edges);
+    let mut g = Graph::new(nodes, all_edges);
+    g.velocity_scope = velocity_scope;
     eprintln!(
         "done: {} repos, {} nodes, {} edges",
         repos.len(),
@@ -715,12 +749,14 @@ mod tests {
                 has_llms_txt: false,
                 has_agents_md: false,
                 has_license_file: false,
+                commits_1d: 0,
                 commits_5d: 0,
+                commits_15d: 0,
                 commits_30d: 0,
                 commit_heat: None,
                 focus: None,
                 last_commit_at: None,
-                branches: vec!["main".into()],
+                branch_heat: vec![],
                 visible: true,
                 visible_reason: None,
                 layer: graph::Layer::Isolated,
@@ -749,12 +785,14 @@ mod tests {
                 has_llms_txt: false,
                 has_agents_md: false,
                 has_license_file: false,
+                commits_1d: 0,
                 commits_5d: 0,
+                commits_15d: 0,
                 commits_30d: 0,
                 commit_heat: None,
                 focus: None,
                 last_commit_at: None,
-                branches: vec!["main".into()],
+                branch_heat: vec![],
                 visible: false,
                 visible_reason: None,
                 layer: graph::Layer::Isolated,
@@ -820,12 +858,14 @@ mod tests {
             has_llms_txt: false,
             has_agents_md: false,
             has_license_file: false,
+            commits_1d: 0,
             commits_5d: 0,
+            commits_15d: 0,
             commits_30d: 0,
             commit_heat: None,
             focus: None,
             last_commit_at: None,
-            branches: vec!["main".into()],
+            branch_heat: vec![],
             visible: false,
             visible_reason: None,
             layer: graph::Layer::Isolated,
