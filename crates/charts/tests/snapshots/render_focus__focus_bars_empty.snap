@@ -3,4 +3,73 @@ source: crates/charts/tests/render_focus.rs
 assertion_line: 77
 expression: svg
 ---
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480.0 60.0" role="img" font-family="Helvetica, Arial, sans-serif"><title>Focus ranking</title><text x="16" y="30" font-size="20" fill="#767676">Focus ranking</text><style>.bar{stroke:#fff;stroke-width:2;rx:4}.lbl{fill:#fff;font-size:13px;font-weight:600}.sub{fill:#fff;font-size:11px;opacity:.92}.dim{fill:#333;font-size:12px}.muted{fill:#666;font-size:11px}.pulse{animation:breathe 2.2s ease-in-out infinite}.slow{animation-duration:3.4s}@keyframes breathe{0%,100%{opacity:.95}50%{opacity:.62}}.halo{transform-box:fill-box;transform-origin:center;animation:halo 2.2s ease-out infinite}@keyframes halo{0%{opacity:.75;transform:scale(1)}100%{opacity:0;transform:scale(2.4)}}.card{opacity:0;animation-name:whisk;animation-timing-function:ease-in-out;animation-iteration-count:infinite}.deck .card#r0{opacity:1}@keyframes whisk{0%{opacity:0;transform:translateX(60px)}3%{opacity:1;transform:translateX(0)}10%{opacity:1;transform:translateX(0)}13%{opacity:0;transform:translateX(-60px)}100%{opacity:0;transform:translateX(-60px)}}@media (prefers-reduced-motion:reduce){.pulse,.halo,.card{animation:none}}</style><line x1="260.0" y1="44.0" x2="260.0" y2="44.0" stroke="#767676" stroke-width="1"/><text x="240.0" y="84.0" text-anchor="middle" font-size="14" fill="#767676">No focus data</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480.0 60.0" role="img" font-family="Helvetica, Arial, sans-serif"><title>Focus ranking</title><text x="16" y="30" font-size="20" fill="#767676">Focus ranking</text><style>
+            .bar {
+                stroke: #fff;
+                stroke-width: 2;
+                rx: 4;
+            }
+            .lbl {
+                fill: #fff;
+                font-size: 13px;
+                font-weight: 600;
+            }
+            .sub {
+                fill: #fff;
+                font-size: 11px;
+                opacity: .92;
+            }
+            .dim {
+                fill: #333;
+                font-size: 12px;
+            }
+            .wht {
+                fill: #fff;
+                font-size: 10px;
+                paint-order: stroke;
+                stroke: rgba(0, 0, 0, .45);
+                stroke-width: 3px;
+                stroke-linejoin: round;
+            }
+            .muted {
+                fill: #666;
+                font-size: 11px;
+            }
+            .pulse {
+                animation: breathe 2.2s ease-in-out infinite;
+            }
+            .slow {
+                animation-duration: 3.4s;
+            }
+            @keyframes breathe {
+                0%, 100% { opacity: .95; }
+                50% { opacity: .62; }
+            }
+            .halo {
+                transform-box: fill-box;
+                transform-origin: center;
+                animation: halo 2.2s ease-out infinite;
+            }
+            @keyframes halo {
+                0% { opacity: .75; transform: scale(1); }
+                100% { opacity: 0; transform: scale(2.4); }
+            }
+            .card {
+                opacity: 0;
+                animation: whisk ease-in-out infinite;
+                animation-iteration-count: infinite;
+            }
+            .deck .card#r0 {
+                opacity: 1;
+            }
+            @keyframes whisk {
+                0% { opacity: 0; transform: translateX(60px); }
+                3% { opacity: 1; transform: translateX(0); }
+                10% { opacity: 1; transform: translateX(0); }
+                13% { opacity: 0; transform: translateX(-60px); }
+                100% { opacity: 0; transform: translateX(-60px); }
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .pulse, .halo, .card { animation: none; }
+            }
+        </style><line x1="260.0" y1="44.0" x2="260.0" y2="44.0" stroke="#767676" stroke-width="1"/><text x="240.0" y="84.0" text-anchor="middle" font-size="14" fill="#767676">No focus data</text></svg>

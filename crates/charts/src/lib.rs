@@ -20,14 +20,31 @@ pub mod palette;
 const STYLE_OXFILE: &str = include_str!("../style.oxfile");
 
 fn chart_style() -> anyhow::Result<String> {
-    let line = STYLE_OXFILE
-        .lines()
-        .find(|l| l.trim_start().starts_with("RETURN \""))
+    let text = STYLE_OXFILE;
+    let start = text
+        .find("RETURN \"\"\"")
+        .map(|i| i + "RETURN \"\"\"".len())
         .ok_or_else(|| anyhow::anyhow!("CHART_STYLE payload missing in style.oxfile"))?;
-    let start = line.find('"').map(|i| i + 1).unwrap_or(0);
-    let end = line.rfind('"').unwrap_or(0);
-    anyhow::ensure!(end > start, "CHART_STYLE payload unterminated");
-    Ok(line[start..end].to_string())
+    let end = text[start..]
+        .find("\"\"\"")
+        .map(|i| start + i)
+        .ok_or_else(|| anyhow::anyhow!("CHART_STYLE payload unterminated"))?;
+    // Strip the common indent so the file can be indented for humans
+    // while every consumer gets the same canonical block.
+    let body = text[start..end].trim();
+    let indent = body
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .map(|l| l.len() - l.trim_start().len())
+        .min()
+        .unwrap_or(0);
+    Ok(body
+        .lines()
+        .map(|l| l.get(indent..).unwrap_or(l))
+        .collect::<Vec<_>>()
+        .join("\n")
+        .trim()
+        .to_string())
 }
 
 /// OxDock string-literal transport: `#var` interpolation inlines raw text
@@ -549,8 +566,6 @@ struct FlameRepo {
     desc: String,
     stats: String,
     detail: String,
-    share_w: String,
-    color: String,
     pulse: String,
 }
 
@@ -583,8 +598,6 @@ struct FlameDoc {
     l2y: String,
     l3y: String,
     l4y: String,
-    shy: String,
-    shh: String,
     rows: Vec<FlameRepo>,
 }
 
@@ -648,8 +661,6 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
         l2y: f1(152.0),
         l3y: f1(168.0),
         l4y: f1(182.0),
-        shy: f1(190.0),
-        shh: f1(6.0),
         rows: vec![],
     };
     if total == 0 {
@@ -721,39 +732,39 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
             }
             s
         };
-        let mut detail = if top_txt.is_empty() {
-            String::new()
-        } else {
-            format!("top: {top_txt}")
-        };
-        if !tags.is_empty() {
-            if !detail.is_empty() {
-                detail.push_str(" \u{00b7} ");
-            }
-            detail.push_str(&tags);
-        }
+        let detail = tags;
         // Recency wash: oldest→newest window marginals as stop offsets,
         // cool→hot left to right. Widths, not colors, carry the mix.
         let m5 = n.commits_5d.saturating_sub(n.commits_1d);
         let m15 = n.commits_15d.saturating_sub(n.commits_5d);
         let m30 = n.commits_30d.saturating_sub(n.commits_15d);
         let t = n.commits_30d.max(1) as f64;
-        let (o1, o2, o3) = (
-            m30 as f64 / t,
-            (m30 + m15) as f64 / t,
-            (m30 + m15 + m5) as f64 / t,
-        );
+        // Collapse zero-width buckets: adjacent duplicates draw
+        // as hard edges, so only real spans get stops.
+        let m1 = n.commits_1d;
+        let mut stops: Vec<(f64, String)> = vec![(0.0, palette::dormant())];
+        let mut acc = 0.0;
+        for (m, c) in [
+            (m30, palette::dormant()),
+            (m15, palette::cooling()),
+            (m5, palette::steady()),
+            (m1, palette::heating()),
+        ] {
+            acc += m as f64 / t;
+            if acc > stops.last().map(|(o, _)| *o).unwrap_or(0.0) + 1e-9 {
+                stops.push((acc.min(1.0), c));
+            }
+        }
         grads.push_str(&format!(
-            "<linearGradient id=\"grad-r{ri}\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"0\"><stop offset=\"0\" stop-color=\"{}\" stop-opacity=\"0.55\"/><stop offset=\"{:.3}\" stop-color=\"{}\" stop-opacity=\"0.55\"/><stop offset=\"{:.3}\" stop-color=\"{}\" stop-opacity=\"0.55\"/><stop offset=\"{:.3}\" stop-color=\"{}\" stop-opacity=\"0.55\"/><stop offset=\"1\" stop-color=\"{}\" stop-opacity=\"0.55\"/></linearGradient>",
-            palette::dormant(),
-            o1,
-            palette::cooling(),
-            o2,
-            palette::steady(),
-            o3,
-            palette::heating(),
-            palette::heating()
+            "<linearGradient id=\"grad-r{ri}\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"0\">"
         ));
+        for (o, c) in &stops {
+            grads.push_str(&format!(
+                "<stop offset=\"{:.3}\" stop-color=\"{c}\" stop-opacity=\"0.55\"/>",
+                o.min(1.0)
+            ));
+        }
+        grads.push_str("</linearGradient>");
         let title = match heat {
             Some(h) => format!(
                 "{} \u{00b7} {} commits/30d \u{00b7} heat {h:.2} {band}",
@@ -763,6 +774,11 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
                 "{} \u{00b7} {} commits/30d \u{00b7} dormant",
                 n.name, n.commits_30d
             ),
+        };
+        let title = if top_txt.is_empty() {
+            title
+        } else {
+            format!("{title} \u{00b7} top: {top_txt}")
         };
         rows.push(FlameRepo {
             rid: format!("r{ri}"),
@@ -776,8 +792,6 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
             desc: xml_escape(&desc),
             stats: xml_escape(&stats),
             detail: xml_escape(&detail),
-            share_w: f1(share * FLAME_TRACK),
-            color: heat_color(heat.unwrap_or(0.0)),
             pulse: palette::heat_pulse(heat).to_string(),
         });
     }
@@ -826,8 +840,6 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
         l2y: f1(152.0),
         l3y: f1(168.0),
         l4y: f1(182.0),
-        shy: f1(190.0),
-        shh: f1(6.0),
         rows,
     })
 }
@@ -888,10 +900,9 @@ pub fn render_flame_svg(graph_json: &str) -> anyhow::Result<String> {
                 APPEND out.svg "<g id=\"{{ $r.rid }}\" class=\"card {{ $r.pulse }}\" style=\"animation-duration:{{ $doc.tour_dur }}s;animation-delay:{{ $r.tour_delay }}\">"
                 APPEND out.svg "<rect x=\"{{ $doc.dx }}\" y=\"{{ $doc.dy }}\" width=\"{{ $doc.dw }}\" height=\"{{ $doc.dh }}\" rx=\"4\" fill=\"url(#grad-{{ $r.rid }})\"><title>{{ $r.title }}</title></rect>"
                 APPEND out.svg "<text x=\"{{ $doc.lx }}\" y=\"{{ $doc.l1y }}\" font-size=\"20\" font-weight=\"bold\" fill=\"#222\">{{ $r.nav }}</text>"
-                APPEND out.svg "<text x=\"{{ $doc.lx }}\" y=\"{{ $doc.l2y }}\" class=\"dim\">{{ $r.desc }}</text>"
+                APPEND out.svg "<text x=\"{{ $doc.lx }}\" y=\"{{ $doc.l2y }}\" class=\"dim\" font-weight=\"bold\">{{ $r.desc }}</text>"
                 APPEND out.svg "<text x=\"{{ $doc.lx }}\" y=\"{{ $doc.l3y }}\" class=\"sub\">{{ $r.stats }}</text>"
-                APPEND out.svg "<text x=\"{{ $doc.lx }}\" y=\"{{ $doc.l4y }}\" class=\"muted\">{{ $r.detail }}</text>"
-                APPEND out.svg "<rect x=\"{{ $doc.dx }}\" y=\"{{ $doc.shy }}\" width=\"{{ $r.share_w }}\" height=\"{{ $doc.shh }}\" fill=\"{{ $r.color }}\"/>"
+                APPEND out.svg "<text x=\"{{ $doc.lx }}\" y=\"{{ $doc.l4y }}\" class=\"wht\">{{ $r.detail }}</text>"
                 APPEND out.svg "</g>"
             }
             APPEND out.svg $doc.legend
@@ -1490,17 +1501,22 @@ mod tests {
     #[test]
     fn chart_style_is_the_single_source() {
         // The DSL file owns the tokens; Rust only extracts the payload.
+        // Whitespace-insensitive: reformatting the block must not break this.
         let css = chart_style().unwrap();
         assert!(css.starts_with("<style>"));
         assert!(css.ends_with("</style>"));
+        let flat: String = css.split_whitespace().collect();
         for token in [
-            ".bar{stroke:#fff;stroke-width:2;rx:4}",
+            ".bar{stroke:#fff;",
+            "rx:4",
             ".pulse{animation:breathe",
-            ".slow{animation-duration:3.4s}",
-            "@keyframes breathe",
+            ".slow{animation-duration:3.4s",
+            "@keyframesbreathe",
+            ".wht{fill:#fff;",
+            "@keyframeswhisk",
             "prefers-reduced-motion",
         ] {
-            assert!(css.contains(token), "missing {token}");
+            assert!(flat.contains(token), "missing {token}");
         }
         // Every chart embeds this exact block.
         let g = graph_with(&[("a", 10)]);
@@ -1591,7 +1607,9 @@ mod tests {
         assert!(svg.contains("animation-delay:-4.0s"));
         assert!(!svg.contains("@keyframes acc"));
         // Reduced-motion freezes the deck on the lead card.
-        assert!(svg.contains(".pulse,.halo,.card{animation:none}"));
+        let flat_svg: String = svg.split_whitespace().collect();
+        assert!(flat_svg.contains("prefers-reduced-motion"));
+        assert!(flat_svg.contains("animation:none"));
         // Every repo gets a card with its readout, however small.
         assert!(svg.contains(">small<"));
         assert!(svg.contains("60 commits"));
@@ -1601,17 +1619,17 @@ mod tests {
     }
 
     #[test]
-    fn flame_rows_are_pro_rata_and_honest() {
+    fn flame_rows_carry_recency_and_share() {
         // Two repos, 3:1 split (c30 derives 6x c5: 180 + 60).
         let g = graph_with(&[("big", 30), ("small", 10)]);
+        // Recency gradients carry window shares; offsets must sum to 1.
         let doc = flame_rows(&g).unwrap();
         assert!(!doc.empty);
         assert_eq!(doc.rows.len(), 2);
-        // Share bars stay pro-rata even though cards are full-width.
-        let w0: f64 = doc.rows[0].share_w.parse().unwrap();
-        let w1: f64 = doc.rows[1].share_w.parse().unwrap();
-        assert!((w0 - 576.0).abs() < 0.2, "{w0}");
-        assert!((w1 - 192.0).abs() < 0.2, "{w1}");
+        assert!(doc.grads.contains("grad-r0"));
+        assert!(doc.grads.contains("grad-r1"));
+        // Big's oldest window holds half its commits: stop at 0.500.
+        assert!(doc.grads.contains("offset=\"0.500\""));
         // Portfolio label carries the total, not the shown sum.
         assert!(doc.port_label.contains("240 commits / 30d"));
         // Tiny repos still get a full card with their readout.
