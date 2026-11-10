@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-11-10T01:47:24.705070538Z",
+  "generated_at": "2026-11-10T04:34:57.183396711Z",
   "velocity_scope": "all",
   "velocity_owner": "jzombie",
   "nodes": [
@@ -1849,7 +1849,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -57.266666,
+      "focus": -57.3,
       "branch_heat": [
         {
           "branch": "BrianMouncer-CG-fix",
@@ -2591,7 +2591,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -27.8,
+      "focus": -27.833334,
       "last_commit_at": "2024-07-28T02:34:31Z",
       "branch_heat": [
         {
@@ -3144,7 +3144,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -27.866667,
+      "focus": -27.9,
       "last_commit_at": "2024-07-26T02:17:55Z",
       "branch_heat": [
         {
@@ -3963,7 +3963,7 @@
       "private": false,
       "upstream": null,
       "ahead_by": null,
-      "pushed_at": "2026-11-10T01:25:57Z",
+      "pushed_at": "2026-11-10T01:50:13Z",
       "description": "Nightly map of my GitHub portfolio: real dependency edges plus a self-normalized Developer Focus gauge ranking where attention is going.",
       "topics": [
         "automation",
@@ -3984,10 +3984,10 @@
       "forks_count": 0,
       "open_issues": 2,
       "license": "Apache-2.0",
-      "size_kb": 700,
+      "size_kb": 490,
       "has_readme": true,
       "has_license_file": true,
-      "commits_1d": 20,
+      "commits_1d": 14,
       "commits_5d": 95,
       "commits_15d": 95,
       "commits_30d": 95,
@@ -4007,14 +4007,14 @@
         "enhancement": 2
       },
       "issue_heat": 12.666667,
-      "commit_heat": 4.7719293,
-      "focus": 8.719298,
+      "commit_heat": 4.140351,
+      "focus": 8.403509,
       "last_commit_at": "2026-11-10T01:25:53Z",
       "branch_heat": [
         {
           "branch": "main",
           "is_default": true,
-          "commits_1d": 20,
+          "commits_1d": 14,
           "commits_5d": 95,
           "commits_15d": 95,
           "commits_30d": 95
@@ -5236,7 +5236,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -51.533333,
+      "focus": -51.566666,
       "branch_heat": [
         {
           "branch": "master",
@@ -6013,7 +6013,7 @@
         "enhancement": 6
       },
       "commit_heat": 1.6,
-      "focus": 1.5666667,
+      "focus": 1.5333333,
       "last_commit_at": "2026-11-08T02:13:22Z",
       "branch_heat": [
         {
@@ -6532,7 +6532,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -20.933332,
+      "focus": -20.966667,
       "last_commit_at": "2025-02-19T04:19:11Z",
       "branch_heat": [
         {
@@ -6676,7 +6676,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -20.8,
+      "focus": -20.833334,
       "last_commit_at": "2025-02-23T03:58:04Z",
       "branch_heat": [
         {
@@ -7626,7 +7626,7 @@
       "private": false,
       "upstream": null,
       "ahead_by": null,
-      "pushed_at": "2026-11-10T01:06:02Z",
+      "pushed_at": "2026-11-10T01:45:23Z",
       "description": "An experimental DSL used for building embeddable artifacts and orchestrating pipelines.",
       "topics": [
         "build-tools",
@@ -7643,13 +7643,13 @@
       "forks_count": 0,
       "open_issues": 65,
       "license": "Apache-2.0",
-      "size_kb": 4634,
+      "size_kb": 4637,
       "has_readme": true,
       "has_agents_md": true,
       "has_license_file": true,
-      "commits_1d": 3,
-      "commits_5d": 5,
-      "commits_15d": 11,
+      "commits_1d": 4,
+      "commits_5d": 6,
+      "commits_15d": 12,
       "commits_30d": 31,
       "issues_open_1d": 2,
       "issues_open_5d": 5,
@@ -7669,16 +7669,16 @@
         "needs research": 3
       },
       "issue_heat": 1.4871794,
-      "commit_heat": 1.5268817,
-      "focus": 1.5070305,
-      "last_commit_at": "2026-11-10T01:05:55Z",
+      "commit_heat": 1.9354839,
+      "focus": 1.7113316,
+      "last_commit_at": "2026-11-10T01:45:20Z",
       "branch_heat": [
         {
           "branch": "287-enforce-declared-func-return-types-hard-no-legacy-fallback-async-func-returns-handle--draft",
           "is_default": false,
-          "commits_1d": 2,
-          "commits_5d": 3,
-          "commits_15d": 9,
+          "commits_1d": 3,
+          "commits_5d": 4,
+          "commits_15d": 10,
           "commits_30d": 28
         },
         {
@@ -7687,7 +7687,7 @@
           "commits_1d": 2,
           "commits_5d": 3,
           "commits_15d": 9,
-          "commits_30d": 28
+          "commits_30d": 27
         },
         {
           "branch": "287-enforce-declared-func-return-types-hard-no-legacy-fallback-async-func-returns-handle",
@@ -7695,7 +7695,7 @@
           "commits_1d": 1,
           "commits_5d": 2,
           "commits_15d": 8,
-          "commits_30d": 27
+          "commits_30d": 26
         },
         {
           "branch": "main",
@@ -7703,7 +7703,7 @@
           "commits_1d": 1,
           "commits_5d": 2,
           "commits_15d": 8,
-          "commits_30d": 27
+          "commits_30d": 26
         },
         {
           "branch": "badges",
@@ -8555,7 +8555,7 @@
       ],
       "language": "Rust",
       "homepage": "https://crates.io/crates/simd-r-drive",
-      "stars": 12,
+      "stars": 13,
       "forks_count": 0,
       "open_issues": 9,
       "license": "Apache-2.0",
@@ -9828,7 +9828,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -67.433334,
+      "focus": -67.46667,
       "last_commit_at": "2021-04-26T02:54:59Z",
       "branch_heat": [
         {
@@ -10639,7 +10639,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -35.4,
+      "focus": -35.433334,
       "branch_heat": [
         {
           "branch": "master",
@@ -10752,7 +10752,7 @@
       "homepage": "https://crates.io/crates/term-wm",
       "stars": 7,
       "forks_count": 2,
-      "open_issues": 77,
+      "open_issues": 78,
       "license": "Apache-2.0",
       "size_kb": 6327,
       "has_readme": true,
@@ -10761,27 +10761,28 @@
       "commits_1d": 0,
       "commits_5d": 0,
       "commits_15d": 5,
-      "commits_30d": 7,
-      "issues_open_1d": 1,
-      "issues_open_5d": 1,
-      "issues_open_15d": 6,
-      "issues_open_30d": 7,
+      "commits_30d": 6,
+      "issues_open_1d": 3,
+      "issues_open_5d": 3,
+      "issues_open_15d": 8,
+      "issues_open_30d": 9,
       "issues_closed_1d": 0,
       "issues_closed_5d": 0,
       "issues_closed_15d": 1,
       "issues_closed_30d": 2,
-      "issue_comments_1d": 0,
-      "issue_comments_5d": 0,
-      "issue_comments_15d": 4,
-      "issue_comments_30d": 4,
+      "issue_comments_1d": 2,
+      "issue_comments_5d": 2,
+      "issue_comments_15d": 6,
+      "issue_comments_30d": 6,
       "issue_labels": {
         "bug": 6,
         "enhancement": 3,
-        "needs research": 2
+        "needs research": 2,
+        "rust": 1
       },
-      "issue_heat": 0.6666667,
-      "commit_heat": 0.47619048,
-      "focus": 0.30476192,
+      "issue_heat": 4.6666665,
+      "commit_heat": 0.5555555,
+      "focus": 2.311111,
       "last_commit_at": "2026-11-01T02:08:03Z",
       "branch_heat": [
         {
@@ -10790,7 +10791,7 @@
           "commits_1d": 0,
           "commits_5d": 0,
           "commits_15d": 3,
-          "commits_30d": 5
+          "commits_30d": 4
         },
         {
           "branch": "dependabot/cargo/term-wm-vt100-0.16.2-patch5",
@@ -10798,7 +10799,7 @@
           "commits_1d": 0,
           "commits_5d": 0,
           "commits_15d": 2,
-          "commits_30d": 4
+          "commits_30d": 3
         },
         {
           "branch": "dev--draft",
@@ -10806,7 +10807,7 @@
           "commits_1d": 0,
           "commits_5d": 0,
           "commits_15d": 2,
-          "commits_30d": 4
+          "commits_30d": 3
         },
         {
           "branch": "extract-ci-scripts",
@@ -10814,7 +10815,7 @@
           "commits_1d": 0,
           "commits_5d": 0,
           "commits_15d": 2,
-          "commits_30d": 4
+          "commits_30d": 3
         },
         {
           "branch": "dependabot/cargo/indoc-2.0.8",
@@ -10822,7 +10823,7 @@
           "commits_1d": 0,
           "commits_5d": 0,
           "commits_15d": 1,
-          "commits_30d": 3
+          "commits_30d": 2
         },
         {
           "branch": "dependabot/cargo/libc-0.2.191",
@@ -10830,7 +10831,7 @@
           "commits_1d": 0,
           "commits_5d": 0,
           "commits_15d": 1,
-          "commits_30d": 3
+          "commits_30d": 2
         },
         {
           "branch": "dependabot/cargo/oxdock-fs-0.31.0-alpha",
@@ -10838,7 +10839,7 @@
           "commits_1d": 0,
           "commits_5d": 0,
           "commits_15d": 1,
-          "commits_30d": 3
+          "commits_30d": 2
         },
         {
           "branch": "dependabot/cargo/syn-3.0.9",
@@ -10846,7 +10847,7 @@
           "commits_1d": 0,
           "commits_5d": 0,
           "commits_15d": 1,
-          "commits_30d": 3
+          "commits_30d": 2
         },
         {
           "branch": "main",
@@ -10854,7 +10855,7 @@
           "commits_1d": 0,
           "commits_5d": 0,
           "commits_15d": 1,
-          "commits_30d": 3
+          "commits_30d": 2
         },
         {
           "branch": "arch-tiers/baseline",
@@ -10997,6 +10998,26 @@
       ],
       "recent_issues": [
         {
+          "number": 321,
+          "title": "sessions (network perf): Investigate potential perf issues when running many active remote clients",
+          "state": "OPEN",
+          "labels": [
+            "enhancement",
+            "needs research"
+          ],
+          "comments": 1
+        },
+        {
+          "number": 400,
+          "title": "perf[session-client]: full-viewport repaint per frame saturates slow SSH links (3-5 s keystroke-to-render)",
+          "state": "OPEN",
+          "labels": [
+            "bug",
+            "rust"
+          ],
+          "comments": 1
+        },
+        {
           "number": 399,
           "title": "wm: Closing a window should cycle to previously focused window",
           "state": "OPEN",
@@ -11066,25 +11087,6 @@
             "bug"
           ],
           "comments": 2
-        },
-        {
-          "number": 382,
-          "title": "remote-pty: Extract reusable 1:1 PTY transport over one multiplexed Muxio channel",
-          "state": "OPEN",
-          "labels": [
-            "enhancement",
-            "needs research"
-          ],
-          "comments": 0
-        },
-        {
-          "number": 357,
-          "title": "ui: Toast notifications appear behind top panel in Monocle Mode",
-          "state": "CLOSED",
-          "labels": [
-            "bug"
-          ],
-          "comments": 0
         }
       ],
       "has_default_binary": true,
@@ -11327,7 +11329,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -10.566667,
+      "focus": -10.6,
       "last_commit_at": "2025-12-27T03:57:25Z",
       "branch_heat": [
         {
@@ -11526,7 +11528,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -11.4,
+      "focus": -11.433333,
       "branch_heat": [
         {
           "branch": "main",
@@ -11579,7 +11581,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -108.833336,
+      "focus": -108.86667,
       "last_commit_at": "2017-12-01T03:01:14Z",
       "branch_heat": [
         {
@@ -12044,24 +12046,25 @@
       "commits_5d": 0,
       "commits_15d": 1,
       "commits_30d": 1,
-      "issues_open_1d": 0,
-      "issues_open_5d": 0,
-      "issues_open_15d": 0,
-      "issues_open_30d": 0,
+      "issues_open_1d": 1,
+      "issues_open_5d": 1,
+      "issues_open_15d": 1,
+      "issues_open_30d": 1,
       "issues_closed_1d": 0,
       "issues_closed_5d": 0,
       "issues_closed_15d": 0,
       "issues_closed_30d": 0,
-      "issue_comments_1d": 0,
-      "issue_comments_5d": 0,
-      "issue_comments_15d": 0,
-      "issue_comments_30d": 0,
+      "issue_comments_1d": 1,
+      "issue_comments_5d": 1,
+      "issue_comments_15d": 1,
+      "issue_comments_30d": 1,
       "issue_labels": {
         "documentation": 1,
         "enhancement": 1
       },
+      "issue_heat": 12.666667,
       "commit_heat": 0.6666667,
-      "focus": 0.36666667,
+      "focus": 6.366667,
       "last_commit_at": "2026-10-31T21:39:47Z",
       "branch_heat": [
         {
@@ -12197,6 +12200,15 @@
       ],
       "recent_issues": [
         {
+          "number": 12,
+          "title": "Add additional status metrics to project cards",
+          "state": "OPEN",
+          "labels": [
+            "enhancement"
+          ],
+          "comments": 1
+        },
+        {
           "number": 1,
           "title": "Create stats cache for aggregate API usage",
           "state": "OPEN",
@@ -12204,15 +12216,6 @@
             "documentation"
           ],
           "comments": 1
-        },
-        {
-          "number": 12,
-          "title": "Add additional status metrics to project cards",
-          "state": "OPEN",
-          "labels": [
-            "enhancement"
-          ],
-          "comments": 0
         }
       ],
       "has_default_binary": false,
@@ -12241,7 +12244,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-10T01:25:57Z",
+      "recency": "2026-11-10T01:50:13Z",
       "version": "0.35.0-alpha"
     },
     {
@@ -12271,7 +12274,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-10T01:25:57Z",
+      "recency": "2026-11-10T01:50:13Z",
       "version": "0.13.5-alpha.1"
     },
     {
@@ -12361,7 +12364,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-10T01:06:02Z",
+      "recency": "2026-11-10T01:45:23Z",
       "version": "1.6.0"
     },
     {
@@ -12371,7 +12374,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-10T01:06:02Z",
+      "recency": "2026-11-10T01:45:23Z",
       "version": "0.17.0-alpha"
     },
     {
