@@ -2,7 +2,7 @@
 
 jzombie portfolio as a 2D projection — proximity is edge strength. Drawn: 15 repos, 21 dependence edges (+2 runtime-coupling); layers 4 foundation · 5 middleware · 8 application · 1 isolated. Hottest now: term-wm (heat 8.92); most depended-upon: rust-line-ending (5).
 
-Generated from the `portfolio-graph` collection (schema v7) — last run 2026-11-11 01:44 UTC. Braille traces show cargo dependence plus docs runtime coupling; every label links to GitHub.
+Generated from the `portfolio-graph` collection (schema v7) — last run 2026-11-11 04:35 UTC. Braille traces show cargo dependence plus docs runtime coupling; every label links to GitHub.
 
 <sub>Diagram: a 2D projection of these repos — closeness means shared dependencies. Screen readers: the block below uses braille characters for lines and is noisy, so it is hidden; the same edges are machine-readable in `graph.json`.</sub>
 

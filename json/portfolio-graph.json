@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-11-11T01:44:34.122542886Z",
+  "generated_at": "2026-11-11T04:35:52.675250126Z",
   "velocity_scope": "all",
   "velocity_owner": "jzombie",
   "nodes": [
@@ -1849,7 +1849,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -57.3,
+      "focus": -57.333332,
       "branch_heat": [
         {
           "branch": "BrianMouncer-CG-fix",
@@ -2462,7 +2462,7 @@
       "private": false,
       "upstream": null,
       "ahead_by": null,
-      "pushed_at": "2025-11-24T23:48:41Z",
+      "pushed_at": "2026-11-11T01:48:59Z",
       "description": "Convert DeepWiki pages into polished HTML docs using mdBook.",
       "topics": [
         "deepwiki",
@@ -2476,10 +2476,10 @@
       "open_issues": 2,
       "size_kb": 99,
       "has_readme": true,
-      "commits_1d": 0,
-      "commits_5d": 0,
-      "commits_15d": 0,
-      "commits_30d": 0,
+      "commits_1d": 1,
+      "commits_5d": 1,
+      "commits_15d": 1,
+      "commits_30d": 1,
       "issues_open_1d": 0,
       "issues_open_5d": 0,
       "issues_open_15d": 0,
@@ -2496,16 +2496,17 @@
         "bug": 1,
         "enhancement": 1
       },
-      "focus": -11.7,
-      "last_commit_at": "2025-11-24T23:48:38Z",
+      "commit_heat": 12.666667,
+      "focus": 12.666667,
+      "last_commit_at": "2026-11-11T01:48:58Z",
       "branch_heat": [
         {
           "branch": "main",
           "is_default": true,
-          "commits_1d": 0,
-          "commits_5d": 0,
-          "commits_15d": 0,
-          "commits_30d": 0
+          "commits_1d": 1,
+          "commits_5d": 1,
+          "commits_15d": 1,
+          "commits_30d": 1
         }
       ],
       "recent_prs": [
@@ -2591,7 +2592,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -27.833334,
+      "focus": -27.866667,
       "last_commit_at": "2024-07-28T02:34:31Z",
       "branch_heat": [
         {
@@ -3144,7 +3145,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -27.9,
+      "focus": -27.933332,
       "last_commit_at": "2024-07-26T02:17:55Z",
       "branch_heat": [
         {
@@ -3963,7 +3964,7 @@
       "private": false,
       "upstream": null,
       "ahead_by": null,
-      "pushed_at": "2026-11-10T20:12:19Z",
+      "pushed_at": "2026-11-11T01:44:46Z",
       "description": "Nightly map of my GitHub portfolio: real dependency edges plus a self-normalized Developer Focus gauge ranking where attention is going.",
       "topics": [
         "automation",
@@ -3984,7 +3985,7 @@
       "forks_count": 0,
       "open_issues": 2,
       "license": "Apache-2.0",
-      "size_kb": 644,
+      "size_kb": 697,
       "has_readme": true,
       "has_license_file": true,
       "commits_1d": 0,
@@ -5255,7 +5256,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -51.566666,
+      "focus": -51.6,
       "branch_heat": [
         {
           "branch": "master",
@@ -6032,7 +6033,7 @@
         "enhancement": 6
       },
       "commit_heat": 0.59999996,
-      "focus": 0.5333333,
+      "focus": 0.49999997,
       "last_commit_at": "2026-11-08T02:13:22Z",
       "branch_heat": [
         {
@@ -6551,7 +6552,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -20.966667,
+      "focus": -21.0,
       "last_commit_at": "2025-02-19T04:19:11Z",
       "branch_heat": [
         {
@@ -6695,7 +6696,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -20.833334,
+      "focus": -20.866667,
       "last_commit_at": "2025-02-23T03:58:04Z",
       "branch_heat": [
         {
@@ -7645,7 +7646,7 @@
       "private": false,
       "upstream": null,
       "ahead_by": null,
-      "pushed_at": "2026-11-10T22:31:51Z",
+      "pushed_at": "2026-11-11T02:41:36Z",
       "description": "An experimental DSL used for building embeddable artifacts and orchestrating pipelines.",
       "topics": [
         "build-tools",
@@ -7662,14 +7663,14 @@
       "forks_count": 0,
       "open_issues": 65,
       "license": "Apache-2.0",
-      "size_kb": 4908,
+      "size_kb": 5452,
       "has_readme": true,
       "has_agents_md": true,
       "has_license_file": true,
-      "commits_1d": 9,
-      "commits_5d": 13,
-      "commits_15d": 20,
-      "commits_30d": 36,
+      "commits_1d": 11,
+      "commits_5d": 15,
+      "commits_15d": 22,
+      "commits_30d": 37,
       "issues_open_1d": 0,
       "issues_open_5d": 5,
       "issues_open_15d": 23,
@@ -7677,7 +7678,7 @@
       "issues_closed_1d": 0,
       "issues_closed_5d": 1,
       "issues_closed_15d": 8,
-      "issues_closed_30d": 17,
+      "issues_closed_30d": 15,
       "issue_comments_1d": 0,
       "issue_comments_5d": 6,
       "issue_comments_15d": 11,
@@ -7688,25 +7689,17 @@
         "needs research": 3
       },
       "issue_heat": 1.4871794,
-      "commit_heat": 3.5925922,
-      "focus": 2.5398858,
-      "last_commit_at": "2026-11-11T01:33:28Z",
+      "commit_heat": 4.18018,
+      "focus": 2.8336797,
+      "last_commit_at": "2026-11-11T02:41:33Z",
       "branch_heat": [
         {
           "branch": "287-enforce-declared-func-return-types-hard-no-legacy-fallback-async-func-returns-handle--draft",
           "is_default": false,
-          "commits_1d": 8,
-          "commits_5d": 10,
-          "commits_15d": 17,
-          "commits_30d": 33
-        },
-        {
-          "branch": "jzombie-patch-1",
-          "is_default": false,
-          "commits_1d": 0,
-          "commits_5d": 2,
-          "commits_15d": 9,
-          "commits_30d": 25
+          "commits_1d": 10,
+          "commits_5d": 13,
+          "commits_15d": 20,
+          "commits_30d": 35
         },
         {
           "branch": "287-enforce-declared-func-return-types-hard-no-legacy-fallback-async-func-returns-handle",
@@ -7714,7 +7707,7 @@
           "commits_1d": 0,
           "commits_5d": 1,
           "commits_15d": 8,
-          "commits_30d": 24
+          "commits_30d": 23
         },
         {
           "branch": "main",
@@ -7722,7 +7715,7 @@
           "commits_1d": 0,
           "commits_5d": 1,
           "commits_15d": 8,
-          "commits_30d": 24
+          "commits_30d": 23
         },
         {
           "branch": "badges",
@@ -7743,10 +7736,16 @@
       ],
       "recent_prs": [
         {
-          "title": "Drop potentially stale comment",
-          "branch": "jzombie-patch-1",
+          "title": "draft - 287 enforce declared func return types hard no legacy fallback async func returns handle",
+          "branch": "287-enforce-declared-func-return-types-hard-no-legacy-fallback-async-func-returns-handle--draft",
           "base": "main",
           "state": "OPEN"
+        },
+        {
+          "title": "Drop potentially stale comment",
+          "branch": "jzombie-patch-1",
+          "base": "287-enforce-declared-func-return-types-hard-no-legacy-fallback-async-func-returns-handle--draft",
+          "state": "MERGED"
         },
         {
           "title": "feat: OxDock template renderer",
@@ -7853,12 +7852,6 @@
         {
           "title": "build(deps): Bump rmcp from 3.6.0 to 3.7.0",
           "branch": "dependabot/cargo/rmcp-3.7.0",
-          "base": "bump-deps",
-          "state": "MERGED"
-        },
-        {
-          "title": "build(deps): Bump pest_meta from 2.9.4 to 2.9.5",
-          "branch": "dependabot/cargo/pest_meta-2.9.5",
           "base": "bump-deps",
           "state": "MERGED"
         }
@@ -9423,15 +9416,15 @@
       "issues_closed_30d": 3,
       "issue_comments_1d": 0,
       "issue_comments_5d": 0,
-      "issue_comments_15d": 1,
+      "issue_comments_15d": 0,
       "issue_comments_30d": 3,
       "issue_labels": {
         "bug": 1,
         "enhancement": 7
       },
-      "issue_heat": 0.22222222,
+      "issue_heat": 0.0,
       "commit_heat": 0.5714286,
-      "focus": 0.09682539,
+      "focus": -0.014285713,
       "last_commit_at": "2026-11-02T01:26:46Z",
       "branch_heat": [
         {
@@ -9847,7 +9840,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -67.46667,
+      "focus": -67.5,
       "last_commit_at": "2021-04-26T02:54:59Z",
       "branch_heat": [
         {
@@ -10658,7 +10651,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -35.433334,
+      "focus": -35.466667,
       "branch_heat": [
         {
           "branch": "master",
@@ -10789,7 +10782,7 @@
       "issues_closed_5d": 4,
       "issues_closed_15d": 5,
       "issues_closed_30d": 6,
-      "issue_comments_1d": 4,
+      "issue_comments_1d": 2,
       "issue_comments_5d": 4,
       "issue_comments_15d": 7,
       "issue_comments_30d": 8,
@@ -10799,9 +10792,9 @@
         "needs research": 2,
         "rust": 1
       },
-      "issue_heat": 6.5833335,
+      "issue_heat": 4.0833335,
       "commit_heat": 8.923077,
-      "focus": 7.7532053,
+      "focus": 6.5032053,
       "last_commit_at": "2026-11-10T15:41:43Z",
       "branch_heat": [
         {
@@ -11308,7 +11301,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -10.6,
+      "focus": -10.633333,
       "last_commit_at": "2025-12-27T03:57:25Z",
       "branch_heat": [
         {
@@ -11507,7 +11500,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -11.433333,
+      "focus": -11.466666,
       "branch_heat": [
         {
           "branch": "main",
@@ -11560,7 +11553,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -108.86667,
+      "focus": -108.9,
       "last_commit_at": "2017-12-01T03:01:14Z",
       "branch_heat": [
         {
@@ -11653,7 +11646,7 @@
       "private": false,
       "upstream": null,
       "ahead_by": null,
-      "pushed_at": "2026-11-11T01:31:04Z",
+      "pushed_at": "2026-11-11T01:59:51Z",
       "description": "Provision an SSH-ready headless Windows 11 VM from a retail installer ISO in one command. Unattended setup, portable QEMU, no Docker.",
       "topics": [
         "command-line-utilities",
@@ -11669,15 +11662,15 @@
       "homepage": "https://crates.io/crates/windows-headless",
       "stars": 0,
       "forks_count": 0,
-      "open_issues": 3,
+      "open_issues": 2,
       "license": "Apache-2.0",
-      "size_kb": 5677,
+      "size_kb": 5814,
       "has_readme": true,
       "has_license_file": true,
-      "commits_1d": 22,
-      "commits_5d": 22,
-      "commits_15d": 75,
-      "commits_30d": 91,
+      "commits_1d": 1,
+      "commits_5d": 1,
+      "commits_15d": 54,
+      "commits_30d": 67,
       "issues_open_1d": 0,
       "issues_open_5d": 0,
       "issues_open_15d": 1,
@@ -11691,25 +11684,17 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "commit_heat": 3.4505494,
-      "focus": 3.4505494,
-      "last_commit_at": "2026-11-11T01:31:02Z",
+      "commit_heat": 0.71641785,
+      "focus": 0.71641785,
+      "last_commit_at": "2026-11-11T01:59:47Z",
       "branch_heat": [
-        {
-          "branch": "bump-deps",
-          "is_default": false,
-          "commits_1d": 22,
-          "commits_5d": 22,
-          "commits_15d": 75,
-          "commits_30d": 82
-        },
         {
           "branch": "main",
           "is_default": true,
-          "commits_1d": 0,
-          "commits_5d": 0,
-          "commits_15d": 53,
-          "commits_30d": 60
+          "commits_1d": 1,
+          "commits_5d": 1,
+          "commits_15d": 54,
+          "commits_30d": 58
         },
         {
           "branch": "feat/oxdock-ssh",
@@ -11717,7 +11702,7 @@
           "commits_1d": 0,
           "commits_5d": 0,
           "commits_15d": 0,
-          "commits_30d": 14
+          "commits_30d": 11
         }
       ],
       "recent_prs": [
@@ -11725,7 +11710,7 @@
           "title": "v0.3.4-alpha (Bump deps)",
           "branch": "bump-deps",
           "base": "main",
-          "state": "OPEN"
+          "state": "MERGED"
         },
         {
           "title": "build(deps): bump flate2 from 1.1.10 to 1.1.11",
@@ -11879,7 +11864,7 @@
       "homepage": "https://blog.zenosmosis.com/",
       "stars": 0,
       "forks_count": 0,
-      "open_issues": 4,
+      "open_issues": 3,
       "size_kb": 566,
       "has_readme": true,
       "commits_1d": 15,
@@ -11888,22 +11873,22 @@
       "commits_30d": 15,
       "issues_open_1d": 2,
       "issues_open_5d": 2,
-      "issues_open_15d": 3,
-      "issues_open_30d": 3,
-      "issues_closed_1d": 0,
-      "issues_closed_5d": 0,
-      "issues_closed_15d": 0,
-      "issues_closed_30d": 0,
-      "issue_comments_1d": 1,
-      "issue_comments_5d": 4,
-      "issue_comments_15d": 7,
-      "issue_comments_30d": 7,
+      "issues_open_15d": 2,
+      "issues_open_30d": 2,
+      "issues_closed_1d": 1,
+      "issues_closed_5d": 1,
+      "issues_closed_15d": 1,
+      "issues_closed_30d": 1,
+      "issue_comments_1d": 3,
+      "issue_comments_5d": 6,
+      "issue_comments_15d": 9,
+      "issue_comments_30d": 9,
       "issue_labels": {
         "documentation": 1
       },
-      "issue_heat": 3.2380953,
+      "issue_heat": 5.3333335,
       "commit_heat": 12.666667,
-      "focus": 7.952381,
+      "focus": 9.0,
       "last_commit_at": "2026-11-11T00:23:26Z",
       "branch_heat": [
         {
@@ -11981,11 +11966,11 @@
       ],
       "recent_issues": [
         {
-          "number": 9,
-          "title": "Magnet Vector: how this blog fits the strategy and what it should contain",
-          "state": "OPEN",
+          "number": 8,
+          "title": "Consider replacing Hugo with an OxDock-built static site pipeline",
+          "state": "CLOSED",
           "labels": [],
-          "comments": 7
+          "comments": 1
         },
         {
           "number": 10,
@@ -11994,14 +11979,14 @@
           "labels": [
             "documentation"
           ],
-          "comments": 0
+          "comments": 1
         },
         {
-          "number": 8,
-          "title": "Consider replacing Hugo with an OxDock-built static site pipeline",
+          "number": 9,
+          "title": "Magnet Vector: how this blog fits the strategy and what it should contain",
           "state": "OPEN",
           "labels": [],
-          "comments": 0
+          "comments": 7
         },
         {
           "number": 3,
@@ -12039,7 +12024,7 @@
       "commits_5d": 0,
       "commits_15d": 1,
       "commits_30d": 1,
-      "issues_open_1d": 2,
+      "issues_open_1d": 1,
       "issues_open_5d": 2,
       "issues_open_15d": 2,
       "issues_open_30d": 2,
@@ -12047,7 +12032,7 @@
       "issues_closed_5d": 0,
       "issues_closed_15d": 0,
       "issues_closed_30d": 0,
-      "issue_comments_1d": 1,
+      "issue_comments_1d": 0,
       "issue_comments_5d": 1,
       "issue_comments_15d": 1,
       "issue_comments_30d": 1,
@@ -12055,9 +12040,9 @@
         "documentation": 1,
         "enhancement": 1
       },
-      "issue_heat": 12.666667,
+      "issue_heat": 2.6666667,
       "commit_heat": 0.6666667,
-      "focus": 6.3333335,
+      "focus": 1.3333334,
       "last_commit_at": "2026-10-31T21:39:47Z",
       "branch_heat": [
         {
@@ -12244,7 +12229,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-10T20:12:19Z",
+      "recency": "2026-11-11T01:44:46Z",
       "version": "0.35.0-alpha"
     },
     {
@@ -12274,7 +12259,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-10T20:12:19Z",
+      "recency": "2026-11-11T01:44:46Z",
       "version": "0.13.5-alpha.1"
     },
     {
@@ -12364,7 +12349,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-10T22:31:51Z",
+      "recency": "2026-11-11T02:41:36Z",
       "version": "1.6.0"
     },
     {
@@ -12374,7 +12359,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-10T22:31:51Z",
+      "recency": "2026-11-11T02:41:36Z",
       "version": "0.17.0-alpha"
     },
     {
@@ -12594,7 +12579,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-11T01:31:04Z",
+      "recency": "2026-11-11T01:59:51Z",
       "version": "0.6.0"
     }
   ]
