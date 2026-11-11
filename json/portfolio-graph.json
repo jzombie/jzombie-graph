@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-11-11T04:35:52.675250126Z",
+  "generated_at": "2026-11-11T23:59:04.708004126Z",
   "velocity_scope": "all",
   "velocity_owner": "jzombie",
   "nodes": [
@@ -36,7 +36,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -54.933334,
+      "focus": -54.966667,
       "branch_heat": [
         {
           "branch": "main",
@@ -89,7 +89,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -86.53333,
+      "focus": -86.566666,
       "branch_heat": [
         {
           "branch": "master",
@@ -144,7 +144,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -44.433334,
+      "focus": -44.466667,
       "branch_heat": [
         {
           "branch": "main",
@@ -200,7 +200,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -109.13333,
+      "focus": -109.166664,
       "last_commit_at": "2017-11-23T21:23:51Z",
       "branch_heat": [
         {
@@ -265,7 +265,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -47.7,
+      "focus": -47.733334,
       "branch_heat": [
         {
           "branch": "master",
@@ -416,7 +416,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -63.7,
+      "focus": -63.733334,
       "last_commit_at": "2021-08-17T23:44:16Z",
       "branch_heat": [
         {
@@ -553,7 +553,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -4.4666667,
+      "focus": -4.5,
       "branch_heat": [
         {
           "branch": "main",
@@ -609,7 +609,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -5.766667,
+      "focus": -5.8,
       "branch_heat": [
         {
           "branch": "main",
@@ -744,7 +744,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -38.866665,
+      "focus": -38.9,
       "branch_heat": [
         {
           "branch": "0.3.14",
@@ -1591,7 +1591,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -57.766666,
+      "focus": -57.8,
       "branch_heat": [
         {
           "branch": "dependabot/npm_and_yarn/ajv-6.12.6",
@@ -1777,7 +1777,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -13.333333,
+      "focus": -13.366667,
       "last_commit_at": "2025-10-06T05:52:29Z",
       "branch_heat": [
         {
@@ -2433,7 +2433,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -11.9,
+      "focus": -11.933333,
       "branch_heat": [
         {
           "branch": "main",
@@ -2649,7 +2649,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -34.666668,
+      "focus": -34.7,
       "last_commit_at": "2024-01-05T22:08:10Z",
       "branch_heat": [
         {
@@ -2975,7 +2975,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -7.0,
+      "focus": -7.0333333,
       "last_commit_at": "2026-04-14T14:42:45Z",
       "branch_heat": [
         {
@@ -3040,7 +3040,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -25.4,
+      "focus": -25.433332,
       "branch_heat": [
         {
           "branch": "master",
@@ -3092,7 +3092,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -12.533334,
+      "focus": -12.566667,
       "branch_heat": [
         {
           "branch": "master",
@@ -3201,7 +3201,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -20.533333,
+      "focus": -20.566668,
       "last_commit_at": "2025-03-04T21:55:38Z",
       "branch_heat": [
         {
@@ -3258,7 +3258,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -15.233334,
+      "focus": -15.266666,
       "last_commit_at": "2025-08-10T19:33:01Z",
       "branch_heat": [
         {
@@ -3320,7 +3320,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -70.333336,
+      "focus": -70.36667,
       "last_commit_at": "2021-01-30T15:11:39Z",
       "branch_heat": [
         {
@@ -3882,7 +3882,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -35.866665,
+      "focus": -35.9,
       "branch_heat": [
         {
           "branch": "main",
@@ -3964,7 +3964,7 @@
       "private": false,
       "upstream": null,
       "ahead_by": null,
-      "pushed_at": "2026-11-11T01:44:46Z",
+      "pushed_at": "2026-11-11T04:36:02Z",
       "description": "Nightly map of my GitHub portfolio: real dependency edges plus a self-normalized Developer Focus gauge ranking where attention is going.",
       "topics": [
         "automation",
@@ -3985,7 +3985,7 @@
       "forks_count": 0,
       "open_issues": 2,
       "license": "Apache-2.0",
-      "size_kb": 697,
+      "size_kb": 748,
       "has_readme": true,
       "has_license_file": true,
       "commits_1d": 0,
@@ -4084,7 +4084,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -48.8,
+      "focus": -48.833332,
       "last_commit_at": "2022-11-07T13:59:29Z",
       "branch_heat": [
         {
@@ -4139,7 +4139,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -103.066666,
+      "focus": -103.1,
       "branch_heat": [
         {
           "branch": "master",
@@ -4189,7 +4189,7 @@
       "open_issues": 1,
       "size_kb": 70,
       "has_readme": true,
-      "commits_1d": 2,
+      "commits_1d": 0,
       "commits_5d": 2,
       "commits_15d": 3,
       "commits_30d": 3,
@@ -4197,7 +4197,7 @@
       "issues_open_5d": 0,
       "issues_open_15d": 0,
       "issues_open_30d": 0,
-      "issues_closed_1d": 1,
+      "issues_closed_1d": 0,
       "issues_closed_5d": 1,
       "issues_closed_15d": 1,
       "issues_closed_30d": 1,
@@ -4208,14 +4208,14 @@
       "issue_labels": {
         "enhancement": 1
       },
-      "commit_heat": 8.666667,
-      "focus": 8.666667,
+      "commit_heat": 2.0,
+      "focus": 1.9666667,
       "last_commit_at": "2026-11-10T22:18:41Z",
       "branch_heat": [
         {
           "branch": "main",
           "is_default": true,
-          "commits_1d": 2,
+          "commits_1d": 0,
           "commits_5d": 2,
           "commits_15d": 3,
           "commits_30d": 3
@@ -4320,7 +4320,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -25.533333,
+      "focus": -25.566668,
       "branch_heat": [
         {
           "branch": "master",
@@ -4372,7 +4372,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -2.8,
+      "focus": -2.8333333,
       "last_commit_at": "2026-08-18T21:23:41Z",
       "branch_heat": [
         {
@@ -4436,7 +4436,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -10.233334,
+      "focus": -10.266666,
       "branch_heat": [
         {
           "branch": "master",
@@ -4490,7 +4490,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -35.1,
+      "focus": -35.133335,
       "branch_heat": [
         {
           "branch": "main",
@@ -4546,7 +4546,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -47.966667,
+      "focus": -48.0,
       "branch_heat": [
         {
           "branch": "master",
@@ -4603,7 +4603,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -62.566666,
+      "focus": -62.6,
       "branch_heat": [
         {
           "branch": "master",
@@ -4658,7 +4658,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -46.666668,
+      "focus": -46.7,
       "branch_heat": [
         {
           "branch": "master",
@@ -4712,7 +4712,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -68.566666,
+      "focus": -68.6,
       "last_commit_at": "2021-03-24T15:14:57Z",
       "branch_heat": [
         {
@@ -4783,7 +4783,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -63.5,
+      "focus": -63.533333,
       "last_commit_at": "2021-08-23T18:49:32Z",
       "branch_heat": [
         {
@@ -4872,7 +4872,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -33.633335,
+      "focus": -33.666668,
       "branch_heat": [
         {
           "branch": "main",
@@ -4929,7 +4929,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -33.666668,
+      "focus": -33.7,
       "branch_heat": [
         {
           "branch": "master",
@@ -4997,7 +4997,7 @@
       "issue_labels": {
         "enhancement": 3
       },
-      "focus": -21.233334,
+      "focus": -21.266666,
       "last_commit_at": "2025-02-11T20:40:53Z",
       "branch_heat": [
         {
@@ -5201,7 +5201,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -49.8,
+      "focus": -49.833332,
       "branch_heat": [
         {
           "branch": "master",
@@ -5321,7 +5321,7 @@
       "issue_labels": {
         "enhancement": 1
       },
-      "focus": -31.633333,
+      "focus": -31.666666,
       "last_commit_at": "2024-04-05T19:10:06Z",
       "branch_heat": [
         {
@@ -5461,7 +5461,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -48.6,
+      "focus": -48.633335,
       "branch_heat": [
         {
           "branch": "Stijn-van-Nieulande-master",
@@ -5702,7 +5702,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -0.46666667,
+      "focus": -0.5,
       "branch_heat": [
         {
           "branch": "main",
@@ -5758,7 +5758,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -28.166666,
+      "focus": -28.2,
       "branch_heat": [
         {
           "branch": "master",
@@ -5814,7 +5814,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -25.4,
+      "focus": -25.433332,
       "branch_heat": [
         {
           "branch": "main",
@@ -5871,7 +5871,7 @@
         "Discovery": 1,
         "enhancement": 1
       },
-      "focus": -57.3,
+      "focus": -57.333332,
       "last_commit_at": "2022-02-25T17:17:58Z",
       "branch_heat": [
         {
@@ -5954,7 +5954,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -20.566668,
+      "focus": -20.6,
       "last_commit_at": "2025-03-03T19:38:33Z",
       "branch_heat": [
         {
@@ -6367,7 +6367,7 @@
         "bug": 1,
         "enhancement": 1
       },
-      "focus": -1.1,
+      "focus": -1.1333333,
       "last_commit_at": "2026-10-08T05:58:24Z",
       "branch_heat": [
         {
@@ -6791,7 +6791,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -21.4,
+      "focus": -21.433332,
       "last_commit_at": "2025-02-06T22:31:47Z",
       "branch_heat": [
         {
@@ -6874,7 +6874,7 @@
       "issue_comments_30d": 0,
       "issue_labels": {},
       "commit_heat": 0.6666667,
-      "focus": 0.23333335,
+      "focus": 0.20000002,
       "last_commit_at": "2026-10-28T16:04:08Z",
       "branch_heat": [
         {
@@ -7018,7 +7018,7 @@
         "question": 1,
         "rust": 1
       },
-      "focus": -11.1,
+      "focus": -11.133333,
       "last_commit_at": "2025-12-12T19:19:30Z",
       "branch_heat": [
         {
@@ -7646,7 +7646,7 @@
       "private": false,
       "upstream": null,
       "ahead_by": null,
-      "pushed_at": "2026-11-11T02:41:36Z",
+      "pushed_at": "2026-11-11T23:17:59Z",
       "description": "An experimental DSL used for building embeddable artifacts and orchestrating pipelines.",
       "topics": [
         "build-tools",
@@ -7663,18 +7663,18 @@
       "forks_count": 0,
       "open_issues": 65,
       "license": "Apache-2.0",
-      "size_kb": 5452,
+      "size_kb": 7491,
       "has_readme": true,
       "has_agents_md": true,
       "has_license_file": true,
-      "commits_1d": 11,
-      "commits_5d": 15,
-      "commits_15d": 22,
-      "commits_30d": 37,
+      "commits_1d": 30,
+      "commits_5d": 40,
+      "commits_15d": 48,
+      "commits_30d": 61,
       "issues_open_1d": 0,
       "issues_open_5d": 5,
       "issues_open_15d": 23,
-      "issues_open_30d": 29,
+      "issues_open_30d": 28,
       "issues_closed_1d": 0,
       "issues_closed_5d": 1,
       "issues_closed_15d": 8,
@@ -7689,17 +7689,17 @@
         "needs research": 3
       },
       "issue_heat": 1.4871794,
-      "commit_heat": 4.18018,
-      "focus": 2.8336797,
-      "last_commit_at": "2026-11-11T02:41:33Z",
+      "commit_heat": 6.754099,
+      "focus": 4.1206393,
+      "last_commit_at": "2026-11-11T23:17:57Z",
       "branch_heat": [
         {
           "branch": "287-enforce-declared-func-return-types-hard-no-legacy-fallback-async-func-returns-handle--draft",
           "is_default": false,
-          "commits_1d": 10,
-          "commits_5d": 13,
-          "commits_15d": 20,
-          "commits_30d": 35
+          "commits_1d": 30,
+          "commits_5d": 39,
+          "commits_15d": 46,
+          "commits_30d": 59
         },
         {
           "branch": "287-enforce-declared-func-return-types-hard-no-legacy-fallback-async-func-returns-handle",
@@ -7707,7 +7707,7 @@
           "commits_1d": 0,
           "commits_5d": 1,
           "commits_15d": 8,
-          "commits_30d": 23
+          "commits_30d": 21
         },
         {
           "branch": "main",
@@ -7715,13 +7715,13 @@
           "commits_1d": 0,
           "commits_5d": 1,
           "commits_15d": 8,
-          "commits_30d": 23
+          "commits_30d": 21
         },
         {
           "branch": "badges",
           "is_default": false,
-          "commits_1d": 1,
-          "commits_5d": 2,
+          "commits_1d": 0,
+          "commits_5d": 1,
           "commits_15d": 2,
           "commits_30d": 2
         },
@@ -7990,7 +7990,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -21.533333,
+      "focus": -21.566668,
       "last_commit_at": "2025-02-02T20:55:29Z",
       "branch_heat": [
         {
@@ -8045,7 +8045,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -21.533333,
+      "focus": -21.566668,
       "last_commit_at": "2025-02-02T20:58:01Z",
       "branch_heat": [
         {
@@ -8113,7 +8113,7 @@
       "issue_comments_30d": 0,
       "issue_labels": {},
       "commit_heat": 0.0,
-      "focus": -0.93333334,
+      "focus": -0.96666664,
       "last_commit_at": "2026-10-13T19:15:36Z",
       "branch_heat": [
         {
@@ -8287,7 +8287,7 @@
       "private": false,
       "upstream": null,
       "ahead_by": null,
-      "pushed_at": "2026-09-18T17:02:27Z",
+      "pushed_at": "2026-11-11T20:30:58Z",
       "description": "Async Rust client for SEC EDGAR: fetch filings, fund holdings, XBRL data, and IPO registrations with compliant rate limiting.",
       "topics": [
         "api-bindings",
@@ -8302,13 +8302,13 @@
       "stars": 1,
       "forks_count": 0,
       "open_issues": 8,
-      "size_kb": 11846,
+      "size_kb": 11495,
       "has_readme": true,
       "has_license_file": true,
-      "commits_1d": 0,
-      "commits_5d": 0,
-      "commits_15d": 0,
-      "commits_30d": 0,
+      "commits_1d": 2,
+      "commits_5d": 2,
+      "commits_15d": 2,
+      "commits_30d": 2,
       "issues_open_1d": 0,
       "issues_open_5d": 0,
       "issues_open_15d": 1,
@@ -8322,9 +8322,18 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -1.7666667,
-      "last_commit_at": "2026-09-18T16:56:14Z",
+      "commit_heat": 12.666667,
+      "focus": 12.666667,
+      "last_commit_at": "2026-11-11T20:30:56Z",
       "branch_heat": [
+        {
+          "branch": "feature/improve-tenk-auditing",
+          "is_default": false,
+          "commits_1d": 2,
+          "commits_5d": 2,
+          "commits_15d": 2,
+          "commits_30d": 2
+        },
         {
           "branch": "dependabot/cargo/cargo-082059d156",
           "is_default": false,
@@ -8374,22 +8383,6 @@
           "commits_30d": 0
         },
         {
-          "branch": "feature/improve-tenk-auditing",
-          "is_default": false,
-          "commits_1d": 0,
-          "commits_5d": 0,
-          "commits_15d": 0,
-          "commits_30d": 0
-        },
-        {
-          "branch": "feature/improve-tenk-auditing--xbrl-tag-polarities",
-          "is_default": false,
-          "commits_1d": 0,
-          "commits_5d": 0,
-          "commits_15d": 0,
-          "commits_30d": 0
-        },
-        {
           "branch": "feature/stage2-prep",
           "is_default": false,
           "commits_1d": 0,
@@ -8408,6 +8401,18 @@
       ],
       "recent_prs": [
         {
+          "title": "Improve 10-K item parsing",
+          "branch": "feature/improve-tenk-auditing",
+          "base": "main",
+          "state": "OPEN"
+        },
+        {
+          "title": "10-K auditing - Tag polarities",
+          "branch": "feature/improve-tenk-auditing--xbrl-tag-polarities",
+          "base": "feature/improve-tenk-auditing",
+          "state": "CLOSED"
+        },
+        {
           "title": "Fix coverage badge",
           "branch": "jzombie-patch-1",
           "base": "main",
@@ -8416,12 +8421,6 @@
         {
           "title": "Bump serde_with from 3.18.0 to 3.21.0 in the cargo group across 1 directory",
           "branch": "dependabot/cargo/cargo-082059d156",
-          "base": "main",
-          "state": "OPEN"
-        },
-        {
-          "title": "Improve 10-K item parsing",
-          "branch": "feature/improve-tenk-auditing",
           "base": "main",
           "state": "OPEN"
         },
@@ -8520,12 +8519,6 @@
           "branch": "dependabot/cargo/html-to-markdown-rs-3.2.0",
           "base": "main",
           "state": "CLOSED"
-        },
-        {
-          "title": "Bump rand from 0.10.0 to 0.10.1 in the cargo group across 1 directory",
-          "branch": "dependabot/cargo/cargo-1b821729d8",
-          "base": "main",
-          "state": "MERGED"
         }
       ],
       "recent_issues": [
@@ -8552,7 +8545,7 @@
       "private": false,
       "upstream": null,
       "ahead_by": null,
-      "pushed_at": "2026-11-09T10:13:25Z",
+      "pushed_at": "2026-11-11T16:41:12Z",
       "description": "Zero-copy access, schema-less, append-only, SIMD-optimized binary storage engine for Rust.",
       "topics": [
         "append-only",
@@ -8569,15 +8562,15 @@
       "homepage": "https://crates.io/crates/simd-r-drive",
       "stars": 13,
       "forks_count": 0,
-      "open_issues": 9,
+      "open_issues": 5,
       "license": "Apache-2.0",
-      "size_kb": 502,
+      "size_kb": 408,
       "has_readme": true,
       "has_license_file": true,
-      "commits_1d": 0,
-      "commits_5d": 0,
-      "commits_15d": 2,
-      "commits_30d": 4,
+      "commits_1d": 1,
+      "commits_5d": 1,
+      "commits_15d": 3,
+      "commits_30d": 5,
       "issues_open_1d": 0,
       "issues_open_5d": 0,
       "issues_open_15d": 0,
@@ -8595,49 +8588,17 @@
         "enhancement": 2,
         "needs research": 2
       },
-      "commit_heat": 0.33333334,
-      "focus": 0.0,
-      "last_commit_at": "2026-11-01T01:21:06Z",
+      "commit_heat": 2.8,
+      "focus": 2.8,
+      "last_commit_at": "2026-11-11T16:41:08Z",
       "branch_heat": [
-        {
-          "branch": "dependabot/cargo/arrow-60.1.0",
-          "is_default": false,
-          "commits_1d": 0,
-          "commits_5d": 0,
-          "commits_15d": 2,
-          "commits_30d": 4
-        },
-        {
-          "branch": "dependabot/cargo/crc32fast-1.5.4",
-          "is_default": false,
-          "commits_1d": 0,
-          "commits_5d": 0,
-          "commits_15d": 2,
-          "commits_30d": 4
-        },
-        {
-          "branch": "dependabot/cargo/memmap2-0.9.12",
-          "is_default": false,
-          "commits_1d": 0,
-          "commits_5d": 0,
-          "commits_15d": 2,
-          "commits_30d": 4
-        },
-        {
-          "branch": "dependabot/cargo/tokio-1.54.1",
-          "is_default": false,
-          "commits_1d": 0,
-          "commits_5d": 0,
-          "commits_15d": 2,
-          "commits_30d": 4
-        },
         {
           "branch": "main",
           "is_default": true,
-          "commits_1d": 0,
-          "commits_5d": 0,
-          "commits_15d": 2,
-          "commits_30d": 4
+          "commits_1d": 1,
+          "commits_5d": 1,
+          "commits_15d": 3,
+          "commits_30d": 5
         },
         {
           "branch": "feature/bytes",
@@ -8650,34 +8611,40 @@
       ],
       "recent_prs": [
         {
+          "title": "v0.17.6-alpha (Bump deps)",
+          "branch": "bump-deps",
+          "base": "main",
+          "state": "MERGED"
+        },
+        {
+          "title": "Bump arrow from 59.3.0 to 60.1.0",
+          "branch": "dependabot/cargo/arrow-60.1.0",
+          "base": "bump-deps",
+          "state": "MERGED"
+        },
+        {
+          "title": "Bump tokio from 1.53.3 to 1.54.1",
+          "branch": "dependabot/cargo/tokio-1.54.1",
+          "base": "bump-deps",
+          "state": "MERGED"
+        },
+        {
+          "title": "Bump memmap2 from 0.9.11 to 0.9.12",
+          "branch": "dependabot/cargo/memmap2-0.9.12",
+          "base": "bump-deps",
+          "state": "MERGED"
+        },
+        {
           "title": "Bump crc32fast from 1.5.1 to 1.5.4",
           "branch": "dependabot/cargo/crc32fast-1.5.4",
-          "base": "main",
-          "state": "OPEN"
+          "base": "bump-deps",
+          "state": "MERGED"
         },
         {
           "title": "Bump crc32fast from 1.5.1 to 1.5.3",
           "branch": "dependabot/cargo/crc32fast-1.5.3",
           "base": "main",
           "state": "CLOSED"
-        },
-        {
-          "title": "Bump memmap2 from 0.9.11 to 0.9.12",
-          "branch": "dependabot/cargo/memmap2-0.9.12",
-          "base": "main",
-          "state": "OPEN"
-        },
-        {
-          "title": "Bump arrow from 59.3.0 to 60.1.0",
-          "branch": "dependabot/cargo/arrow-60.1.0",
-          "base": "main",
-          "state": "OPEN"
-        },
-        {
-          "title": "Bump tokio from 1.53.3 to 1.54.1",
-          "branch": "dependabot/cargo/tokio-1.54.1",
-          "base": "main",
-          "state": "OPEN"
         },
         {
           "title": "v0.17.5-alpha (Bump deps)",
@@ -8762,12 +8729,6 @@
           "branch": "dependabot/cargo/muxio-rpc-service-0.16.1-alpha",
           "base": "bump-deps",
           "state": "CLOSED"
-        },
-        {
-          "title": "Bump deps",
-          "branch": "bump-deps",
-          "base": "main",
-          "state": "MERGED"
         }
       ],
       "recent_issues": [
@@ -8871,7 +8832,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -95.96667,
+      "focus": -96.0,
       "branch_heat": [
         {
           "branch": "master",
@@ -8936,7 +8897,7 @@
       "issue_labels": {
         "bug": 1
       },
-      "focus": -20.233334,
+      "focus": -20.266666,
       "last_commit_at": "2025-03-13T04:54:14Z",
       "branch_heat": [
         {
@@ -9047,7 +9008,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -20.566668,
+      "focus": -20.6,
       "last_commit_at": "2025-03-03T19:22:55Z",
       "branch_heat": [
         {
@@ -9138,7 +9099,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -20.566668,
+      "focus": -20.6,
       "last_commit_at": "2025-03-03T19:33:58Z",
       "branch_heat": [
         {
@@ -9221,7 +9182,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -20.533333,
+      "focus": -20.566668,
       "last_commit_at": "2025-03-04T21:39:30Z",
       "branch_heat": [
         {
@@ -9404,15 +9365,15 @@
       "has_license_file": true,
       "commits_1d": 0,
       "commits_5d": 0,
-      "commits_15d": 12,
+      "commits_15d": 10,
       "commits_30d": 14,
       "issues_open_1d": 0,
       "issues_open_5d": 0,
-      "issues_open_15d": 3,
+      "issues_open_15d": 2,
       "issues_open_30d": 4,
       "issues_closed_1d": 0,
       "issues_closed_5d": 0,
-      "issues_closed_15d": 2,
+      "issues_closed_15d": 1,
       "issues_closed_30d": 3,
       "issue_comments_1d": 0,
       "issue_comments_5d": 0,
@@ -9423,8 +9384,8 @@
         "enhancement": 7
       },
       "issue_heat": 0.0,
-      "commit_heat": 0.5714286,
-      "focus": -0.014285713,
+      "commit_heat": 0.47619048,
+      "focus": -0.061904773,
       "last_commit_at": "2026-11-02T01:26:46Z",
       "branch_heat": [
         {
@@ -9432,7 +9393,7 @@
           "is_default": false,
           "commits_1d": 0,
           "commits_5d": 0,
-          "commits_15d": 10,
+          "commits_15d": 8,
           "commits_30d": 12
         },
         {
@@ -9440,7 +9401,7 @@
           "is_default": false,
           "commits_1d": 0,
           "commits_5d": 0,
-          "commits_15d": 4,
+          "commits_15d": 2,
           "commits_30d": 6
         },
         {
@@ -9448,7 +9409,7 @@
           "is_default": false,
           "commits_1d": 0,
           "commits_5d": 0,
-          "commits_15d": 4,
+          "commits_15d": 2,
           "commits_30d": 6
         },
         {
@@ -9456,7 +9417,7 @@
           "is_default": true,
           "commits_1d": 0,
           "commits_5d": 0,
-          "commits_15d": 4,
+          "commits_15d": 2,
           "commits_30d": 6
         }
       ],
@@ -9712,7 +9673,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -67.566666,
+      "focus": -67.6,
       "last_commit_at": "2021-04-23T16:59:59Z",
       "branch_heat": [
         {
@@ -9784,7 +9745,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -64.8,
+      "focus": -64.833336,
       "branch_heat": [
         {
           "branch": "master",
@@ -10265,7 +10226,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -92.86667,
+      "focus": -92.9,
       "branch_heat": [
         {
           "branch": "master",
@@ -10325,7 +10286,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -12.2,
+      "focus": -12.233334,
       "last_commit_at": "2025-11-09T12:20:22Z",
       "branch_heat": [
         {
@@ -10392,7 +10353,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -12.933333,
+      "focus": -12.966666,
       "last_commit_at": "2025-10-18T18:29:38Z",
       "branch_heat": [
         {
@@ -10452,7 +10413,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -12.2,
+      "focus": -12.233334,
       "last_commit_at": "2025-11-09T12:52:03Z",
       "branch_heat": [
         {
@@ -10509,7 +10470,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -1.2333333,
+      "focus": -1.2666667,
       "branch_heat": [
         {
           "branch": "main",
@@ -10567,7 +10528,7 @@
         "Discovery": 2,
         "enhancement": 1
       },
-      "focus": -63.366665,
+      "focus": -63.4,
       "last_commit_at": "2021-08-27T15:15:51Z",
       "branch_heat": [
         {
@@ -10705,7 +10666,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -2.5666666,
+      "focus": -2.6,
       "last_commit_at": "2026-08-25T16:24:49Z",
       "branch_heat": [
         {
@@ -10770,7 +10731,7 @@
       "has_readme": true,
       "has_agents_md": true,
       "has_license_file": true,
-      "commits_1d": 9,
+      "commits_1d": 0,
       "commits_5d": 9,
       "commits_15d": 12,
       "commits_30d": 13,
@@ -10778,11 +10739,11 @@
       "issues_open_5d": 2,
       "issues_open_15d": 5,
       "issues_open_30d": 6,
-      "issues_closed_1d": 4,
+      "issues_closed_1d": 0,
       "issues_closed_5d": 4,
       "issues_closed_15d": 5,
       "issues_closed_30d": 6,
-      "issue_comments_1d": 2,
+      "issue_comments_1d": 0,
       "issue_comments_5d": 4,
       "issue_comments_15d": 7,
       "issue_comments_30d": 8,
@@ -10792,15 +10753,15 @@
         "needs research": 2,
         "rust": 1
       },
-      "issue_heat": 4.0833335,
-      "commit_heat": 8.923077,
-      "focus": 6.5032053,
+      "issue_heat": 1.5833334,
+      "commit_heat": 1.9999999,
+      "focus": 1.7583333,
       "last_commit_at": "2026-11-10T15:41:43Z",
       "branch_heat": [
         {
           "branch": "dev--draft--readme-overhauls",
           "is_default": false,
-          "commits_1d": 4,
+          "commits_1d": 0,
           "commits_5d": 4,
           "commits_15d": 7,
           "commits_30d": 8
@@ -10808,7 +10769,7 @@
         {
           "branch": "bump-oxdock",
           "is_default": false,
-          "commits_1d": 5,
+          "commits_1d": 0,
           "commits_5d": 5,
           "commits_15d": 6,
           "commits_30d": 7
@@ -10816,7 +10777,7 @@
         {
           "branch": "dev--draft",
           "is_default": false,
-          "commits_1d": 3,
+          "commits_1d": 0,
           "commits_5d": 3,
           "commits_15d": 5,
           "commits_30d": 6
@@ -10824,7 +10785,7 @@
         {
           "branch": "main",
           "is_default": true,
-          "commits_1d": 1,
+          "commits_1d": 0,
           "commits_5d": 1,
           "commits_15d": 2,
           "commits_30d": 3
@@ -10970,6 +10931,15 @@
       ],
       "recent_issues": [
         {
+          "number": 399,
+          "title": "ui: Closing a window should cycle to previously focused window",
+          "state": "OPEN",
+          "labels": [
+            "enhancement"
+          ],
+          "comments": 0
+        },
+        {
           "number": 276,
           "title": "ci: Auto GitHub release builds, crate and Docker image publishing",
           "state": "OPEN",
@@ -11013,15 +10983,6 @@
           "state": "CLOSED",
           "labels": [],
           "comments": 1
-        },
-        {
-          "number": 399,
-          "title": "wm: Closing a window should cycle to previously focused window",
-          "state": "OPEN",
-          "labels": [
-            "enhancement"
-          ],
-          "comments": 0
         },
         {
           "number": 87,
@@ -11111,7 +11072,7 @@
       "issue_labels": {},
       "issue_heat": 2.6666667,
       "commit_heat": 0.0,
-      "focus": 0.4666667,
+      "focus": 0.4333334,
       "last_commit_at": "2026-10-15T21:40:58Z",
       "branch_heat": [
         {
@@ -11390,7 +11351,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -27.866667,
+      "focus": -27.9,
       "branch_heat": [
         {
           "branch": "main",
@@ -11443,7 +11404,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -60.166668,
+      "focus": -60.2,
       "last_commit_at": "2021-12-01T14:22:03Z",
       "branch_heat": [
         {
@@ -11618,7 +11579,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -48.033333,
+      "focus": -48.066666,
       "branch_heat": [
         {
           "branch": "master",
@@ -11670,7 +11631,7 @@
       "commits_1d": 1,
       "commits_5d": 1,
       "commits_15d": 54,
-      "commits_30d": 67,
+      "commits_30d": 65,
       "issues_open_1d": 0,
       "issues_open_5d": 0,
       "issues_open_15d": 1,
@@ -11684,8 +11645,8 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "commit_heat": 0.71641785,
-      "focus": 0.71641785,
+      "commit_heat": 0.7384615,
+      "focus": 0.7384615,
       "last_commit_at": "2026-11-11T01:59:47Z",
       "branch_heat": [
         {
@@ -11694,7 +11655,7 @@
           "commits_1d": 1,
           "commits_5d": 1,
           "commits_15d": 54,
-          "commits_30d": 58
+          "commits_30d": 56
         },
         {
           "branch": "feat/oxdock-ssh",
@@ -11702,7 +11663,7 @@
           "commits_1d": 0,
           "commits_5d": 0,
           "commits_15d": 0,
-          "commits_30d": 11
+          "commits_30d": 9
         }
       ],
       "recent_prs": [
@@ -11858,20 +11819,21 @@
       "private": false,
       "upstream": null,
       "ahead_by": null,
-      "pushed_at": "2026-11-11T00:23:29Z",
+      "pushed_at": "2026-11-11T05:16:49Z",
       "topics": [],
       "language": "CSS",
       "homepage": "https://blog.zenosmosis.com/",
       "stars": 0,
       "forks_count": 0,
       "open_issues": 3,
-      "size_kb": 566,
+      "size_kb": 587,
       "has_readme": true,
-      "commits_1d": 15,
-      "commits_5d": 15,
-      "commits_15d": 15,
-      "commits_30d": 15,
-      "issues_open_1d": 2,
+      "has_agents_md": true,
+      "commits_1d": 9,
+      "commits_5d": 20,
+      "commits_15d": 20,
+      "commits_30d": 20,
+      "issues_open_1d": 1,
       "issues_open_5d": 2,
       "issues_open_15d": 2,
       "issues_open_30d": 2,
@@ -11879,36 +11841,70 @@
       "issues_closed_5d": 1,
       "issues_closed_15d": 1,
       "issues_closed_30d": 1,
-      "issue_comments_1d": 3,
-      "issue_comments_5d": 6,
+      "issue_comments_1d": 2,
+      "issue_comments_5d": 4,
       "issue_comments_15d": 9,
       "issue_comments_30d": 9,
       "issue_labels": {
         "documentation": 1
       },
-      "issue_heat": 5.3333335,
-      "commit_heat": 12.666667,
-      "focus": 9.0,
-      "last_commit_at": "2026-11-11T00:23:26Z",
+      "issue_heat": 3.7777777,
+      "commit_heat": 7.1666665,
+      "focus": 5.4722223,
+      "last_commit_at": "2026-11-11T05:16:49Z",
       "branch_heat": [
-        {
-          "branch": "about",
-          "is_default": false,
-          "commits_1d": 9,
-          "commits_5d": 9,
-          "commits_15d": 9,
-          "commits_30d": 9
-        },
         {
           "branch": "main",
           "is_default": true,
-          "commits_1d": 9,
+          "commits_1d": 7,
+          "commits_5d": 12,
+          "commits_15d": 12,
+          "commits_30d": 12
+        },
+        {
+          "branch": "robot",
+          "is_default": false,
+          "commits_1d": 7,
+          "commits_5d": 12,
+          "commits_15d": 12,
+          "commits_30d": 12
+        },
+        {
+          "branch": "logo",
+          "is_default": false,
+          "commits_1d": 5,
+          "commits_5d": 10,
+          "commits_15d": 10,
+          "commits_30d": 10
+        },
+        {
+          "branch": "about",
+          "is_default": false,
+          "commits_1d": 0,
           "commits_5d": 9,
           "commits_15d": 9,
           "commits_30d": 9
         }
       ],
       "recent_prs": [
+        {
+          "title": "Add underground agent contract and alignment route",
+          "branch": "robot",
+          "base": "main",
+          "state": "MERGED"
+        },
+        {
+          "title": "Fix heading hierarchy in posts and add style guide",
+          "branch": "style",
+          "base": "main",
+          "state": "MERGED"
+        },
+        {
+          "title": "Add brand logo and author link to site header",
+          "branch": "logo",
+          "base": "main",
+          "state": "MERGED"
+        },
         {
           "title": "Add MQTT broker post",
           "branch": "zero-trust-iot",
@@ -12024,7 +12020,7 @@
       "commits_5d": 0,
       "commits_15d": 1,
       "commits_30d": 1,
-      "issues_open_1d": 1,
+      "issues_open_1d": 0,
       "issues_open_5d": 2,
       "issues_open_15d": 2,
       "issues_open_30d": 2,
@@ -12042,7 +12038,7 @@
       },
       "issue_heat": 2.6666667,
       "commit_heat": 0.6666667,
-      "focus": 1.3333334,
+      "focus": 1.3000001,
       "last_commit_at": "2026-10-31T21:39:47Z",
       "branch_heat": [
         {
@@ -12229,7 +12225,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-11T01:44:46Z",
+      "recency": "2026-11-11T04:36:02Z",
       "version": "0.35.0-alpha"
     },
     {
@@ -12259,7 +12255,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-11T01:44:46Z",
+      "recency": "2026-11-11T04:36:02Z",
       "version": "0.13.5-alpha.1"
     },
     {
@@ -12349,7 +12345,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-11T02:41:36Z",
+      "recency": "2026-11-11T23:17:59Z",
       "version": "1.6.0"
     },
     {
@@ -12359,7 +12355,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-11T02:41:36Z",
+      "recency": "2026-11-11T23:17:59Z",
       "version": "0.17.0-alpha"
     },
     {
@@ -12399,7 +12395,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-09-18T17:02:27Z",
+      "recency": "2026-11-11T20:30:58Z",
       "version": "0.13.2-alpha.2"
     },
     {
@@ -12409,7 +12405,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-09-18T17:02:27Z",
+      "recency": "2026-11-11T20:30:58Z",
       "version": "0.16.0-alpha"
     },
     {
@@ -12429,7 +12425,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-09T10:13:25Z",
+      "recency": "2026-11-11T16:41:12Z",
       "version": "0.17.2-alpha"
     },
     {
