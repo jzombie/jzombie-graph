@@ -23,6 +23,7 @@ base64 = "0.22"
 chrono = { version = "0.4", features = ["serde", "clock"] }
 clap = { version = "4", features = ["derive", "env"] }
 insta = { version = "1", features = ["json"] }
+# TODO: Bump to 0.38.0-alpha
 oxdock = "=0.37.0-alpha"
 oxdock-core = "=0.37.0-alpha"
 oxdock-markdown-plugin = "=0.37.0-alpha"
