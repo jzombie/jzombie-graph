@@ -3,4 +3,4 @@ WORKSPACE LOCAL
 
 IMPORT ["../../scripts/lanes.oxfile" AS LANES]
 
-LANES::PIPELINE(true)
+LANES::NIGHTLY_SWEEP(true)

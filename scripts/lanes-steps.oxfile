@@ -1,62 +1,43 @@
-# Granular RUN lanes.
+# Granular RUN lanes. Each name states its artifact: COLLECT_* sweeps,
+# RENDER_* writes one file, BUILD_* bundles, GATE_* fails closed.
 
 INHERIT_ENV [JZOMBIE_GRAPH_TOKEN]
 WORKSPACE LOCAL
 
-# Collect: live sweep, schema rides along.
-FUNC COLLECT(): VOID {
+# CollectGraph: live sweep into data/, schema rides along.
+FUNC COLLECT_GRAPH(): VOID {
     WORKSPACE LOCAL
-    ECHO "lanes: collect fresh (schema rides along)"
+    ECHO "lanes: collect graph + schema into data/"
     RUN ["cargo", "run", "--release", "--", "--user", "jzombie", "--format", "json"]
 }
 
-# Fragment: staged JSON to fragment.
-FUNC FRAGMENT(): VOID {
+# RenderMapFragment: staged JSON to the map fragment.
+FUNC RENDER_MAP_FRAGMENT(): VOID {
     WORKSPACE LOCAL
-    ECHO "lanes: render the fragment"
+    ECHO "lanes: render proof/fragments/portfolio-graph.md"
     RUN ["cargo", "run", "--release", "-p", "jzombie-graph-cartographer"]
 }
 
-# Share: commit-share pie.
-FUNC CHART_SHARE(): VOID {
+# BuildProofInputs: every proof input rendered (map fragment, SVGs,
+# badge files, data table fragment). Page assembly is never here —
+# the outer oxdock-render owns proof/README.md.
+FUNC BUILD_PROOF_INPUTS(): VOID {
     WORKSPACE LOCAL
-    ECHO "lanes: share (binary default paths)"
-    RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts"]
-}
-
-# Focus: focus ranking bars.
-FUNC CHART_FOCUS(): VOID {
-    WORKSPACE LOCAL
-    ECHO "lanes: focus (binary default paths)"
-    RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "focus"]
-}
-
-# Flame: portfolio heat flame.
-FUNC CHART_FLAME(): VOID {
-    WORKSPACE LOCAL
-    ECHO "lanes: flame (binary default paths)"
-    RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "flame"]
-}
-
-# Indicators: status badges.
-FUNC CHART_INDICATORS(): VOID {
-    WORKSPACE LOCAL
-    ECHO "lanes: indicators (binary default paths)"
-    RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "indicators"]
-}
-
-# ProofInputs: every proof input rendered (SVGs, badge files, data
-# table fragment). The proof page itself is assembled by RENDER.
-FUNC PROOF_INPUTS(): VOID {
-    WORKSPACE LOCAL
-    ECHO "lanes: render proof inputs (page assembly is RENDER)"
+    ECHO "lanes: render all proof inputs (page assembly is ASSEMBLE_PROOF_PAGE)"
     RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "preview"]
 }
 
-# Drift: fail when generated outputs differ from the commit.
-FUNC DRIFT(): VOID {
+# AssembleProofPage: run the renderer over the committed inputs.
+FUNC ASSEMBLE_PROOF_PAGE(): VOID {
     WORKSPACE LOCAL
-    ECHO "lanes: drift gate"
+    ECHO "lanes: assemble proof/README.md"
+    RUN ["oxdock-render"]
+}
+
+# GateProofDrift: fail when generated outputs differ from the commit.
+FUNC GATE_PROOF_DRIFT(): VOID {
+    WORKSPACE LOCAL
+    ECHO "lanes: drift gate over proof/ data/"
     RUN ["git", "diff", "--exit-code", "--", "proof/", "data/"]
 }
 
@@ -67,7 +48,7 @@ FUNC DRIFT(): VOID {
 # quiet nights.
 FUNC COMMIT_PROOF(): VOID {
     WORKSPACE LOCAL
-    ECHO "lanes: commit rebuilt proof + data + schema"
+    ECHO "lanes: commit rebuilt proof + data"
     RUN ["git", "config", "user.name", "github-actions[bot]"]
     RUN ["git", "config", "user.email", "github-actions[bot]@users.noreply.github.com"]
     RUN ["git", "add", "proof", "data"]
@@ -76,13 +57,10 @@ FUNC COMMIT_PROOF(): VOID {
 }
 
 EXPORT [
-    FUNC COLLECT,
-    FUNC FRAGMENT,
-    FUNC CHART_SHARE,
-    FUNC CHART_FOCUS,
-    FUNC CHART_FLAME,
-    FUNC CHART_INDICATORS,
-    FUNC PROOF_INPUTS,
-    FUNC DRIFT,
+    FUNC COLLECT_GRAPH,
+    FUNC RENDER_MAP_FRAGMENT,
+    FUNC BUILD_PROOF_INPUTS,
+    FUNC ASSEMBLE_PROOF_PAGE,
+    FUNC GATE_PROOF_DRIFT,
     FUNC COMMIT_PROOF
 ]

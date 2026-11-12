@@ -5,54 +5,50 @@ WORKSPACE LOCAL
 
 IMPORT ["./lanes-steps.oxfile" AS STEPS]
 
-# Collect: the live sweep alone.
-FUNC COLLECT(): VOID {
+# CollectGraph: the live sweep alone.
+FUNC COLLECT_GRAPH(): VOID {
     WORKSPACE LOCAL
-    STEPS::COLLECT()
+    STEPS::COLLECT_GRAPH()
 }
 
-# BuildProof: proof inputs from whatever data/ holds. Assembly is the
-# outer oxdock-render's job — never call STEPS::RENDER() here, or the
-# pre-hook re-enters the renderer forever.
-FUNC BUILD_PROOF(): VOID {
+# RefreshProofInputs: proof inputs from whatever data/ holds. Assembly is
+# the outer oxdock-render's job — never call STEPS::ASSEMBLE_PROOF_PAGE()
+# here, or the pre-hook re-enters the renderer forever.
+FUNC REFRESH_PROOF_INPUTS(): VOID {
     WORKSPACE LOCAL
-    STEPS::FRAGMENT()
-    STEPS::PROOF_INPUTS()
+    STEPS::RENDER_MAP_FRAGMENT()
+    STEPS::BUILD_PROOF_INPUTS()
     ECHO "proof complete"
 }
 
-# Check: tokenless rebuild + drift gate (CI render-check).
-FUNC CHECK(): VOID {
+# VerifyProof: tokenless rebuild + drift gate (CI render-check).
+FUNC VERIFY_PROOF(): VOID {
     WORKSPACE LOCAL
-    STEPS::FRAGMENT()
-    STEPS::PROOF_INPUTS()
-    STEPS::RENDER()
-    STEPS::DRIFT()
+    STEPS::RENDER_MAP_FRAGMENT()
+    STEPS::BUILD_PROOF_INPUTS()
+    STEPS::ASSEMBLE_PROOF_PAGE()
+    STEPS::GATE_PROOF_DRIFT()
     ECHO "render clean"
 }
 
-# Pipeline: fragment + charts + proof page, collecting first when $collect.
+# NightlySweep: fragment + charts + proof page, collecting first when $collect.
 # HALTED: imported-lane RUN executes with the lane file's directory as
 # cwd, so every lane scatters outputs under scripts/ instead of the repo
 # root. Do NOT run this (nightly stays red) until the oxdock engine fix
 # lands and module FUNCs inherit the entry scope. Then delete the HALT
 # below — nothing else here changes.
-FUNC PIPELINE($collect: BOOL): VOID {
+FUNC NIGHTLY_SWEEP($collect: BOOL): VOID {
     WORKSPACE LOCAL
-    ECHO "HALTED: refusing nightly pipeline — oxdock module-scope fix required (lanes write scripts/ instead of root)"
+    ECHO "HALTED: refusing nightly sweep — oxdock module-scope fix required (lanes write scripts/ instead of root)"
     EXIT 1
     IF $collect {
-        STEPS::COLLECT()
+        STEPS::COLLECT_GRAPH()
     }
-    STEPS::FRAGMENT()
-    STEPS::CHART_SHARE()
-    STEPS::CHART_FOCUS()
-    STEPS::CHART_FLAME()
-    STEPS::CHART_INDICATORS()
-    STEPS::PROOF_INPUTS()
-    STEPS::RENDER()
+    STEPS::RENDER_MAP_FRAGMENT()
+    STEPS::BUILD_PROOF_INPUTS()
+    STEPS::ASSEMBLE_PROOF_PAGE()
     STEPS::COMMIT_PROOF()
     ECHO "pipeline complete"
 }
 
-EXPORT [FUNC COLLECT, FUNC BUILD_PROOF, FUNC CHECK, FUNC PIPELINE]
+EXPORT [FUNC COLLECT_GRAPH, FUNC REFRESH_PROOF_INPUTS, FUNC VERIFY_PROOF, FUNC NIGHTLY_SWEEP]
