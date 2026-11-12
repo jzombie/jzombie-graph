@@ -53,12 +53,12 @@ FUNC PREVIEW_INPUTS(): VOID {
     RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "preview"]
 }
 
-# Render: assemble the proof page. Lanes run with the calling oxfile's
-# directory as cwd, so --root pins the renderer at the repo root.
+# Render: assemble the proof page. Lanes inherit the entry scope, so the
+# renderer discovers the root config on its own.
 FUNC RENDER(): VOID {
     WORKSPACE LOCAL
     ECHO "lanes: assemble the proof page"
-    RUN ["oxdock-render", "--root", ".."]
+    RUN ["oxdock-render"]
 }
 
 # Drift: fail when generated outputs differ from the commit.
