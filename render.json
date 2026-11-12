@@ -1,4 +1,7 @@
 {
+  "hooks": {
+    "pre": ["scripts/preview-indicators.oxfile"]
+  },
   "global_values": ".oxdock-render/values.json",
   "scopes": [
     ".oxdock-render"

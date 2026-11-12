@@ -10,11 +10,10 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      # OxDock owns the check (rebuild + drift gate) via
-      # .github/scripts/render-check.oxfile. Engine tracks main; the
-      # renderer tracks the feat branch until it merges.
-      - uses: jzombie/rust-oxdock/.github/actions/setup-oxdock@main
+      # The proof page is renderer-owned: one command assembles it from
+      # the committed fragments, then the drift gate fires on any
+      # hand-edit. Input freshness (fragment + chart lanes) rides the
+      # renderer's pre-hook once hook support lands.
       - uses: jzombie/rust-oxdock/.github/actions/setup-oxdock-render@feat/render-action
-      - run: oxdock .github/scripts/render-check.oxfile
+      - run: oxdock-render
+      - run: git diff --exit-code -- preview/ markdown/fragments/

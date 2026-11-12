@@ -62,10 +62,10 @@ Same `focus` the dump lane shows — commit heat vs own 30d baseline minus idle 
 ## Render proof (what GitHub actually shows)
 
 ```bash
-oxdock scripts/preview-indicators.oxfile
+oxdock-render
 ```
 
-Collects fresh, renders every lane, and assembles the committed `preview/README.md` — map fragment verbatim, all charts embedded, machine-readable commit-data table (role/proof/reuse per repo, layer-labeled, tiny topic search links, top-10 + roll-up), indicator table with badges. That page is the visual proof; `preview/` is generated, never hand-edited. All markup emission is [OxDock](https://github.com/jzombie/rust-oxdock)-templated (tables via the shared `MARKDOWN` module); the script only orders the lanes.
+Assembles the committed `preview/README.md` — map fragment verbatim, all charts embedded, machine-readable commit-data table (role/proof/reuse per repo, layer-labeled, tiny topic search links, top-10 + roll-up). That page is the visual proof; `preview/` is never hand-edited. Inputs refresh via `oxdock scripts/preview-indicators.oxfile` (fragment + chart lanes, wired as the renderer's pre-hook once hook support lands). All markup emission is [OxDock](https://github.com/jzombie/rust-oxdock)-templated (tables via the shared `MARKDOWN` module); assembly order lives in the template.
 
 ## Regenerate the schema
 

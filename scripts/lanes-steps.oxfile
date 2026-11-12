@@ -53,14 +53,6 @@ FUNC PREVIEW_INPUTS(): VOID {
     RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "preview"]
 }
 
-# Render: assemble the proof page. Lanes inherit the entry scope, so the
-# renderer discovers the root config on its own.
-FUNC RENDER(): VOID {
-    WORKSPACE LOCAL
-    ECHO "lanes: assemble the proof page"
-    RUN ["oxdock-render"]
-}
-
 # Drift: fail when generated outputs differ from the commit.
 FUNC DRIFT(): VOID {
     WORKSPACE LOCAL
@@ -83,4 +75,14 @@ FUNC COMMIT_PROOF(): VOID {
     RUN ["git", "push"]
 }
 
-EXPORT [FUNC COLLECT, FUNC FRAGMENT, FUNC CHART_SHARE, FUNC CHART_FOCUS, FUNC CHART_FLAME, FUNC CHART_INDICATORS, FUNC PREVIEW_INPUTS, FUNC RENDER, FUNC DRIFT, FUNC COMMIT_PROOF]
+EXPORT [
+    FUNC COLLECT,
+    FUNC FRAGMENT,
+    FUNC CHART_SHARE,
+    FUNC CHART_FOCUS,
+    FUNC CHART_FLAME,
+    FUNC CHART_INDICATORS,
+    FUNC PREVIEW_INPUTS,
+    FUNC DRIFT,
+    FUNC COMMIT_PROOF
+]

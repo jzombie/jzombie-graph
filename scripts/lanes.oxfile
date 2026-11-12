@@ -11,12 +11,13 @@ FUNC COLLECT(): VOID {
     STEPS::COLLECT()
 }
 
-# RenderProof: tokenless proof page from whatever json/ holds.
+# RenderProof: preview inputs from whatever json/ holds. Assembly is the
+# outer oxdock-render's job — never call STEPS::RENDER() here, or the
+# pre-hook re-enters the renderer forever.
 FUNC RENDER_PROOF(): VOID {
     WORKSPACE LOCAL
     STEPS::FRAGMENT()
     STEPS::PREVIEW_INPUTS()
-    STEPS::RENDER()
     ECHO "preview complete"
 }
 
