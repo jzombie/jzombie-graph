@@ -23,7 +23,7 @@ FUNC RENDER_MAP_FRAGMENT(): VOID {
 # The proof page itself is assembled by the outer oxdock-render.
 FUNC BUILD_PROOF_INPUTS(): VOID {
     WORKSPACE LOCAL
-    ECHO "lanes: render all proof inputs (page assembly is ASSEMBLE_PROOF_PAGE)"
+    IMPORT [STD]
 
     LET $charts: LIST<STRING> = [
         "share",
@@ -32,6 +32,8 @@ FUNC BUILD_PROOF_INPUTS(): VOID {
         "indicators",
         "data"
     ]
+
+    ECHO "lanes: render {{ STD::LEN($charts) }} proof inputs (page assembly is ASSEMBLE_PROOF_PAGE)"
 
     FOR $chart: STRING IN $charts {
         RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", $chart]
