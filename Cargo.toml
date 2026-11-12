@@ -23,9 +23,9 @@ base64 = "0.22"
 chrono = { version = "0.4", features = ["serde", "clock"] }
 clap = { version = "4", features = ["derive", "env"] }
 insta = { version = "1", features = ["json"] }
-oxdock = "=0.35.0-alpha"
-oxdock-core = "=0.35.0-alpha"
-oxdock-markdown-plugin = "=0.35.0-alpha"
+oxdock = "=0.37.0-alpha"
+oxdock-core = "=0.37.0-alpha"
+oxdock-markdown-plugin = "=0.37.0-alpha"
 regex = "1"
 reqwest = { version = "0.13", features = ["json", "rustls"] }
 reqwest-drive = "0.13.5-alpha.1"

@@ -4,49 +4,49 @@ INHERIT_ENV [JZOMBIE_GRAPH_TOKEN]
 WORKSPACE LOCAL
 
 # Collect: live sweep, schema rides along.
-FUNC COLLECT() {
+FUNC COLLECT(): VOID {
     WORKSPACE LOCAL
     ECHO "lanes: collect fresh (schema rides along)"
     RUN ["cargo", "run", "--release", "--", "--user", "jzombie", "--format", "json"]
 }
 
 # Fragment: staged JSON to markdown.
-FUNC FRAGMENT() {
+FUNC FRAGMENT(): VOID {
     WORKSPACE LOCAL
     ECHO "lanes: render the fragment"
     RUN ["cargo", "run", "--release", "-p", "jzombie-graph-cartographer"]
 }
 
 # Share: commit-share pie.
-FUNC CHART_SHARE() {
+FUNC CHART_SHARE(): VOID {
     WORKSPACE LOCAL
     ECHO "lanes: share (binary default paths)"
     RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts"]
 }
 
 # Focus: focus ranking bars.
-FUNC CHART_FOCUS() {
+FUNC CHART_FOCUS(): VOID {
     WORKSPACE LOCAL
     ECHO "lanes: focus (binary default paths)"
     RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "focus"]
 }
 
 # Flame: portfolio heat flame.
-FUNC CHART_FLAME() {
+FUNC CHART_FLAME(): VOID {
     WORKSPACE LOCAL
     ECHO "lanes: flame (binary default paths)"
     RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "flame"]
 }
 
 # Indicators: status badges.
-FUNC CHART_INDICATORS() {
+FUNC CHART_INDICATORS(): VOID {
     WORKSPACE LOCAL
     ECHO "lanes: indicators (binary default paths)"
     RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "indicators"]
 }
 
 # Preview: full proof page assembly.
-FUNC PREVIEW() {
+FUNC PREVIEW(): VOID {
     WORKSPACE LOCAL
     ECHO "lanes: render everything and assemble the proof page"
     RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "preview"]
@@ -57,7 +57,7 @@ FUNC PREVIEW() {
 # on change — a quiet sweep pushes nothing. Shell form because the
 # commit is conditional; a bare `git commit` would fail the lane on
 # quiet nights.
-FUNC COMMIT_PROOF() {
+FUNC COMMIT_PROOF(): VOID {
     WORKSPACE LOCAL
     ECHO "lanes: commit rebuilt proof + data + schema"
     RUN ["git", "config", "user.name", "github-actions[bot]"]

@@ -1988,9 +1988,9 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
 name = "oxdock"
-version = "0.35.0-alpha"
+version = "0.37.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ccecb1f3cfd390e864b884428edfe5b171a79d6c82cbe580778161338652a66"
+checksum = "a2bf7ced4751f91721c90338591cc726fb8219ac4bf28cba1fd71749983a5e7d"
 dependencies = [
  "oxdock-build",
  "oxdock-cli",
@@ -2003,9 +2003,9 @@ dependencies = [
 
 [[package]]
 name = "oxdock-build"
-version = "0.35.0-alpha"
+version = "0.37.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f3b6afa0d5892bd5c496d121b811fe923e70a4f1bc542e58d2c2f25ecd7a76e"
+checksum = "d6d57b49ad89e477d8af79e11080ff7731e00b4d47d55e24fc7b0c7dda57c131"
 dependencies = [
  "anyhow",
  "oxdock-core",
@@ -2021,9 +2021,9 @@ dependencies = [
 
 [[package]]
 name = "oxdock-cli"
-version = "0.35.0-alpha"
+version = "0.37.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc2977ca57a2cef473000bab992416b2449f87c082f9ab1285157e5c3724b493"
+checksum = "6f8e8e5b74b0f3d2973cc405b24a9ac04f18ca5ba01c6f7d7c256e6390c21cf1"
 dependencies = [
  "anyhow",
  "futures-executor",
@@ -2051,9 +2051,9 @@ dependencies = [
 
 [[package]]
 name = "oxdock-core"
-version = "0.35.0-alpha"
+version = "0.37.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d45d2ff788c858c240685a1ada8b1d137958f6984c4c17de0ea5be430cabab00"
+checksum = "515c3cbe2b22ac693906b4a05eb3733580315c9c446e29c89ff9455779d3d3d7"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -2078,9 +2078,9 @@ dependencies = [
 
 [[package]]
 name = "oxdock-embed"
-version = "0.35.0-alpha"
+version = "0.37.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8448084a42869d78f184cca8f784c6965b09c46f0f5d8a04858cb092437dc6db"
+checksum = "b87fbc5fdabb0b7bbcc4f3ec998236035761f878724a1218d58dc684b8f35456"
 dependencies = [
  "anyhow",
  "oxdock-fs",
@@ -2093,9 +2093,9 @@ dependencies = [
 
 [[package]]
 name = "oxdock-fs"
-version = "0.35.0-alpha"
+version = "0.37.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fc5b0757c76265bdf2064de2bcd4ae2ae0e0008ec04bfd3b3bcb858a6c1626f"
+checksum = "1dafa5d3fa40ad0059ae16023f4f2584ff0940705e7f2bffe35a82e5e8883329"
 dependencies = [
  "anyhow",
  "cache-manager",
@@ -2109,9 +2109,9 @@ dependencies = [
 
 [[package]]
 name = "oxdock-func-macro"
-version = "0.35.0-alpha"
+version = "0.37.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d6ac239012353654b1b137dad93d081747c25bbf75a923750c929497947c8b4"
+checksum = "0cbb993a2253cceee2a0e1af0d14e45250bdec80bcc1cc550d599c9eb13db539"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2121,9 +2121,9 @@ dependencies = [
 
 [[package]]
 name = "oxdock-macros"
-version = "0.35.0-alpha"
+version = "0.37.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "160682ef0f5a3d4ea91088287a474e6ea3d17b53e0bdb7eb144ffee4c29e9c79"
+checksum = "00bfcf35027e01773f548fbc805258fa36040deb14cb12f4ea1101b07fd7f4b9"
 dependencies = [
  "anyhow",
  "oxdock-build",
@@ -2139,9 +2139,9 @@ dependencies = [
 
 [[package]]
 name = "oxdock-markdown-plugin"
-version = "0.35.0-alpha"
+version = "0.37.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c59b8768287e85bdffc591ad88da966203d3050919bbb6a0f51b309936e7374b"
+checksum = "8b6940f04985945dab423edd0c0d6a6928e639c468a1cd38a2f0625eba2287d5"
 dependencies = [
  "anyhow",
  "oxdock-core",
@@ -2154,9 +2154,9 @@ dependencies = [
 
 [[package]]
 name = "oxdock-mcp"
-version = "0.35.0-alpha"
+version = "0.37.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "229ef34c5b9e2aef02d702bde0e252f158be10d42253621ffadd470de285f27b"
+checksum = "f936c2530819d52a9c87b84e2609afe597cf0a0e856cf0e4cff0da2345b6d054"
 dependencies = [
  "anyhow",
  "oxdock-core",
@@ -2174,9 +2174,9 @@ dependencies = [
 
 [[package]]
 name = "oxdock-net-plugin"
-version = "0.35.0-alpha"
+version = "0.37.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e7a3c5cdd4c0162538a813ed0b9eabdb2d61b63932978020bdec16f39c2742c"
+checksum = "98e86542cd6cbab797679888fc6ab5b4d80e8fcd09574400f5e81c734806a480"
 dependencies = [
  "anyhow",
  "futures-executor",
@@ -2203,9 +2203,9 @@ dependencies = [
 
 [[package]]
 name = "oxdock-parser"
-version = "0.35.0-alpha"
+version = "0.37.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36b098178b32ae387a664ac084139d5c7a880b9674ddb0cfb4a29fe48ae2a39a"
+checksum = "adde4bdfdac4e5a9c50fcee7dd38570647af43545973ff7aff0ac05901be666f"
 dependencies = [
  "anyhow",
  "indoc",
@@ -2220,9 +2220,9 @@ dependencies = [
 
 [[package]]
 name = "oxdock-pipe"
-version = "0.35.0-alpha"
+version = "0.37.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d5f8fae5a7373fd5a4faa9f574a1b0142ab68ce0540bfde8712bd0f50e303f9"
+checksum = "547bba36f5db7b76e415ffa4bf53f1e4d40b66fb6d33d2e774caccd8b3658e3f"
 dependencies = [
  "anyhow",
  "oxdock-fs",
@@ -2230,9 +2230,9 @@ dependencies = [
 
 [[package]]
 name = "oxdock-process"
-version = "0.35.0-alpha"
+version = "0.37.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10073e1cf30e5f4466f8481d583a9a775ad1ee2014ad747018b6b6ff928efaae"
+checksum = "070736e0b48e1fc23bea8973951a33420c83a1220594d7d3acb042a4d6de3f1f"
 dependencies = [
  "anyhow",
  "indoc",
@@ -2246,9 +2246,9 @@ dependencies = [
 
 [[package]]
 name = "oxdock-pty"
-version = "0.35.0-alpha"
+version = "0.37.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e14b5dd4468985614ab070df5aa7dda36f1891385ac19f1ae3eae0ff9cf68f1"
+checksum = "4cf4a18b48d5ed4f7de0ea120d1a0a025c2b58275bd35d65be32a2fd80524a4c"
 dependencies = [
  "anyhow",
  "libc",
@@ -2259,23 +2259,22 @@ dependencies = [
 
 [[package]]
 name = "oxdock-remote-proto"
-version = "0.35.0-alpha"
+version = "0.37.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34c4d1b6134a5f10fa9fab18d1659918ec244559bac9165da65a81c9f284bd9b"
+checksum = "6bb28632f080f238210fcd778c425a7456cb4f0e32cfafa50c517610d1a7ac2f"
 dependencies = [
  "anyhow",
  "muxio-rpc-service",
  "oxdock-utils",
  "serde",
- "serde_json",
  "sha2",
 ]
 
 [[package]]
 name = "oxdock-ssh-plugin"
-version = "0.35.0-alpha"
+version = "0.37.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db9febf7b9be5caa57421a397c2889a2d04bfc79c079c86983e810cd216e019c"
+checksum = "75b2e38f0d903c4dc7678a446bc172e306aaac5c9b1e111e8854ce70f89148b7"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -2298,15 +2297,15 @@ dependencies = [
 
 [[package]]
 name = "oxdock-sys-test-utils"
-version = "0.35.0-alpha"
+version = "0.37.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88f9c0f2d0be3ed43aa39154ea25cd6f6ac52b15a363cdc290cb6d6f9cd1d524"
+checksum = "e6d670cfd99d9f8e708197e4c4a6e7335a01923d9967b0e162cf05cad1ea56b3"
 
 [[package]]
 name = "oxdock-utils"
-version = "0.35.0-alpha"
+version = "0.37.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d62b8160c748b1960c479076de4cc7990339aa0f95a7aee8b4f221dc0628bedf"
+checksum = "b583690aa219c439ac630f059afe6de58be1c07f105737e3e46da40d8ab2d882"
 dependencies = [
  "anyhow",
  "flate2",

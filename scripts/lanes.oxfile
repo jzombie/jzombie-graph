@@ -3,16 +3,16 @@
 # away once imported FUNCs bind to their own module scope.
 WORKSPACE LOCAL
 
-IMPORT ["../lanes-steps.oxfile" AS STEPS]
+IMPORT ["./lanes-steps.oxfile" AS STEPS]
 
 # Collect: the live sweep alone.
-FUNC COLLECT() {
+FUNC COLLECT(): VOID {
     WORKSPACE LOCAL
     STEPS::COLLECT()
 }
 
 # RenderProof: tokenless proof page from whatever json/ holds.
-FUNC RENDER_PROOF() {
+FUNC RENDER_PROOF(): VOID {
     WORKSPACE LOCAL
     STEPS::FRAGMENT()
     STEPS::PREVIEW()
@@ -20,7 +20,7 @@ FUNC RENDER_PROOF() {
 }
 
 # Pipeline: fragment + charts + proof page, collecting first when $collect.
-FUNC PIPELINE($collect: BOOL) {
+FUNC PIPELINE($collect: BOOL): VOID {
     WORKSPACE LOCAL
     IF $collect {
         STEPS::COLLECT()
