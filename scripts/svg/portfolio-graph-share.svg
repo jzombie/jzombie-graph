@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 444.0 294.0" role="img" font-family="Helvetica, Arial, sans-serif"><title>Trailing-5d commit share</title><text x="16" y="30" font-size="20" fill="#767676">Trailing-5d commit share</text><style>
+            .bar {
+                stroke: #fff;
+                stroke-width: 2;
+                rx: 4;
+            }
+            .lbl {
+                fill: #fff;
+                font-size: 13px;
+                font-weight: 600;
+            }
+            .sub {
+                fill: #fff;
+                font-size: 11px;
+                opacity: .92;
+            }
+            .dim {
+                fill: #333;
+                font-size: 12px;
+            }
+            .wht {
+                fill: #fff;
+                font-size: 10px;
+                paint-order: stroke;
+                stroke: rgba(0, 0, 0, .45);
+                stroke-width: 3px;
+                stroke-linejoin: round;
+            }
+            .muted {
+                fill: #666;
+                font-size: 11px;
+            }
+            .pulse {
+                animation: breathe 2.2s ease-in-out infinite;
+            }
+            .slow {
+                animation-duration: 3.4s;
+            }
+            @keyframes breathe {
+                0%, 100% { opacity: .95; }
+                50% { opacity: .62; }
+            }
+            .halo {
+                transform-box: fill-box;
+                transform-origin: center;
+                animation: halo 2.2s ease-out infinite;
+            }
+            @keyframes halo {
+                0% { opacity: .75; transform: scale(1); }
+                100% { opacity: 0; transform: scale(2.4); }
+            }
+            .card {
+                opacity: 0;
+                animation: whisk ease-in-out infinite;
+                animation-iteration-count: infinite;
+            }
+            .deck .card#r0 {
+                opacity: 1;
+            }
+            @keyframes whisk {
+                0% { opacity: 0; transform: translateX(60px); }
+                3% { opacity: 1; transform: translateX(0); }
+                10% { opacity: 1; transform: translateX(0); }
+                13% { opacity: 0; transform: translateX(-60px); }
+                100% { opacity: 0; transform: translateX(-60px); }
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .pulse, .halo, .card { animation: none; }
+            }
+        </style><path d="M 106.0,169.0 L 106.0,79.0 A 90.0,90.0 0 1,1 28.7,215.1 Z" fill="#56B4E9" class="pulse"><title>jzombie-graph 66.4%</title></path><rect x="224.0" y="57.0" width="14" height="14" fill="#56B4E9"/><text x="246.0" y="70.0" font-size="14" fill="#767676">jzombie-graph 66.4%</text><path d="M 106.0,169.0 L 28.7,215.1 A 90.0,90.0 0 0,1 22.0,136.8 Z" fill="#E69F00" class="pulse"><title>zenosmosis-blog 14.4%</title></path><rect x="224.0" y="83.0" width="14" height="14" fill="#E69F00"/><text x="246.0" y="96.0" font-size="14" fill="#767676">zenosmosis-blog 14.4%</text><path d="M 106.0,169.0 L 22.0,136.8 A 90.0,90.0 0 0,1 40.3,107.4 Z" fill="#D55E00" class="pulse"><title>term-wm 6.2%</title></path><rect x="224.0" y="109.0" width="14" height="14" fill="#D55E00"/><text x="246.0" y="122.0" font-size="14" fill="#767676">term-wm 6.2%</text><path d="M 106.0,169.0 L 40.3,107.4 A 90.0,90.0 0 0,1 65.0,88.9 Z" fill="#F0E442" class="pulse"><title>rust-sec-fetcher 5.5%</title></path><rect x="224.0" y="135.0" width="14" height="14" fill="#F0E442"/><text x="246.0" y="148.0" font-size="14" fill="#767676">rust-sec-fetcher 5.5%</text><path d="M 106.0,169.0 L 65.0,88.9 A 90.0,90.0 0 0,1 75.6,84.3 Z" fill="#0072B2" class="pulse"><title>lab-qemu-portable 2.1%</title></path><rect x="224.0" y="161.0" width="14" height="14" fill="#0072B2"/><text x="246.0" y="174.0" font-size="14" fill="#767676">lab-qemu-portable 2.1%</text><path d="M 106.0,169.0 L 75.6,84.3 A 90.0,90.0 0 0,1 86.8,81.1 Z" fill="#009E73" class="pulse slow"><title>rust-oxdock 2.1%</title></path><rect x="224.0" y="187.0" width="14" height="14" fill="#009E73"/><text x="246.0" y="200.0" font-size="14" fill="#767676">rust-oxdock 2.1%</text><path d="M 106.0,169.0 L 86.8,81.1 A 90.0,90.0 0 0,1 90.6,80.3 Z" fill="#CC79A7" class="pulse"><title>deepwiki-to-mdbook 0.7%</title></path><rect x="224.0" y="213.0" width="14" height="14" fill="#CC79A7"/><text x="246.0" y="226.0" font-size="14" fill="#767676">deepwiki-to-mdbook 0.7%</text><path d="M 106.0,169.0 L 90.6,80.3 A 90.0,90.0 0 0,1 94.4,79.7 Z" fill="#999999" class="pulse slow"><title>rust-argtuner 0.7%</title></path><rect x="224.0" y="239.0" width="14" height="14" fill="#999999"/><text x="246.0" y="252.0" font-size="14" fill="#767676">rust-argtuner 0.7%</text><path d="M 106.0,169.0 L 94.4,79.7 A 90.0,90.0 0 0,1 106.0,79.0 Z" fill="#BBBBBB" class=""><title>Other 2.1%</title></path><rect x="224.0" y="265.0" width="14" height="14" fill="#BBBBBB"/><text x="246.0" y="278.0" font-size="14" fill="#767676">Other 2.1%</text></svg>
