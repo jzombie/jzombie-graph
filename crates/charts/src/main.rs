@@ -83,7 +83,10 @@ fn run_preview() -> anyhow::Result<()> {
         ),
     ] {
         jzombie_graph::output::write_file(std::path::Path::new(dest), &svg)?;
-        std::fs::copy(dest, std::path::Path::new("preview").join(basename(dest)?))?;
+        jzombie_graph::output::write_file(
+            &std::path::Path::new("preview").join(basename(dest)?),
+            &svg,
+        )?;
     }
     write_indicator_badges()?;
     let data = charts::render_data_table_md(&input)?;
