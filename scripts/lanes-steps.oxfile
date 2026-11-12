@@ -24,11 +24,18 @@ FUNC RENDER_MAP_FRAGMENT(): VOID {
 FUNC BUILD_PROOF_INPUTS(): VOID {
     WORKSPACE LOCAL
     ECHO "lanes: render all proof inputs (page assembly is ASSEMBLE_PROOF_PAGE)"
-    RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts"]
-    RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "focus"]
-    RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "flame"]
-    RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "indicators"]
-    RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "data"]
+
+    LET $charts: LIST<STRING> = [
+        "share",
+        "focus",
+        "flame",
+        "indicators",
+        "data"
+    ]
+
+    FOR $chart: STRING IN $charts {
+        RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", $chart]
+    }
 }
 
 # AssembleProofPage: run the renderer over the committed inputs.

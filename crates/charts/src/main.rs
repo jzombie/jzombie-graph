@@ -12,8 +12,8 @@ use std::path::PathBuf;
 #[derive(Parser, Debug)]
 #[command(name = "charts", about = "Chart renderers for jzombie-graph JSON")]
 struct Cli {
-    /// Which artifact to render.
-    #[arg(long, value_enum, default_value = "share")]
+    /// Which artifact to render. No default — say what you want.
+    #[arg(long, value_enum)]
     chart: Chart,
 
     /// Input graph JSON file. Defaults to the standard working copy.
