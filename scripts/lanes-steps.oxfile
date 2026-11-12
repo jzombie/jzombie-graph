@@ -10,7 +10,7 @@ FUNC COLLECT(): VOID {
     RUN ["cargo", "run", "--release", "--", "--user", "jzombie", "--format", "json"]
 }
 
-# Fragment: staged JSON to markdown.
+# Fragment: staged JSON to fragment.
 FUNC FRAGMENT(): VOID {
     WORKSPACE LOCAL
     ECHO "lanes: render the fragment"
@@ -45,11 +45,11 @@ FUNC CHART_INDICATORS(): VOID {
     RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "indicators"]
 }
 
-# PreviewInputs: every preview input rendered (SVGs, badge files, data
+# ProofInputs: every proof input rendered (SVGs, badge files, data
 # table fragment). The proof page itself is assembled by RENDER.
-FUNC PREVIEW_INPUTS(): VOID {
+FUNC PROOF_INPUTS(): VOID {
     WORKSPACE LOCAL
-    ECHO "lanes: render preview inputs (page assembly is RENDER)"
+    ECHO "lanes: render proof inputs (page assembly is RENDER)"
     RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "preview"]
 }
 
@@ -57,7 +57,7 @@ FUNC PREVIEW_INPUTS(): VOID {
 FUNC DRIFT(): VOID {
     WORKSPACE LOCAL
     ECHO "lanes: drift gate"
-    RUN ["git", "diff", "--exit-code", "--", "preview/", "markdown/fragments/"]
+    RUN ["git", "diff", "--exit-code", "--", "proof/"]
 }
 
 # CommitProof: land the rebuilt proof page, data, and schema (all
@@ -70,7 +70,7 @@ FUNC COMMIT_PROOF(): VOID {
     ECHO "lanes: commit rebuilt proof + data + schema"
     RUN ["git", "config", "user.name", "github-actions[bot]"]
     RUN ["git", "config", "user.email", "github-actions[bot]@users.noreply.github.com"]
-    RUN ["git", "add", "preview", "json", "svg", "markdown"]
+    RUN ["git", "add", "proof"]
     RUN ["sh", "-c", "git diff --cached --quiet || git commit -m 'nightly rebuild'"]
     RUN ["git", "push"]
 }
@@ -82,7 +82,7 @@ EXPORT [
     FUNC CHART_FOCUS,
     FUNC CHART_FLAME,
     FUNC CHART_INDICATORS,
-    FUNC PREVIEW_INPUTS,
+    FUNC PROOF_INPUTS,
     FUNC DRIFT,
     FUNC COMMIT_PROOF
 ]

@@ -37,32 +37,29 @@ enum Chart {
     Preview,
 }
 
-/// Badge files + preview copies + indicator table. Shared by the
-/// indicators lane and the full preview build.
+/// Badge files + proof copies + indicator table. Shared by the
+/// indicators lane and the full proof build.
 fn write_indicator_badges() -> anyhow::Result<()> {
     for name in charts::indicator_names() {
         let svg = charts::render_indicator_svg(&name)?;
         let dest =
             std::path::Path::new(jzombie_graph::paths::INDICATORS_DIR).join(format!("{name}.svg"));
         jzombie_graph::output::write_file(&dest, &svg)?;
-        let preview = std::path::Path::new(jzombie_graph::paths::PREVIEW_INDICATORS_DIR)
-            .join(format!("{name}.svg"));
-        jzombie_graph::output::write_file(&preview, &svg)?;
     }
     let md = charts::render_indicators_md()?;
     jzombie_graph::output::write_file(
-        std::path::Path::new(jzombie_graph::paths::PREVIEW_INDICATORS_MD),
+        std::path::Path::new(jzombie_graph::paths::PROOF_INDICATORS_MD),
         &md,
     )?;
     Ok(())
 }
 
-/// Preview inputs: every lane rendered, image copies staged, data table
+/// Proof inputs: every lane rendered, image files staged, data table
 /// fragment written. The proof page itself is assembled by
 /// `oxdock-render` from the map fragment, the commit-data fragment,
 /// and the indicator table — this lane only produces those inputs.
 /// All paths from `paths::` — the script that calls this names nothing.
-fn run_preview() -> anyhow::Result<()> {
+fn run_proof() -> anyhow::Result<()> {
     let input = std::fs::read_to_string(jzombie_graph::paths::GRAPH_JSON)?;
     for (svg, dest) in [
         (
@@ -83,10 +80,6 @@ fn run_preview() -> anyhow::Result<()> {
         ),
     ] {
         jzombie_graph::output::write_file(std::path::Path::new(dest), &svg)?;
-        jzombie_graph::output::write_file(
-            &std::path::Path::new("preview").join(basename(dest)?),
-            &svg,
-        )?;
     }
     write_indicator_badges()?;
     let data = charts::render_data_table_md(&input)?;
@@ -95,14 +88,6 @@ fn run_preview() -> anyhow::Result<()> {
         &data,
     )?;
     Ok(())
-}
-
-fn basename(path: &str) -> anyhow::Result<String> {
-    std::path::Path::new(path)
-        .file_name()
-        .and_then(|n| n.to_str())
-        .map(str::to_string)
-        .ok_or_else(|| anyhow::anyhow!("no file name in {path}"))
 }
 
 fn main() {
@@ -115,22 +100,22 @@ fn main() {
             std::process::exit(1);
         }
     };
-    // Preview builds all proof inputs — every path from `paths::`,
+    // Proof builds all proof inputs — every path from `paths::`,
     // nothing named in any script. Page assembly is RENDER's job.
     // Fixed layout: no --stdout/--output.
     if cli.chart == Chart::Preview {
         if cli.stdout || cli.output.is_some() {
-            eprintln!("--chart preview writes the fixed preview tree; no --stdout/--output");
+            eprintln!("--chart preview writes the fixed proof tree; no --stdout/--output");
             std::process::exit(1);
         }
-        if let Err(e) = run_preview() {
-            eprintln!("preview error: {e:#}");
+        if let Err(e) = run_proof() {
+            eprintln!("proof error: {e:#}");
             std::process::exit(1);
         }
         return;
     }
-    // Indicators also drop one-off badge files beside the preview strip
-    // plus the committed render proof (table + badge copies) — the strip
+    // Indicators also drop one-off badge files beside the proof strip
+    // plus the committed render proof (table + badges) — the strip
     // is the look-check, the files are what tables embed.
     if cli.chart == Chart::Indicators && !cli.stdout && cli.output.is_none() {
         if let Err(e) = write_indicator_badges() {

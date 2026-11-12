@@ -1,4 +1,4 @@
-# Nightly sweep + preview. Any step fails, the run stops, no commit lands.
+# Nightly sweep + proof. Any step fails, the run stops, no commit lands.
 WORKSPACE LOCAL
 
 IMPORT ["../../scripts/lanes.oxfile" AS LANES]

@@ -1441,7 +1441,7 @@ pub fn render_indicator_svg(band: &str) -> anyhow::Result<String> {
     render_indicator_doc(band)
 }
 
-/// Render the preview table: badge embeds + band + heat, one row per band.
+/// Render the indicator table: badge embeds + band + heat, one row per band.
 /// Same doc as the SVGs, markdown template — the committed render proof.
 /// Static header in Rust; only the rows ride the template.
 pub fn render_indicators_md() -> anyhow::Result<String> {
@@ -1455,7 +1455,7 @@ pub fn render_indicators_md() -> anyhow::Result<String> {
         WRITE md.md """
             # Indicator preview
 
-            *Regenerate with `oxdock scripts/preview-indicators.oxfile`. Badges sit beside this file; the rows come from the same template doc as the SVGs.*
+            *Regenerate with `oxdock scripts/proof.oxfile`. Badges sit beside this file; the rows come from the same template doc as the SVGs.*
 
             | badge | band | heat |
             |---|---|---|
@@ -2043,8 +2043,8 @@ mod tests {
         assert!(md.contains("12 repos"));
         assert!(md.contains("As of"), "last run on top");
         assert!(md.contains("UTC"), "timestamps read UTC");
-        assert!(md.contains("json/portfolio-graph.json"));
-        assert!(md.contains("json/portfolio-graph-schema.json"));
+        assert!(md.contains("proof/json/portfolio-graph.json"));
+        assert!(md.contains("proof/json/portfolio-graph-schema.json"));
         assert!(
             !md.contains("data/json"),
             "published paths, not working copies"

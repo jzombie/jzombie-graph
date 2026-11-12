@@ -16,4 +16,4 @@ jobs:
       # renderer's pre-hook once hook support lands.
       - uses: jzombie/rust-oxdock/.github/actions/setup-oxdock-render@feat/render-action
       - run: oxdock-render
-      - run: git diff --exit-code -- preview/ markdown/fragments/
+      - run: git diff --exit-code -- proof/

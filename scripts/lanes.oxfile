@@ -11,21 +11,21 @@ FUNC COLLECT(): VOID {
     STEPS::COLLECT()
 }
 
-# RenderProof: preview inputs from whatever json/ holds. Assembly is the
+# BuildProof: proof inputs from whatever proof/json/ holds. Assembly is the
 # outer oxdock-render's job — never call STEPS::RENDER() here, or the
 # pre-hook re-enters the renderer forever.
-FUNC RENDER_PROOF(): VOID {
+FUNC BUILD_PROOF(): VOID {
     WORKSPACE LOCAL
     STEPS::FRAGMENT()
-    STEPS::PREVIEW_INPUTS()
-    ECHO "preview complete"
+    STEPS::PROOF_INPUTS()
+    ECHO "proof complete"
 }
 
 # Check: tokenless rebuild + drift gate (CI render-check).
 FUNC CHECK(): VOID {
     WORKSPACE LOCAL
     STEPS::FRAGMENT()
-    STEPS::PREVIEW_INPUTS()
+    STEPS::PROOF_INPUTS()
     STEPS::RENDER()
     STEPS::DRIFT()
     ECHO "render clean"
@@ -49,10 +49,10 @@ FUNC PIPELINE($collect: BOOL): VOID {
     STEPS::CHART_FOCUS()
     STEPS::CHART_FLAME()
     STEPS::CHART_INDICATORS()
-    STEPS::PREVIEW_INPUTS()
+    STEPS::PROOF_INPUTS()
     STEPS::RENDER()
     STEPS::COMMIT_PROOF()
     ECHO "pipeline complete"
 }
 
-EXPORT [FUNC COLLECT, FUNC RENDER_PROOF, FUNC CHECK, FUNC PIPELINE]
+EXPORT [FUNC COLLECT, FUNC BUILD_PROOF, FUNC CHECK, FUNC PIPELINE]

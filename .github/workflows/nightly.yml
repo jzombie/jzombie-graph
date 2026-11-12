@@ -6,7 +6,7 @@ on:
   workflow_dispatch: {}
 permissions:
   # Nightly commits the rebuilt proof. Nothing publishes:
-  # no Pages, no deploy steps — the committed preview/ files plus the
+  # no Pages, no deploy steps — the committed proof/ files plus the
   # generated schema copy are the channel.
   contents: write
 concurrency:
@@ -26,7 +26,7 @@ jobs:
       # OxDock owns the pipeline (build → collect → schema → render) via
       # .github/scripts/pipeline.oxfile. Setup tracks latest (action @main,
       # engine `latest` by default) — we own both ends, and a bad oxdock
-      # release fails closed (no commit, last good preview keeps serving).
+      # release fails closed (no commit, last good proof keeps serving).
       # Note: this `uses:` token points in-portfolio, so the sweep records
       # a Workflow-kind edge (JSON-only, never drawn — associations don't
       # render). Dogfooding, working as designed.
