@@ -36,7 +36,16 @@ FUNC BUILD_PROOF_INPUTS(): VOID {
     ECHO "lanes: render {{ STD::LEN($charts) }} proof inputs (page assembly is ASSEMBLE_PROOF_PAGE)"
 
     FOR $chart: STRING IN $charts {
-        RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", $chart]
+        RUN [
+            "cargo",
+            "run",
+            "--release",
+            "-p",
+            "jzombie-graph-charts",
+            "--",
+            "--chart",
+            $chart
+        ]
     }
 }
 
