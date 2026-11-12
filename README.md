@@ -20,7 +20,7 @@ Own repo, personal scope. `publish = false` — internal tool, never published t
 export JZOMBIE_GRAPH_TOKEN=ghp_...
 cargo run -- --user jzombie                              # sweep: data/portfolio-graph.json + schema
 cargo run -p jzombie-graph-cartographer                  # map fragment: proof/fragments/portfolio-graph.md
-cargo run -p jzombie-graph-charts                        # share pie; add --chart focus | flame | indicators | preview
+cargo run -p jzombie-graph-charts                        # share pie; add --chart focus | flame | indicators | data
 cargo run -- --format focus                              # offline focus ranking, no API calls
 oxdock scripts/proof.oxfile                              # proof inputs; oxdock-render assembles proof/README.md
 ```
@@ -49,7 +49,7 @@ cargo run -p jzombie-graph-charts
 cargo run -p jzombie-graph-charts -- --chart focus
 ```
 
-Local only, no API calls. Reads the fresh JSON, writes the commit-share pie and the focus bars to `proof/`. Colors come from the shared `charts::palette` module so every chart reads as one family; bytes pinned by snapshot tests.
+Local only, no API calls. Each `--chart` selection writes its fixed artifact path(s) under `proof/` (share pie by default; `focus` bars, `flame`, `indicators` + badges + table, `data` table fragment). The `BUILD_PROOF_INPUTS` lane runs all five. Colors come from the shared `charts::palette` module so every chart reads as one family; bytes pinned by snapshot tests.
 
 ## Developer Focus (offline, no API calls)
 

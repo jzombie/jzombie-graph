@@ -18,13 +18,17 @@ FUNC RENDER_MAP_FRAGMENT(): VOID {
     RUN ["cargo", "run", "--release", "-p", "jzombie-graph-cartographer"]
 }
 
-# BuildProofInputs: every proof input rendered (map fragment, SVGs,
-# badge files, data table fragment). Page assembly is never here —
-# the outer oxdock-render owns proof/README.md.
+# BuildProofInputs: every proof input rendered, one binary invocation
+# per artifact family. Sequencing lives here — the binary only computes.
+# The proof page itself is assembled by the outer oxdock-render.
 FUNC BUILD_PROOF_INPUTS(): VOID {
     WORKSPACE LOCAL
     ECHO "lanes: render all proof inputs (page assembly is ASSEMBLE_PROOF_PAGE)"
-    RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "preview"]
+    RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts"]
+    RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "focus"]
+    RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "flame"]
+    RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "indicators"]
+    RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "data"]
 }
 
 # AssembleProofPage: run the renderer over the committed inputs.

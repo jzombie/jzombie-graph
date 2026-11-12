@@ -1,8 +1,10 @@
 //! `charts` binary: chart SVGs out.
 //!
-//! Input is always the `paths::GRAPH_JSON` working copy (single source,
-//! never a duplicated path). Output defaults per chart (`paths::SHARE_SVG`,
-//! `paths::DEVELOPER_FOCUS_SVG`).
+//! One artifact family per invocation — no bundles, no sequencing.
+//! The lanes own order (`BUILD_PROOF_INPUTS` runs all five); this binary
+//! only computes. Input is always the `paths::GRAPH_JSON` working copy
+//! (single source, never a duplicated path). Output defaults per chart
+//! (`paths::SHARE_SVG`, `paths::DEVELOPER_FOCUS_SVG`).
 
 use clap::Parser;
 use std::path::PathBuf;
@@ -10,7 +12,7 @@ use std::path::PathBuf;
 #[derive(Parser, Debug)]
 #[command(name = "charts", about = "Chart renderers for jzombie-graph JSON")]
 struct Cli {
-    /// Which chart to render.
+    /// Which artifact to render.
     #[arg(long, value_enum, default_value = "share")]
     chart: Chart,
 
@@ -34,11 +36,12 @@ enum Chart {
     Focus,
     Flame,
     Indicators,
-    Preview,
+    Data,
 }
 
-/// Badge files + proof copies + indicator table. Shared by the
-/// indicators lane and the full proof build.
+/// Badge files + indicator table. Written atomically with the strip
+/// SVG below: the table embeds the badge files, so splitting them
+/// across invocations risks a half-written family.
 fn write_indicator_badges() -> anyhow::Result<()> {
     for name in charts::indicator_names() {
         let svg = charts::render_indicator_svg(&name)?;
@@ -54,42 +57,6 @@ fn write_indicator_badges() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Proof inputs: every lane rendered, image files staged, data table
-/// fragment written. The proof page itself is assembled by
-/// `oxdock-render` from the map fragment, the commit-data fragment,
-/// and the indicator table — this lane only produces those inputs.
-/// All paths from `paths::` — the script that calls this names nothing.
-fn run_proof() -> anyhow::Result<()> {
-    let input = std::fs::read_to_string(jzombie_graph::paths::GRAPH_JSON)?;
-    for (svg, dest) in [
-        (
-            charts::render_share_svg(&input)?,
-            jzombie_graph::paths::SHARE_SVG,
-        ),
-        (
-            charts::render_focus_svg(&input)?,
-            jzombie_graph::paths::DEVELOPER_FOCUS_SVG,
-        ),
-        (
-            charts::render_flame_svg(&input)?,
-            jzombie_graph::paths::FLAME_SVG,
-        ),
-        (
-            charts::render_indicators_svg()?,
-            jzombie_graph::paths::INDICATORS_SVG,
-        ),
-    ] {
-        jzombie_graph::output::write_file(std::path::Path::new(dest), &svg)?;
-    }
-    write_indicator_badges()?;
-    let data = charts::render_data_table_md(&input)?;
-    jzombie_graph::output::write_file(
-        std::path::Path::new(jzombie_graph::paths::COMMIT_DATA_MD),
-        &data,
-    )?;
-    Ok(())
-}
-
 fn main() {
     let cli = Cli::parse();
 
@@ -100,16 +67,27 @@ fn main() {
             std::process::exit(1);
         }
     };
-    // Proof builds all proof inputs — every path from `paths::`,
-    // nothing named in any script. Page assembly is RENDER's job.
+    // Data emits the machine-readable commit table fragment — one
+    // artifact, like every other selection. Bundling lives in the
+    // lanes (`BUILD_PROOF_INPUTS`), never here.
     // Fixed layout: no --stdout/--output.
-    if cli.chart == Chart::Preview {
+    if cli.chart == Chart::Data {
         if cli.stdout || cli.output.is_some() {
-            eprintln!("--chart preview writes the fixed proof tree; no --stdout/--output");
+            eprintln!("--chart data writes the fixed fragment path; no --stdout/--output");
             std::process::exit(1);
         }
-        if let Err(e) = run_proof() {
-            eprintln!("proof error: {e:#}");
+        let md = match charts::render_data_table_md(&text) {
+            Ok(m) => m,
+            Err(e) => {
+                eprintln!("render error: {e:#}");
+                std::process::exit(1);
+            }
+        };
+        if let Err(e) = jzombie_graph::output::write_file(
+            std::path::Path::new(jzombie_graph::paths::COMMIT_DATA_MD),
+            &md,
+        ) {
+            eprintln!("writing {}: {e:#}", jzombie_graph::paths::COMMIT_DATA_MD);
             std::process::exit(1);
         }
         return;
@@ -129,7 +107,7 @@ fn main() {
         Chart::Focus => charts::render_focus_svg(&text),
         Chart::Flame => charts::render_flame_svg(&text),
         Chart::Indicators => charts::render_indicators_svg(),
-        Chart::Preview => unreachable!("handled by the early return above"),
+        Chart::Data => unreachable!("handled by the early return above"),
     };
     let svg = match svg {
         Ok(s) => s,
@@ -143,7 +121,7 @@ fn main() {
         Chart::Flame => jzombie_graph::paths::FLAME_SVG,
         Chart::Indicators => jzombie_graph::paths::INDICATORS_SVG,
         Chart::Share => jzombie_graph::paths::SHARE_SVG,
-        Chart::Preview => unreachable!("handled by the early return above"),
+        Chart::Data => unreachable!("handled by the early return above"),
     };
     if cli.stdout {
         print!("{svg}");
