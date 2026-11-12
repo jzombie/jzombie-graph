@@ -26,18 +26,18 @@ pub const FRAGMENT_MD: &str = "proof/fragments/portfolio-graph.md";
 pub const COMMIT_DATA_MD: &str = "proof/fragments/commit-data.md";
 
 /// Commit-share pie SVG.
-pub const SHARE_SVG: &str = "proof/portfolio-graph-share.svg";
+pub const SHARE_SVG: &str = "proof/charts/portfolio-graph-share.svg";
 
 /// Developer Focus bars SVG.
-pub const DEVELOPER_FOCUS_SVG: &str = "proof/portfolio-graph-developer-focus.svg";
+pub const DEVELOPER_FOCUS_SVG: &str = "proof/charts/portfolio-graph-developer-focus.svg";
 
 /// Heat flame SVG: portfolio → repos → branches → embers, widths pro-rata
 /// 30d share, color + motion from the heat bands.
-pub const FLAME_SVG: &str = "proof/portfolio-graph-flame.svg";
+pub const FLAME_SVG: &str = "proof/charts/portfolio-graph-flame.svg";
 
 /// Status-indicator strip SVG. The per-repo badges below are what
 /// tables embed; the strip above is the look-check.
-pub const INDICATORS_SVG: &str = "proof/portfolio-graph-indicators.svg";
+pub const INDICATORS_SVG: &str = "proof/charts/portfolio-graph-indicators.svg";
 
 /// One-off badge files, one per heat band (`<band>.svg`).
 /// Table cells embed these; the strip above is the preview sheet.

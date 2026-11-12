@@ -1,4 +1,4 @@
 ## Commit share
 
-![share](portfolio-graph-share.svg)
+![share](charts/portfolio-graph-share.svg)
 

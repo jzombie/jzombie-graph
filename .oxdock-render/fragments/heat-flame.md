@@ -1,4 +1,4 @@
 ## Heat flame
 
-![flame](portfolio-graph-flame.svg)
+![flame](charts/portfolio-graph-flame.svg)
 

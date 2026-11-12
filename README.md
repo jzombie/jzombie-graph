@@ -6,9 +6,9 @@ Code and data live here together. The collector, renderers, and lanes in this re
 
 ## Where attention is going (rebuilt nightly)
 
-[![Developer Focus](proof/portfolio-graph-developer-focus.svg)](proof/README.md)
+[![Developer Focus](proof/charts/portfolio-graph-developer-focus.svg)](proof/README.md)
 
-[![Commit share](proof/portfolio-graph-share.svg)](proof/README.md)
+[![Commit share](proof/charts/portfolio-graph-share.svg)](proof/README.md)
 
 Full proof with map, flame, table, and machine-readable data: [`proof/README.md`](proof/README.md). Raw JSON: [`data/portfolio-graph.json`](data/portfolio-graph.json).
 

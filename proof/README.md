@@ -43,19 +43,19 @@ Generated from the `portfolio-graph` collection (schema v7) — last run 2026-11
 Proximity reflects dependence strength: nodes sharing an edge attract, unconnected nodes repel. Forks appear only when diverged or renamed; repos untouched for over a year are omitted unless something current depends on them.
 ## Commit share
 
-![share](portfolio-graph-share.svg)
+![share](charts/portfolio-graph-share.svg)
 
 ## Developer Focus
 
 Developer Focus is a heuristic of where the developer's attention is right now.
 
-![developer focus](portfolio-graph-developer-focus.svg)
+![developer focus](charts/portfolio-graph-developer-focus.svg)
 
 <sub>Each score blends commit heat (recent commit rates vs the trailing 30d baseline) with issue comment heat (owner authored comment volume, same comparison), then discounts idle months. A signal with no baseline sits out: triage free repos rank on commits alone, commit free weeks on comments alone.</sub>
 
 ## Heat flame
 
-![flame](portfolio-graph-flame.svg)
+![flame](charts/portfolio-graph-flame.svg)
 
 ## Commit data — machine-readable
 
