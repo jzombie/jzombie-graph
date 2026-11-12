@@ -10,9 +10,9 @@
           "proof/fragments/portfolio-graph.md"
         ],
         "sections": [
-          "proof/fragments/commit-share.md",
-          "proof/fragments/developer-focus.md",
-          "proof/fragments/heat-flame.md"
+          ".oxdock-render/fragments/commit-share.md",
+          ".oxdock-render/fragments/developer-focus.md",
+          ".oxdock-render/fragments/heat-flame.md"
         ],
         "data": [
           "proof/fragments/commit-data.md"

@@ -1,4 +1,4 @@
-# Build proof inputs. Tokenless: renders whatever proof/json/ holds.
+# Build proof inputs. Tokenless: renders whatever data/ holds.
 # Re-collect first when stale: oxdock scripts/collect.oxfile, then this.
 # Assembly is the outer oxdock-render's job — this lane never calls it.
 WORKSPACE LOCAL

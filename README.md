@@ -10,7 +10,7 @@ Code and data live here together. The collector, renderers, and lanes in this re
 
 [![Commit share](proof/portfolio-graph-share.svg)](proof/README.md)
 
-Full proof with map, flame, table, and machine-readable data: [`proof/README.md`](proof/README.md). Raw JSON: [`proof/json/portfolio-graph.json`](proof/json/portfolio-graph.json).
+Full proof with map, flame, table, and machine-readable data: [`proof/README.md`](proof/README.md). Raw JSON: [`data/portfolio-graph.json`](data/portfolio-graph.json).
 
 Own repo, personal scope. `publish = false` — internal tool, never published to crates.io. Private repos are stripped from default output, so the committed files are safe to publish; `--include-private` is local-briefing only and never committed.
 
@@ -18,7 +18,7 @@ Own repo, personal scope. `publish = false` — internal tool, never published t
 
 ```bash
 export JZOMBIE_GRAPH_TOKEN=ghp_...
-cargo run -- --user jzombie                              # sweep: proof/json/portfolio-graph.json + schema
+cargo run -- --user jzombie                              # sweep: data/portfolio-graph.json + schema
 cargo run -p jzombie-graph-cartographer                  # map fragment: proof/fragments/portfolio-graph.md
 cargo run -p jzombie-graph-charts                        # share pie; add --chart focus | flame | indicators | preview
 cargo run -- --format focus                              # offline focus ranking, no API calls
@@ -32,7 +32,7 @@ export JZOMBIE_GRAPH_TOKEN=ghp_...
 cargo run -- --user jzombie
 ```
 
-Defaults to `--format json` into `proof/json/portfolio-graph.json` (see `src/paths.rs` — one source of truth). The schema (`proof/json/portfolio-graph-schema.json`) refreshes on the same run — one ingest, both copies, never a stale contract. Needs a token for API rate limits (5000/hr vs 60/hr without). Public repos need no scopes; private repos need `repo` scope and are stripped from default output. Takes a while (~24 API calls per repo). Never run with `--include-private` output committed — that flag is local-briefing only. `--stdout` prints instead of writing the file; `--output PATH` overrides the path.
+Defaults to `--format json` into `data/portfolio-graph.json` (see `src/paths.rs` — one source of truth). The schema (`data/portfolio-graph-schema.json`) refreshes on the same run — one ingest, both copies, never a stale contract. Needs a token for API rate limits (5000/hr vs 60/hr without). Public repos need no scopes; private repos need `repo` scope and are stripped from default output. Takes a while (~24 API calls per repo). Never run with `--include-private` output committed — that flag is local-briefing only. `--stdout` prints instead of writing the file; `--output PATH` overrides the path.
 
 ## Regenerate the graph
 
@@ -40,7 +40,7 @@ Defaults to `--format json` into `proof/json/portfolio-graph.json` (see `src/pat
 cargo run -p jzombie-graph-cartographer
 ```
 
-Local only, no API calls. Reads `proof/json/portfolio-graph.json`, writes the clickable `<pre>` fragment to `proof/fragments/portfolio-graph.md`. Piped stdin still wins when present; `--stdout` prints instead.
+Local only, no API calls. Reads `data/portfolio-graph.json`, writes the clickable `<pre>` fragment to `proof/fragments/portfolio-graph.md`. Piped stdin still wins when present; `--stdout` prints instead.
 
 ## Regenerate the charts
 
@@ -73,7 +73,7 @@ Assembles the committed `proof/README.md` — map fragment verbatim, all charts 
 cargo run -- --format schema
 ```
 
-Static, no API calls and no selector — derived from the Rust types. The nightly lands the regenerated copy automatically; locally, copy the lane output over the committed `proof/json/portfolio-graph-schema.json` yourself. Either way the drift test fails CI if the types and the file disagree.
+Static, no API calls and no selector — derived from the Rust types. The nightly lands the regenerated copy automatically; locally, copy the lane output over the committed `data/portfolio-graph-schema.json` yourself. Either way the drift test fails CI if the types and the file disagree.
 
 ## Nightly rebuild (CI only)
 

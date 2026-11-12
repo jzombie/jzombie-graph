@@ -2043,8 +2043,8 @@ mod tests {
         assert!(md.contains("12 repos"));
         assert!(md.contains("As of"), "last run on top");
         assert!(md.contains("UTC"), "timestamps read UTC");
-        assert!(md.contains("proof/json/portfolio-graph.json"));
-        assert!(md.contains("proof/json/portfolio-graph-schema.json"));
+        assert!(md.contains("data/portfolio-graph.json"));
+        assert!(md.contains("data/portfolio-graph-schema.json"));
         assert!(
             !md.contains("data/json"),
             "published paths, not working copies"

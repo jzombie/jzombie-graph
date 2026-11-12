@@ -57,7 +57,7 @@ FUNC PROOF_INPUTS(): VOID {
 FUNC DRIFT(): VOID {
     WORKSPACE LOCAL
     ECHO "lanes: drift gate"
-    RUN ["git", "diff", "--exit-code", "--", "proof/"]
+    RUN ["git", "diff", "--exit-code", "--", "proof/", "data/"]
 }
 
 # CommitProof: land the rebuilt proof page, data, and schema (all
@@ -70,7 +70,7 @@ FUNC COMMIT_PROOF(): VOID {
     ECHO "lanes: commit rebuilt proof + data + schema"
     RUN ["git", "config", "user.name", "github-actions[bot]"]
     RUN ["git", "config", "user.email", "github-actions[bot]@users.noreply.github.com"]
-    RUN ["git", "add", "proof"]
+    RUN ["git", "add", "proof", "data"]
     RUN ["sh", "-c", "git diff --cached --quiet || git commit -m 'nightly rebuild'"]
     RUN ["git", "push"]
 }

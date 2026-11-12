@@ -10,12 +10,12 @@ pub const GRAPH_NAME: &str = "portfolio-graph";
 
 /// Collector output: node/edge JSON. Committed — the nightly sweep
 /// regenerates it and commits it back.
-pub const GRAPH_JSON: &str = "proof/json/portfolio-graph.json";
+pub const GRAPH_JSON: &str = "data/portfolio-graph.json";
 
 /// Schema lane output: the generated contract, paired beside the data
 /// it validates. The drift test guards this file: whatever the types
 /// derive is what ships.
-pub const SCHEMA_JSON: &str = "proof/json/portfolio-graph-schema.json";
+pub const SCHEMA_JSON: &str = "data/portfolio-graph-schema.json";
 
 /// Cartographer output: the verbatim fragment.
 pub const FRAGMENT_MD: &str = "proof/fragments/portfolio-graph.md";
@@ -52,4 +52,4 @@ pub const PROOF_README_MD: &str = "proof/README.md";
 
 /// Checked-in schema expectation the drift test guards. Same file the
 /// schema lane writes — generation and expectation are one path.
-pub const COMMITTED_SCHEMA: &str = "proof/json/portfolio-graph-schema.json";
+pub const COMMITTED_SCHEMA: &str = "data/portfolio-graph-schema.json";

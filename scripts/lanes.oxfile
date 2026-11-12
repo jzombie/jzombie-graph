@@ -11,7 +11,7 @@ FUNC COLLECT(): VOID {
     STEPS::COLLECT()
 }
 
-# BuildProof: proof inputs from whatever proof/json/ holds. Assembly is the
+# BuildProof: proof inputs from whatever data/ holds. Assembly is the
 # outer oxdock-render's job — never call STEPS::RENDER() here, or the
 # pre-hook re-enters the renderer forever.
 FUNC BUILD_PROOF(): VOID {
