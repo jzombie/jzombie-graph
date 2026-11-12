@@ -41,21 +41,19 @@ fn main() {
         String::new()
     };
     let text = match &cli.input {
-        Some(p) => match jzombie_graph::output::read_to_string(p) {
+        Some(p) => match std::fs::read_to_string(p) {
             Ok(t) => t,
             Err(e) => {
-                eprintln!("reading {}: {e:#}", p.display());
+                eprintln!("reading {}: {e}", p.display());
                 std::process::exit(1);
             }
         },
         None if !stdin_text.trim().is_empty() => stdin_text,
-        None => match jzombie_graph::output::read_to_string(std::path::Path::new(
-            jzombie_graph::paths::GRAPH_JSON,
-        )) {
+        None => match std::fs::read_to_string(jzombie_graph::paths::GRAPH_JSON) {
             Ok(t) => t,
             Err(e) => {
                 eprintln!(
-                    "reading {}: {e:#} (run a live collect first?)",
+                    "reading {}: {e} (run a live collect first?)",
                     jzombie_graph::paths::GRAPH_JSON
                 );
                 std::process::exit(1);

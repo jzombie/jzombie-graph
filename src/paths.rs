@@ -5,38 +5,6 @@
 //! and commits — no gitignored working copies, no separate publish step.
 //! The nightly sweep regenerates these files and commits them back;
 //! local runs write the same paths, so what you see is what ships.
-//!
-//! All paths below are workspace-relative. Resolve them through
-//! [`resolve`] before touching disk: pipeline lanes execute with the
-//! calling oxfile's directory as cwd, so bare relative paths would
-//! scatter outputs beside the script instead of at the root.
-
-/// Workspace root: nearest ancestor (inclusive) containing `.git`,
-/// falling back to the current directory outside a checkout.
-pub fn root() -> std::path::PathBuf {
-    let mut dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-    loop {
-        if dir.join(".git").exists() {
-            return dir;
-        }
-        match dir.parent() {
-            Some(parent) => dir = parent.to_path_buf(),
-            None => {
-                return std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-            }
-        }
-    }
-}
-
-/// Anchor a workspace-relative path (or absolute passthrough) at the
-/// workspace root, so lanes land at the root no matter which oxfile
-/// directory they run from.
-pub fn resolve(path: &std::path::Path) -> std::path::PathBuf {
-    if path.is_absolute() {
-        return path.to_path_buf();
-    }
-    root().join(path)
-}
 
 /// The graph this repo publishes. Every related asset shares the stem.
 pub const GRAPH_NAME: &str = "portfolio-graph";

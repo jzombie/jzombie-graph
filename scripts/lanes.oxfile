@@ -31,8 +31,15 @@ FUNC CHECK(): VOID {
 }
 
 # Pipeline: fragment + charts + proof page, collecting first when $collect.
+# HALTED: imported-lane RUN executes with the lane file's directory as
+# cwd, so every lane scatters outputs under scripts/ instead of the repo
+# root. Do NOT run this (nightly stays red) until the oxdock engine fix
+# lands and module FUNCs inherit the entry scope. Then delete the HALT
+# below — nothing else here changes.
 FUNC PIPELINE($collect: BOOL): VOID {
     WORKSPACE LOCAL
+    ECHO "HALTED: refusing nightly pipeline — oxdock module-scope fix required (lanes write scripts/ instead of root)"
+    EXIT 1
     IF $collect {
         STEPS::COLLECT()
     }

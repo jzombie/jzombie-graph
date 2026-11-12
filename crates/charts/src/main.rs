@@ -63,9 +63,7 @@ fn write_indicator_badges() -> anyhow::Result<()> {
 /// and the indicator table — this lane only produces those inputs.
 /// All paths from `paths::` — the script that calls this names nothing.
 fn run_preview() -> anyhow::Result<()> {
-    let input = jzombie_graph::output::read_to_string(std::path::Path::new(
-        jzombie_graph::paths::GRAPH_JSON,
-    ))?;
+    let input = std::fs::read_to_string(jzombie_graph::paths::GRAPH_JSON)?;
     for (svg, dest) in [
         (
             charts::render_share_svg(&input)?,
@@ -84,15 +82,8 @@ fn run_preview() -> anyhow::Result<()> {
             jzombie_graph::paths::INDICATORS_SVG,
         ),
     ] {
-        let dest_path = std::path::Path::new(dest);
-        jzombie_graph::output::write_file(dest_path, &svg)?;
-        let preview =
-            jzombie_graph::paths::resolve(std::path::Path::new("preview")).join(basename(dest)?);
-        let dest_abs = jzombie_graph::paths::resolve(dest_path);
-        if let Some(parent) = preview.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        std::fs::copy(&dest_abs, &preview)?;
+        jzombie_graph::output::write_file(std::path::Path::new(dest), &svg)?;
+        std::fs::copy(dest, std::path::Path::new("preview").join(basename(dest)?))?;
     }
     write_indicator_badges()?;
     let data = charts::render_data_table_md(&input)?;
@@ -114,10 +105,10 @@ fn basename(path: &str) -> anyhow::Result<String> {
 fn main() {
     let cli = Cli::parse();
 
-    let text = match jzombie_graph::output::read_to_string(&cli.input) {
+    let text = match std::fs::read_to_string(&cli.input) {
         Ok(t) => t,
         Err(e) => {
-            eprintln!("reading {}: {e:#}", cli.input.display());
+            eprintln!("reading {}: {e}", cli.input.display());
             std::process::exit(1);
         }
     };

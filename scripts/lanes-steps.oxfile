@@ -61,28 +61,26 @@ FUNC RENDER(): VOID {
     RUN ["oxdock-render", "--root", ".."]
 }
 
-# Drift: fail when generated outputs differ from the commit. Runs from
-# the lane directory, so git targets the repo root explicitly.
+# Drift: fail when generated outputs differ from the commit.
 FUNC DRIFT(): VOID {
     WORKSPACE LOCAL
     ECHO "lanes: drift gate"
-    RUN ["git", "-C", "..", "diff", "--exit-code", "--", "preview/", "markdown/fragments/"]
+    RUN ["git", "diff", "--exit-code", "--", "preview/", "markdown/fragments/"]
 }
 
 # CommitProof: land the rebuilt proof page, data, and schema (all
 # committed paths — no gitignored working copies anymore). Commits only
 # on change — a quiet sweep pushes nothing. Shell form because the
 # commit is conditional; a bare `git commit` would fail the lane on
-# quiet nights. Runs from the lane directory, so git targets the repo
-# root explicitly.
+# quiet nights.
 FUNC COMMIT_PROOF(): VOID {
     WORKSPACE LOCAL
     ECHO "lanes: commit rebuilt proof + data + schema"
-    RUN ["git", "-C", "..", "config", "user.name", "github-actions[bot]"]
-    RUN ["git", "-C", "..", "config", "user.email", "github-actions[bot]@users.noreply.github.com"]
-    RUN ["git", "-C", "..", "add", "preview", "json", "svg", "markdown"]
-    RUN ["sh", "-c", "git -C .. diff --cached --quiet || git -C .. commit -m 'nightly rebuild'"]
-    RUN ["git", "-C", "..", "push"]
+    RUN ["git", "config", "user.name", "github-actions[bot]"]
+    RUN ["git", "config", "user.email", "github-actions[bot]@users.noreply.github.com"]
+    RUN ["git", "add", "preview", "json", "svg", "markdown"]
+    RUN ["sh", "-c", "git diff --cached --quiet || git commit -m 'nightly rebuild'"]
+    RUN ["git", "push"]
 }
 
 EXPORT [FUNC COLLECT, FUNC FRAGMENT, FUNC CHART_SHARE, FUNC CHART_FOCUS, FUNC CHART_FLAME, FUNC CHART_INDICATORS, FUNC PREVIEW_INPUTS, FUNC RENDER, FUNC DRIFT, FUNC COMMIT_PROOF]
