@@ -1,62 +1,3 @@
-# portfolio-graph — render proof
-
-*Generated — do not hand-edit. Regenerate with `oxdock scripts/preview-indicators.oxfile`. Fragment carried verbatim; charts embedded as files.*
-
-## Map fragment
-
-# jzombie portfolio cluster
-
-jzombie portfolio as a 2D projection — proximity is edge strength. Drawn: 15 repos, 21 dependence edges (+2 runtime-coupling); layers 4 foundation · 5 middleware · 8 application · 1 isolated. Hottest now: rust-sec-fetcher (heat 12.67); most depended-upon: rust-line-ending (5).
-
-Generated from the `portfolio-graph` collection (schema v7) — last run 2026-11-12 04:35 UTC. Braille traces show cargo dependence plus docs runtime coupling; every label links to GitHub.
-
-<sub>Diagram: a 2D projection of these repos — closeness means shared dependencies. Screen readers: the block below uses braille characters for lines and is noisy, so it is hidden; the same edges are machine-readable in `graph.json`.</sub>
-
-<pre aria-hidden="true">
-                                 [<a href="https://github.com/jzombie/windows-headless">windows-headless</a>]
-        [<a href="https://github.com/jzombie/rust-sec-fetcher">sec-fetcher</a>]             [<a href="https://github.com/jzombie/rust-cache-manager">cache-manager</a>]⠉⠉[<a href="https://github.com/jzombie/lab-qemu-portable">lab-qemu-portable</a>]
-               ⡇⠈⠑⠢⢄⡀              ⣀⠤⠔⠊⠉⡰⠁
-               ⠸⡀   ⠈⠑⠢⢄⡀     ⣀⠤⠔⠊⠉    ⡜
-                ⢇  [<a href="https://github.com/jzombie/rust-reqwest-drive">reqwest-drive</a>]   ⢀⠎
-                ⠘⡄      ⢀⠜⢸⠘⢄       ⢠⠃
-                 ⢣     ⡠⠃ ⠸⡀ ⠑⡄    ⡰⠁
-                 ⠘⡄  ⢀⠜    ⡇  ⠈⠢⡀ ⡔⠁
-       [<a href="https://github.com/jzombie/rust-llkv">llkv</a>]⡀    ⢱ ⡠⠃     ⡇[<a href="https://github.com/jzombie/rust-triplets">triplets</a>]
-            [<a href="https://github.com/jzombie/rust-simd-r-drive">simd-r-drive</a>]⠉⡏     ⢸
-                  ⠨⡂       ⢇      ⡇
-                  ⠨⡂       ⢸      ⠸⡀
-                  ⠨⡂[<a href="https://github.com/jzombie/jzombie-graph">jzombie-graph</a>]⢇
-                  ⠨⡂        ⠱⡀     ⠸⡀
-                  ⠨⡂         ⠑⡄     ⢣
-                   ⠈⠢⡀        ⠘⡄    ⠘⡄
-                     ⠈⠢⡀    [<a href="https://github.com/jzombie/rust-oxdock">oxdock</a>]⡀⢱
-                     [<a href="https://github.com/jzombie/rust-muxio">muxio</a>]⠭⠥⠤⠤⠤⠬⠵⠤⡬⠭⡯[<a href="https://github.com/jzombie/term-wm">term-wm</a>]⢄⢄
-                                [<a href="https://github.com/jzombie/rust-line-ending">line-ending</a>]⡇    ⠑⢄
-                                    ⢸[<a href="https://github.com/jzombie/term-wm-vt100">term-wm-vt100</a>]⡇
-                                     ⠉⠑⢄          ⡠⠊
-                                        ⠑⢄      ⡠⠊
-                                          ⠑⢄  ⡠⠊
-                                            ⠑⢎
-                                          [<a href="https://github.com/jzombie/rust-argtuner">argtuner</a>]
-
-</pre>
-Proximity reflects dependence strength: nodes sharing an edge attract, unconnected nodes repel. Forks appear only when diverged or renamed; repos untouched for over a year are omitted unless something current depends on them.
-## Commit share
-
-![share](portfolio-graph-share.svg)
-
-## Developer Focus
-
-Developer Focus is a heuristic of where the developer's attention is right now.
-
-![developer focus](portfolio-graph-developer-focus.svg)
-
-<sub>Each score blends commit heat (recent commit rates vs the trailing 30d baseline) with issue comment heat (owner authored comment volume, same comparison), then discounts idle months. A signal with no baseline sits out: triage free repos rank on commits alone, commit free weeks on comments alone.</sub>
-
-## Heat flame
-
-![flame](portfolio-graph-flame.svg)
-
 ## Commit data — machine-readable
 
 As of 2026-11-12 04:35 UTC · 17 repos · 262 commits/30d · 3 foundation · 5 middleware · 7 application · 5 isolated — machine-readable in `json/portfolio-graph.json` (schema `json/portfolio-graph-schema.json`).
@@ -75,13 +16,3 @@ As of 2026-11-12 04:35 UTC · 17 repos · 262 commits/30d · 3 foundation · 5 m
 | [rust-muxio](https://github.com/jzombie/rust-muxio)<br><sub>★ 37</sub>               | Rust toolkit for layered stream multiplexing and schemaless RPC communication. <sub>[#rpc-framework](https://github.com/search?q=user%3Ajzombie+topic%3Arpc-framework&type=repositories) [#wasm-rpc](https://github.com/search?q=user%3Ajzombie+topic%3Awasm-rpc&type=repositories) [#websocket-client](https://github.com/search?q=user%3Ajzombie+topic%3Awebsocket-client&type=repositories) [#websocket-server](https://github.com/search?q=user%3Ajzombie+topic%3Awebsocket-server&type=repositories)</sub>                                                 | 3<br><sub>single branch</sub>              | <div align="center">![cooling](indicators/cooling.svg)<br><sub>cooling</sub></div> | foundation               | <sub>used by</sub><br>[rust-oxdock](https://github.com/jzombie/rust-oxdock), [rust-simd-r-drive](https://github.com/jzombie/rust-simd-r-drive), [term-wm](https://github.com/jzombie/term-wm)                                                                                                                                                          |
 
 <!-- +7 more below top-10 (10 commits/30d combined): rust-sec-fetcher, term-wm-vt100, deepwiki-to-mdbook, docker-mqtt-mosquitto-cloudflare-tunnel, rust-line-ending, rust-reqwest-drive, zenosmosis-website -->
-# Indicator preview
-
-*Generated — do not hand-edit. Regenerate with `oxdock scripts/preview-indicators.oxfile`. Badges sit beside this file; the rows come from the same template doc as the SVGs.*
-
-| badge | band | heat |
-|---|---|---|
-| ![heating](indicators/heating.svg) | heating | 3.00 |
-| ![steady](indicators/steady.svg) | steady | 1.00 |
-| ![cooling](indicators/cooling.svg) | cooling | 0.25 |
-| ![dormant](indicators/dormant.svg) | dormant | 0.00 |

@@ -15,8 +15,19 @@ FUNC COLLECT(): VOID {
 FUNC RENDER_PROOF(): VOID {
     WORKSPACE LOCAL
     STEPS::FRAGMENT()
-    STEPS::PREVIEW()
+    STEPS::PREVIEW_INPUTS()
+    STEPS::RENDER()
     ECHO "preview complete"
+}
+
+# Check: tokenless rebuild + drift gate (CI render-check).
+FUNC CHECK(): VOID {
+    WORKSPACE LOCAL
+    STEPS::FRAGMENT()
+    STEPS::PREVIEW_INPUTS()
+    STEPS::RENDER()
+    STEPS::DRIFT()
+    ECHO "render clean"
 }
 
 # Pipeline: fragment + charts + proof page, collecting first when $collect.
@@ -30,9 +41,10 @@ FUNC PIPELINE($collect: BOOL): VOID {
     STEPS::CHART_FOCUS()
     STEPS::CHART_FLAME()
     STEPS::CHART_INDICATORS()
-    STEPS::PREVIEW()
+    STEPS::PREVIEW_INPUTS()
+    STEPS::RENDER()
     STEPS::COMMIT_PROOF()
     ECHO "pipeline complete"
 }
 
-EXPORT [FUNC COLLECT, FUNC RENDER_PROOF, FUNC PIPELINE]
+EXPORT [FUNC COLLECT, FUNC RENDER_PROOF, FUNC CHECK, FUNC PIPELINE]

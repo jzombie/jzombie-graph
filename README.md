@@ -6,11 +6,11 @@ Code and data live here together. The collector, renderers, and lanes in this re
 
 ## Where attention is going (rebuilt nightly)
 
-[![Developer Focus](svg/portfolio-graph-developer-focus.svg)](preview/portfolio-graph.md)
+[![Developer Focus](svg/portfolio-graph-developer-focus.svg)](preview/README.md)
 
-[![Commit share](svg/portfolio-graph-share.svg)](preview/portfolio-graph.md)
+[![Commit share](svg/portfolio-graph-share.svg)](preview/README.md)
 
-Full proof with map, flame, table, and machine-readable data: [`preview/portfolio-graph.md`](preview/portfolio-graph.md). Raw JSON: [`json/portfolio-graph.json`](json/portfolio-graph.json).
+Full proof with map, flame, table, and machine-readable data: [`preview/README.md`](preview/README.md). Raw JSON: [`json/portfolio-graph.json`](json/portfolio-graph.json).
 
 Own repo, personal scope. `publish = false` — internal tool, never published to crates.io. Private repos are stripped from default output, so the committed files are safe to publish; `--include-private` is local-briefing only and never committed.
 
@@ -22,7 +22,7 @@ cargo run -- --user jzombie                              # sweep: json/portfolio
 cargo run -p jzombie-graph-cartographer                  # map fragment: markdown/fragments/portfolio-graph.md
 cargo run -p jzombie-graph-charts                        # share pie; add --chart focus | flame | indicators | preview
 cargo run -- --format focus                              # offline focus ranking, no API calls
-oxdock scripts/preview-indicators.oxfile                 # full proof page: preview/portfolio-graph.md
+oxdock scripts/preview-indicators.oxfile                 # full proof page: preview/README.md
 ```
 
 ## Regenerate the JSON
@@ -65,7 +65,7 @@ Same `focus` the dump lane shows — commit heat vs own 30d baseline minus idle 
 oxdock scripts/preview-indicators.oxfile
 ```
 
-Collects fresh, renders every lane, and assembles the committed `preview/portfolio-graph.md` — map fragment verbatim, all charts embedded, machine-readable commit-data table (role/proof/reuse per repo, layer-labeled, tiny topic search links, top-10 + roll-up), indicator table with badges. That page is the visual proof; `preview/` is generated, never hand-edited. All markup emission is [OxDock](https://github.com/jzombie/rust-oxdock)-templated (tables via the shared `MARKDOWN` module); the script only orders the lanes.
+Collects fresh, renders every lane, and assembles the committed `preview/README.md` — map fragment verbatim, all charts embedded, machine-readable commit-data table (role/proof/reuse per repo, layer-labeled, tiny topic search links, top-10 + roll-up), indicator table with badges. That page is the visual proof; `preview/` is generated, never hand-edited. All markup emission is [OxDock](https://github.com/jzombie/rust-oxdock)-templated (tables via the shared `MARKDOWN` module); the script only orders the lanes.
 
 ## Regenerate the schema
 

@@ -112,8 +112,7 @@ async fn main() -> Result<()> {
     );
 
     let graph = if let Some(path) = &cli.input {
-        let text =
-            std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
+        let text = output::read_to_string(path)?;
         jzombie_graph::graph::Graph::from_json(&text)?
     } else if has_live {
         if std::env::var("JZOMBIE_GRAPH_OFFLINE").is_ok() {
@@ -133,12 +132,13 @@ async fn main() -> Result<()> {
     } else {
         // No selector, no --input: offline re-render of the default file.
         // `cargo run -- --format focus` just works after one ingest.
-        let text = std::fs::read_to_string(paths::GRAPH_JSON).with_context(|| {
-            format!(
-                "reading {} (run a live collect first: --user/--org/--repos)",
-                paths::GRAPH_JSON
-            )
-        })?;
+        let text =
+            output::read_to_string(std::path::Path::new(paths::GRAPH_JSON)).with_context(|| {
+                format!(
+                    "reading {} (run a live collect first: --user/--org/--repos)",
+                    paths::GRAPH_JSON
+                )
+            })?;
         jzombie_graph::graph::Graph::from_json(&text)?
     };
 

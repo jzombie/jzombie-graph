@@ -8,9 +8,12 @@ pub fn render_json(graph: &Graph) -> anyhow::Result<String> {
     Ok(serde_json::to_string_pretty(graph)?)
 }
 
-/// One write path for file assets: creates missing parent directories
-/// (`mkdir -p` semantics), then writes the bytes verbatim.
+/// One write path for file assets: workspace-anchored (`paths::resolve`),
+/// creates missing parent directories (`mkdir -p` semantics), then writes
+/// the bytes verbatim.
 pub fn write_file(path: &std::path::Path, contents: &str) -> anyhow::Result<()> {
+    let path = crate::paths::resolve(path);
+    let path = path.as_path();
     if let Some(parent) = path.parent()
         && !parent.as_os_str().is_empty()
     {
@@ -18,6 +21,14 @@ pub fn write_file(path: &std::path::Path, contents: &str) -> anyhow::Result<()> 
             .with_context(|| format!("creating {}", parent.display()))?;
     }
     std::fs::write(path, contents).with_context(|| format!("writing {}", path.display()))
+}
+
+/// One read path for file assets: workspace-anchored like [`write_file`],
+/// so lanes read the root copy no matter which oxfile directory they run
+/// from. Absolute paths pass through untouched.
+pub fn read_to_string(path: &std::path::Path) -> anyhow::Result<String> {
+    let path = crate::paths::resolve(path);
+    std::fs::read_to_string(&path).with_context(|| format!("reading {}", path.display()))
 }
 /// `--format schema`: the JSON Schema for the graph contract, derived from
 /// the Rust types themselves via `schemars` — never hand-maintained, so

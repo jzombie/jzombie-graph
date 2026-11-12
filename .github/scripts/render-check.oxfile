@@ -1,0 +1,7 @@
+# Render drift check (CI render-check): tokenless rebuild, then fail
+# when generated outputs differ from the commit.
+WORKSPACE LOCAL
+
+IMPORT ["../../scripts/lanes.oxfile" AS LANES]
+
+LANES::CHECK()

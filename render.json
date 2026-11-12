@@ -1,0 +1,10 @@
+{
+  "global_values": ".oxdock-render/values.json",
+  "scopes": [
+    ".oxdock-render"
+  ],
+  "vars": {
+    "global": "docs_global",
+    "ctx": "docs_ctx"
+  }
+}

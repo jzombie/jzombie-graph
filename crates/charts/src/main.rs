@@ -57,11 +57,15 @@ fn write_indicator_badges() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Full preview tree: every lane rendered, every preview file written,
-/// image copies staged. All paths from `paths::` — the script that calls
-/// this names nothing.
+/// Preview inputs: every lane rendered, image copies staged, data table
+/// fragment written. The proof page itself is assembled by
+/// `oxdock-render` from the map fragment, the commit-data fragment,
+/// and the indicator table — this lane only produces those inputs.
+/// All paths from `paths::` — the script that calls this names nothing.
 fn run_preview() -> anyhow::Result<()> {
-    let input = std::fs::read_to_string(jzombie_graph::paths::GRAPH_JSON)?;
+    let input = jzombie_graph::output::read_to_string(std::path::Path::new(
+        jzombie_graph::paths::GRAPH_JSON,
+    ))?;
     for (svg, dest) in [
         (
             charts::render_share_svg(&input)?,
@@ -80,24 +84,21 @@ fn run_preview() -> anyhow::Result<()> {
             jzombie_graph::paths::INDICATORS_SVG,
         ),
     ] {
-        jzombie_graph::output::write_file(std::path::Path::new(dest), &svg)?;
-        std::fs::copy(dest, std::path::Path::new("preview").join(basename(dest)?))?;
+        let dest_path = std::path::Path::new(dest);
+        jzombie_graph::output::write_file(dest_path, &svg)?;
+        let preview =
+            jzombie_graph::paths::resolve(std::path::Path::new("preview")).join(basename(dest)?);
+        let dest_abs = jzombie_graph::paths::resolve(dest_path);
+        if let Some(parent) = preview.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::copy(&dest_abs, &preview)?;
     }
     write_indicator_badges()?;
-    let frag = std::fs::read_to_string(jzombie_graph::paths::FRAGMENT_MD)?;
     let data = charts::render_data_table_md(&input)?;
-    let table = std::fs::read_to_string(jzombie_graph::paths::PREVIEW_INDICATORS_MD)?;
-    let md = charts::render_preview_md(
-        &frag,
-        &basename(jzombie_graph::paths::SHARE_SVG)?,
-        &basename(jzombie_graph::paths::DEVELOPER_FOCUS_SVG)?,
-        &basename(jzombie_graph::paths::FLAME_SVG)?,
-        &data,
-        &table,
-    )?;
     jzombie_graph::output::write_file(
-        std::path::Path::new(jzombie_graph::paths::PREVIEW_PORTFOLIO_MD),
-        &md,
+        std::path::Path::new(jzombie_graph::paths::COMMIT_DATA_MD),
+        &data,
     )?;
     Ok(())
 }
@@ -113,15 +114,16 @@ fn basename(path: &str) -> anyhow::Result<String> {
 fn main() {
     let cli = Cli::parse();
 
-    let text = match std::fs::read_to_string(&cli.input) {
+    let text = match jzombie_graph::output::read_to_string(&cli.input) {
         Ok(t) => t,
         Err(e) => {
-            eprintln!("reading {}: {e}", cli.input.display());
+            eprintln!("reading {}: {e:#}", cli.input.display());
             std::process::exit(1);
         }
     };
-    // Preview builds the whole proof tree — every path from `paths::`,
-    // nothing named in any script. Fixed layout: no --stdout/--output.
+    // Preview builds all proof inputs — every path from `paths::`,
+    // nothing named in any script. Page assembly is RENDER's job.
+    // Fixed layout: no --stdout/--output.
     if cli.chart == Chart::Preview {
         if cli.stdout || cli.output.is_some() {
             eprintln!("--chart preview writes the fixed preview tree; no --stdout/--output");

@@ -31,6 +31,9 @@ jobs:
       # a Workflow-kind edge (JSON-only, never drawn — associations don't
       # render). Dogfooding, working as designed.
       - uses: jzombie/rust-oxdock/.github/actions/setup-oxdock@main
+      # The proof page assembles via oxdock-render (see lanes RENDER),
+      # so the renderer rides alongside the engine.
+      - uses: jzombie/rust-oxdock/.github/actions/setup-oxdock-render@feat/render-action
       # The PAT bridges into the script via INHERIT_ENV (see pipeline.oxfile).
       # The script owns collect → render → commit; Actions owns trigger.
       - run: oxdock .github/scripts/pipeline.oxfile

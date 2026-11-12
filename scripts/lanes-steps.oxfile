@@ -45,26 +45,44 @@ FUNC CHART_INDICATORS(): VOID {
     RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "indicators"]
 }
 
-# Preview: full proof page assembly.
-FUNC PREVIEW(): VOID {
+# PreviewInputs: every preview input rendered (SVGs, badge files, data
+# table fragment). The proof page itself is assembled by RENDER.
+FUNC PREVIEW_INPUTS(): VOID {
     WORKSPACE LOCAL
-    ECHO "lanes: render everything and assemble the proof page"
+    ECHO "lanes: render preview inputs (page assembly is RENDER)"
     RUN ["cargo", "run", "--release", "-p", "jzombie-graph-charts", "--", "--chart", "preview"]
+}
+
+# Render: assemble the proof page. Lanes run with the calling oxfile's
+# directory as cwd, so --root pins the renderer at the repo root.
+FUNC RENDER(): VOID {
+    WORKSPACE LOCAL
+    ECHO "lanes: assemble the proof page"
+    RUN ["oxdock-render", "--root", ".."]
+}
+
+# Drift: fail when generated outputs differ from the commit. Runs from
+# the lane directory, so git targets the repo root explicitly.
+FUNC DRIFT(): VOID {
+    WORKSPACE LOCAL
+    ECHO "lanes: drift gate"
+    RUN ["git", "-C", "..", "diff", "--exit-code", "--", "preview/", "markdown/fragments/"]
 }
 
 # CommitProof: land the rebuilt proof page, data, and schema (all
 # committed paths — no gitignored working copies anymore). Commits only
 # on change — a quiet sweep pushes nothing. Shell form because the
 # commit is conditional; a bare `git commit` would fail the lane on
-# quiet nights.
+# quiet nights. Runs from the lane directory, so git targets the repo
+# root explicitly.
 FUNC COMMIT_PROOF(): VOID {
     WORKSPACE LOCAL
     ECHO "lanes: commit rebuilt proof + data + schema"
-    RUN ["git", "config", "user.name", "github-actions[bot]"]
-    RUN ["git", "config", "user.email", "github-actions[bot]@users.noreply.github.com"]
-    RUN ["git", "add", "preview", "json", "svg", "markdown"]
-    RUN ["sh", "-c", "git diff --cached --quiet || git commit -m 'nightly rebuild'"]
-    RUN ["git", "push"]
+    RUN ["git", "-C", "..", "config", "user.name", "github-actions[bot]"]
+    RUN ["git", "-C", "..", "config", "user.email", "github-actions[bot]@users.noreply.github.com"]
+    RUN ["git", "-C", "..", "add", "preview", "json", "svg", "markdown"]
+    RUN ["sh", "-c", "git -C .. diff --cached --quiet || git -C .. commit -m 'nightly rebuild'"]
+    RUN ["git", "-C", "..", "push"]
 }
 
-EXPORT [FUNC COLLECT, FUNC FRAGMENT, FUNC CHART_SHARE, FUNC CHART_FOCUS, FUNC CHART_FLAME, FUNC CHART_INDICATORS, FUNC PREVIEW, FUNC COMMIT_PROOF]
+EXPORT [FUNC COLLECT, FUNC FRAGMENT, FUNC CHART_SHARE, FUNC CHART_FOCUS, FUNC CHART_FLAME, FUNC CHART_INDICATORS, FUNC PREVIEW_INPUTS, FUNC RENDER, FUNC DRIFT, FUNC COMMIT_PROOF]

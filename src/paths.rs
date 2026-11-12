@@ -5,6 +5,38 @@
 //! and commits — no gitignored working copies, no separate publish step.
 //! The nightly sweep regenerates these files and commits them back;
 //! local runs write the same paths, so what you see is what ships.
+//!
+//! All paths below are workspace-relative. Resolve them through
+//! [`resolve`] before touching disk: pipeline lanes execute with the
+//! calling oxfile's directory as cwd, so bare relative paths would
+//! scatter outputs beside the script instead of at the root.
+
+/// Workspace root: nearest ancestor (inclusive) containing `.git`,
+/// falling back to the current directory outside a checkout.
+pub fn root() -> std::path::PathBuf {
+    let mut dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+    loop {
+        if dir.join(".git").exists() {
+            return dir;
+        }
+        match dir.parent() {
+            Some(parent) => dir = parent.to_path_buf(),
+            None => {
+                return std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+            }
+        }
+    }
+}
+
+/// Anchor a workspace-relative path (or absolute passthrough) at the
+/// workspace root, so lanes land at the root no matter which oxfile
+/// directory they run from.
+pub fn resolve(path: &std::path::Path) -> std::path::PathBuf {
+    if path.is_absolute() {
+        return path.to_path_buf();
+    }
+    root().join(path)
+}
 
 /// The graph this repo publishes. Every related asset shares the stem.
 pub const GRAPH_NAME: &str = "portfolio-graph";
@@ -21,6 +53,11 @@ pub const SCHEMA_JSON: &str = "json/portfolio-graph-schema.json";
 /// Cartographer output: the verbatim fragment. Was `ARCHITECTURE.md`
 /// at the repo root.
 pub const FRAGMENT_MD: &str = "markdown/fragments/portfolio-graph.md";
+
+/// Commit-data table fragment: the machine-readable section of the
+/// proof page, computed from the fresh JSON. Rendered by the charts
+/// preview lane, assembled by `oxdock-render` — never hand-edited.
+pub const COMMIT_DATA_MD: &str = "markdown/fragments/commit-data.md";
 
 /// Commit-share pie SVG.
 pub const SHARE_SVG: &str = "svg/portfolio-graph-share.svg";
@@ -47,10 +84,6 @@ pub const PREVIEW_INDICATORS_MD: &str = "preview/indicators.md";
 /// Committed badge copies the preview table embeds. Same bytes as the
 /// `svg/indicators` originals; copied at preview time, never hand-placed.
 pub const PREVIEW_INDICATORS_DIR: &str = "preview/indicators";
-
-/// Committed proof page: every visual artifact on one page, as github.com
-/// renders it. Assembled by the preview lane, never hand-edited.
-pub const PREVIEW_PORTFOLIO_MD: &str = "preview/portfolio-graph.md";
 
 /// Checked-in schema expectation the drift test guards. Same file the
 /// schema lane writes — generation and expectation are one path.

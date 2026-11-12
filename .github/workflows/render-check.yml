@@ -1,0 +1,20 @@
+name: render-check
+on:
+  push:
+  pull_request:
+  workflow_dispatch: {}
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      # OxDock owns the check (rebuild + drift gate) via
+      # .github/scripts/render-check.oxfile. Engine tracks main; the
+      # renderer tracks the feat branch until it merges.
+      - uses: jzombie/rust-oxdock/.github/actions/setup-oxdock@main
+      - uses: jzombie/rust-oxdock/.github/actions/setup-oxdock-render@feat/render-action
+      - run: oxdock .github/scripts/render-check.oxfile

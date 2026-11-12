@@ -1,4 +1,5 @@
 /target
+/oxdock-render/
 # Local task-runner artifact (see .term-wm/tasks.json "dev: git diff").
 diff.patch
 # Local env overrides (tokens live in the environment, never here).

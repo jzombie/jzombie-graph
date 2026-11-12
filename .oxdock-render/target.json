@@ -1,0 +1,23 @@
+{
+  "targets": [
+    {
+      "name": "preview-readme",
+      "out": "preview/README.md",
+      "values": ".oxdock-render/values-readme.json",
+      "template": ".oxdock-render/README.md.tmpl",
+      "fragments": {
+        "map": [
+          "markdown/fragments/portfolio-graph.md"
+        ],
+        "sections": [
+          "markdown/fragments/commit-share.md",
+          "markdown/fragments/developer-focus.md",
+          "markdown/fragments/heat-flame.md"
+        ],
+        "data": [
+          "markdown/fragments/commit-data.md"
+        ]
+      }
+    }
+  ]
+}
