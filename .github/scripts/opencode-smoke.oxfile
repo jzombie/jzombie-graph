@@ -1,0 +1,33 @@
+# Opencode smoke: IS_EXEC probe, install if missing, standalone run.
+# Tokenless except the model reply itself: the final `opencode run`
+# needs a provider credential (OPENCODE_API_KEY when configured),
+# otherwise it fails closed with the provider auth error.
+INHERIT_ENV [PATH, HOME, GITHUB_ACTIONS, GITHUB_PATH, OPENCODE_API_KEY]
+WORKSPACE SYSTEM
+
+IMPORT [STD]
+
+LET $has: BOOL = IS_EXEC("opencode")
+ECHO "opencode present: {{ $has }}"
+
+LET $download_url: STRING = https://opencode.ai/v2/install
+
+IF !$has {
+    ECHO "installing latest opencode via {{ $download_url }} (shell, not npm)"
+    RUN ["sh", "-c", "curl -fsSL {{ $download_url }} | bash"]
+    ENV PATH="{{ env:HOME }}/.opencode/bin:{{ env:PATH }}"
+    LET $now: BOOL = IS_EXEC("opencode")
+    ECHO "opencode present after install: {{ $now }}"
+    IF !$now {
+        ECHO "opencode install failed: not on PATH after install"
+        EXIT 1
+    }
+} ELSE {
+    ENV PATH="{{ env:HOME }}/.opencode/bin:{{ env:PATH }}"
+}
+
+LET $version: STRING = RUN ["opencode", "--version"]
+ECHO "opencode version: {{ $version }}"
+
+LET $out: STRING = RUN ["opencode", "run", "--standalone", "hello model"]
+ECHO "model reply: {{ $out }}"

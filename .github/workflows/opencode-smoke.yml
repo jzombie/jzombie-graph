@@ -1,0 +1,21 @@
+name: opencode-smoke
+on:
+  push:
+  pull_request:
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # OxDock engine owns the smoke logic (IS_EXEC probe → install → run).
+      - uses: jzombie/rust-oxdock/.github/actions/setup-oxdock@main
+      - run: oxdock .github/scripts/opencode-smoke.oxfile
+        env:
+          # Optional: without a provider key the final `opencode run`
+          # fails closed with the provider auth error (still proves
+          # IS_EXEC + install + executable). With the secret set, the
+          # model reply echoes to the log.
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
