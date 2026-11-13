@@ -7,46 +7,53 @@ WORKSPACE SYSTEM
 
 IMPORT [STD]
 
-FUNC ENSURE_OPENCODE($include_version_check?: BOOL): VOID {
-    LET $has: BOOL = IS_EXEC("opencode")
-    ECHO "opencode present: {{ $has }}"
-
-    LET $download_url: STRING = "https://opencode.ai/v2/install"
-
-    IF !$has {
-        ECHO "installing latest opencode via {{ $download_url }} (shell, not npm)"
-        RUN ["sh", "-c", "curl -fsSL {{ $download_url }} | bash"]
-    }
-
-    # Top-level ENV: block-scoped ENV unwinds on exit, so the user-local
-    # install dir must be seeded here for later RUNs to resolve `opencode`.
-    # (The installer also appends to $GITHUB_PATH, which only affects later
-    # GitHub steps, not this process.)
-    ENV PATH="{{ env:HOME }}/.opencode/bin:{{ env:PATH }}"
-
-    LET $now: BOOL = IS_EXEC("opencode")
-    ECHO "opencode present after install: {{ $now }}"
-    IF !$now {
-        ECHO "opencode install failed: not on PATH after install"
-        EXIT 1
-    }
-
-    IF $include_version_check {
-        LET $version: STRING = RUN ["opencode", "--version"]
-        ECHO "opencode version: {{ $version }}"
-    }
-
+[family:windows] {
+    ECHO "This script has Unix-only assumptions. Windows not supported."
+    EXIT 1
 }
 
-ENSURE_OPENCODE()
+[family:unix] {
+    FUNC ENSURE_OPENCODE($include_version_check?: BOOL): VOID {
+        LET $has: BOOL = IS_EXEC("opencode")
+        ECHO "opencode present: {{ $has }}"
 
-FUNC QUERY($query: STRING): STRING {
-    LET $response: STRING = RUN ["opencode", "run", "--standalone", $query]
+        LET $download_url: STRING = "https://opencode.ai/v2/install"
 
-    RETURN $response
+        IF !$has {
+            ECHO "installing latest opencode via {{ $download_url }} (shell, not npm)"
+            RUN ["sh", "-c", "curl -fsSL {{ $download_url }} | bash"]
+        }
+
+        # Top-level ENV: block-scoped ENV unwinds on exit, so the user-local
+        # install dir must be seeded here for later RUNs to resolve `opencode`.
+        # (The installer also appends to $GITHUB_PATH, which only affects later
+        # GitHub steps, not this process.)
+        ENV PATH="{{ env:HOME }}/.opencode/bin:{{ env:PATH }}"
+
+        LET $now: BOOL = IS_EXEC("opencode")
+        ECHO "opencode present after install: {{ $now }}"
+        IF !$now {
+            ECHO "opencode install failed: not on PATH after install"
+            EXIT 1
+        }
+
+        IF $include_version_check {
+            LET $version: STRING = RUN ["opencode", "--version"]
+            ECHO "opencode version: {{ $version }}"
+        }
+
+    }
+
+    FUNC QUERY($query: STRING): STRING {
+        LET $response: STRING = RUN ["opencode", "run", "--standalone", $query]
+
+        RETURN $response
+    }
+
+    ENSURE_OPENCODE()
+
+    LET $query: STRING = "Hello model!"
+    LET $response: STRING = QUERY($query)
+
+    ECHO "model reply: {{ $response }}"
 }
-
-LET $query: STRING = "Hello model!"
-LET $response: STRING = QUERY($query);
-
-ECHO "model reply: {{ $response }}"
