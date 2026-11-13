@@ -8,6 +8,7 @@ WORKSPACE SYSTEM
 IMPORT [STD]
 
 [family:windows] {
+    // Windows could easily be supported, it just isn't right now.
     ECHO "This script has Unix-only assumptions. Windows not supported."
     EXIT 1
 }
