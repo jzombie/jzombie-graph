@@ -10,7 +10,7 @@ IMPORT [STD]
 LET $has: BOOL = IS_EXEC("opencode")
 ECHO "opencode present: {{ $has }}"
 
-LET $download_url: STRING = https://opencode.ai/v2/install
+LET $download_url: STRING = "https://opencode.ai/v2/install"
 
 IF !$has {
     ECHO "installing latest opencode via {{ $download_url }} (shell, not npm)"
