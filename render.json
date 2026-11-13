@@ -6,8 +6,9 @@
   "scopes": [
     ".oxdock-render"
   ],
-  "vars": {
-    "global": "docs_global",
-    "ctx": "docs_ctx"
-  }
+  // TODO: Fix oxdock-render so these are no longer necessary
+  // "vars": {
+  //   "global": "docs_global",
+  //   "ctx": "docs_ctx"
+  // }
 }
