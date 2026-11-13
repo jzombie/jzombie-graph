@@ -5,10 +5,5 @@
   "global_values": ".oxdock-render/values.json",
   "scopes": [
     ".oxdock-render"
-  ],
-  // TODO: Fix oxdock-render so these are no longer necessary
-  // "vars": {
-  //   "global": "docs_global",
-  //   "ctx": "docs_ctx"
-  // }
+  ]
 }
