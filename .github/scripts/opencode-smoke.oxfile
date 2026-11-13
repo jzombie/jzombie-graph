@@ -22,6 +22,8 @@ IMPORT [STD]
 
         IF !$has {
             ECHO "installing latest opencode via {{ $download_url }} (shell, not npm)"
+            // TODO: This could be replaced w/ OxDock's DSL once NET_FETCH
+            // supports binary calls.
             RUN ["sh", "-c", "curl -fsSL {{ $download_url }} | bash"]
         }
 
