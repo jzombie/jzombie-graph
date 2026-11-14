@@ -10,21 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Authenticated engine install (replaces setup-oxdock@main: its
-      # anonymous raw.githubusercontent fetch 403s from shared runner
-      # IPs). Tracks latest; GITHUB_TOKEN authenticates every fetch the
-      # stub makes, and the payload self-verifies against SHA256SUMS.
-      - name: Install OxDock engine (latest)
-        shell: bash
-        env:
-          VERSION: latest
-          INSTALL_DIR: ${{ runner.temp }}/oxdock-engine
-          OXDOCK_PRODUCT: oxdock
-          OXDOCK_BINARY_NAME: oxdock
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
-            https://raw.githubusercontent.com/jzombie/rust-oxdock/main/install.sh | bash
+      # OxDock engine owns the smoke logic (IS_EXEC probe → install → run).
+      # Tracks the 301 stub-auth branch until it lands (anonymous stub
+      # fetch 403s from shared runner IPs); then pin to a SHA.
+      - uses: jzombie/rust-oxdock/.github/actions/setup-oxdock@301-setup-oxdock-render-authenticate-stub-fetch-anonymous-rawgithubusercontent-403s-from-shared-runner-ips
       - run: oxdock .github/scripts/opencode-smoke.oxfile
         env:
           # Optional: with a provider key the final `opencode run` executes
