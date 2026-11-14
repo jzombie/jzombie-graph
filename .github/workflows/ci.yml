@@ -11,9 +11,9 @@ jobs:
         with:
           components: clippy, rustfmt
       # OxDock owns the check sequence via an inline script (no .oxfile
-      # file to keep in sync for three lines). Unified action, tracking
-      # the 301 branch until it lands; then pin to a SHA.
-      - uses: jzombie/rust-oxdock@301-setup-oxdock-render-authenticate-stub-fetch-anonymous-rawgithubusercontent-403s-from-shared-runner-ips
+      # file to keep in sync for three lines). Unified action on the
+      # default branch (stub fetch authenticated).
+      - uses: jzombie/rust-oxdock@main
         with:
           product: oxdock
       # Workspace-wide: plain `cargo test`/`clippy` at the root package skip

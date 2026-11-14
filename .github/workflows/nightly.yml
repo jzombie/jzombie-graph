@@ -25,18 +25,16 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       # OxDock owns the pipeline (build → collect → schema → render) via
       # .github/scripts/pipeline.oxfile. Unified action (one product per
-      # call), tracking the 301 branch until it lands (anonymous stub
-      # fetches 403 from shared runner IPs); then pin to a SHA.
-      # A bad oxdock release fails closed (no commit, last good proof
-      # keeps serving).
+      # call) on the default branch. A bad oxdock release fails closed
+      # (no commit, last good proof keeps serving).
       # Note: this install keeps the Workflow-kind edge (JSON-only, never
       # drawn — associations don't render). Dogfooding, working as designed.
-      - uses: jzombie/rust-oxdock@301-setup-oxdock-render-authenticate-stub-fetch-anonymous-rawgithubusercontent-403s-from-shared-runner-ips
+      - uses: jzombie/rust-oxdock@main
         with:
           product: oxdock
       # The proof page assembles via oxdock-render (see lanes RENDER),
       # so the renderer rides alongside the engine.
-      - uses: jzombie/rust-oxdock@301-setup-oxdock-render-authenticate-stub-fetch-anonymous-rawgithubusercontent-403s-from-shared-runner-ips
+      - uses: jzombie/rust-oxdock@main
         with:
           product: oxdock-render
       # The PAT bridges into the script via INHERIT_ENV (see pipeline.oxfile).
