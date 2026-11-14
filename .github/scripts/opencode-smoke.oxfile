@@ -14,6 +14,13 @@ IMPORT [STD]
 }
 
 [family:unix] {
+    # Block-top-level PATH seed: ENV is block-scoped and unwinds on exit,
+    # so seeding inside ENSURE_OPENCODE would vanish before QUERY runs
+    # (spawn ENOENT despite IS_EXEC passing inside the FUNC).
+    # The installer also appends to $GITHUB_PATH, which only affects later
+    # GitHub steps, not this process.
+    ENV PATH="{{ env:HOME }}/.opencode/bin:{{ env:PATH }}"
+
     FUNC ENSURE_OPENCODE($include_version_check?: BOOL): VOID {
         LET $has: BOOL = IS_EXEC("opencode")
         ECHO "opencode present: {{ $has }}"
@@ -90,12 +97,6 @@ IMPORT [STD]
                 "$dest/opencode" --version
             """]
         }
-
-        # Top-level ENV: block-scoped ENV unwinds on exit, so the user-local
-        # install dir must be seeded here for later RUNs to resolve `opencode`.
-        # (The installer also appends to $GITHUB_PATH, which only affects later
-        # GitHub steps, not this process.)
-        ENV PATH="{{ env:HOME }}/.opencode/bin:{{ env:PATH }}"
 
         LET $now: BOOL = IS_EXEC("opencode")
         ECHO "opencode present after install: {{ $now }}"
