@@ -10,8 +10,17 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
+      # OxDock owns the check sequence via an inline script (no .oxfile
+      # file to keep in sync for three lines). Unified action on the
+      # default branch (stub fetch authenticated).
+      - uses: jzombie/rust-oxdock@main
+        with:
+          product: oxdock
       # Workspace-wide: plain `cargo test`/`clippy` at the root package skip
       # crates/cartographer's render suite and the snapshot contract.
-      - run: cargo fmt --all --check
-      - run: cargo clippy --workspace --all-targets -- -D warnings
-      - run: cargo test --workspace
+      - shell: oxdock --script {0}
+        run: |
+          WORKSPACE LOCAL
+          RUN ["cargo", "fmt", "--all", "--check"]
+          RUN ["cargo", "clippy", "--workspace", "--all-targets", "--", "-D", "warnings"]
+          RUN ["cargo", "test", "--workspace"]
