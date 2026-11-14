@@ -24,36 +24,16 @@ jobs:
       # minutes. Cache-only — no extra workflows, permissions, or binaries.
       - uses: Swatinem/rust-cache@v2
       # OxDock owns the pipeline (build → collect → schema → render) via
-      # .github/scripts/pipeline.oxfile. Engine + renderer install tracks
-      # latest, authenticated (anonymous stub fetches 403 from shared
-      # runner IPs). A bad oxdock release fails closed (no commit, last
-      # good proof keeps serving).
+      # .github/scripts/pipeline.oxfile. Engine + renderer track the 301
+      # stub-auth branch until it lands (anonymous stub fetches 403 from
+      # shared runner IPs); then pin both to a SHA. A bad oxdock release
+      # fails closed (no commit, last good proof keeps serving).
       # Note: this install keeps the Workflow-kind edge (JSON-only, never
       # drawn — associations don't render). Dogfooding, working as designed.
-      - name: Install OxDock engine (latest)
-        shell: bash
-        env:
-          VERSION: latest
-          INSTALL_DIR: ${{ runner.temp }}/oxdock-engine
-          OXDOCK_PRODUCT: oxdock
-          OXDOCK_BINARY_NAME: oxdock
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
-            https://raw.githubusercontent.com/jzombie/rust-oxdock/main/install.sh | bash
+      - uses: jzombie/rust-oxdock/.github/actions/setup-oxdock@301-setup-oxdock-render-authenticate-stub-fetch-anonymous-rawgithubusercontent-403s-from-shared-runner-ips
       # The proof page assembles via oxdock-render (see lanes RENDER),
       # so the renderer rides alongside the engine.
-      - name: Install oxdock-render (latest)
-        shell: bash
-        env:
-          VERSION: latest
-          INSTALL_DIR: ${{ runner.temp }}/oxdock-render
-          OXDOCK_PRODUCT: oxdock-render
-          OXDOCK_BINARY_NAME: oxdock-render
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
-            https://raw.githubusercontent.com/jzombie/rust-oxdock/main/install.sh | bash
+      - uses: jzombie/rust-oxdock/.github/actions/setup-oxdock-render@301-setup-oxdock-render-authenticate-stub-fetch-anonymous-rawgithubusercontent-403s-from-shared-runner-ips
       # The PAT bridges into the script via INHERIT_ENV (see pipeline.oxfile).
       # The script owns collect → render → commit; Actions owns trigger.
       - run: oxdock .github/scripts/pipeline.oxfile

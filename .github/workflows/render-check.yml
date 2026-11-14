@@ -14,20 +14,8 @@ jobs:
       # the committed fragments, then the drift gate fires on any
       # hand-edit. Input freshness (fragment + chart lanes) rides the
       # renderer's pre-hook once hook support lands.
-      # Authenticated renderer install. The old
-      # setup-oxdock-render@feat/render-action ref does not exist upstream
-      # (and the action's anonymous stub fetch 403s like the engine's).
-      # Tracks latest; same installer as the engine, product-switched.
-      - name: Install oxdock-render (latest)
-        shell: bash
-        env:
-          VERSION: latest
-          INSTALL_DIR: ${{ runner.temp }}/oxdock-render
-          OXDOCK_PRODUCT: oxdock-render
-          OXDOCK_BINARY_NAME: oxdock-render
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
-            https://raw.githubusercontent.com/jzombie/rust-oxdock/main/install.sh | bash
+      # Renderer install tracks the 301 stub-auth branch until it lands;
+      # then pin to a SHA. (The old @feat/render-action ref never existed.)
+      - uses: jzombie/rust-oxdock/.github/actions/setup-oxdock-render@301-setup-oxdock-render-authenticate-stub-fetch-anonymous-rawgithubusercontent-403s-from-shared-runner-ips
       - run: oxdock-render
       - run: git diff --exit-code -- proof/ data/
