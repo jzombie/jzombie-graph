@@ -18,13 +18,77 @@ IMPORT [STD]
         LET $has: BOOL = IS_EXEC("opencode")
         ECHO "opencode present: {{ $has }}"
 
-        LET $download_url: STRING = "https://opencode.ai/v2/install"
+        # Pinned opencode release. Bump $release and the four sha256 digests
+        # in the install snippet together — they describe the same release.
+        # Downloads the immutable release asset (never a floating installer
+        # script) and fails closed on any digest mismatch.
+        LET $release: STRING = "v2.3.0"
+        LET $base_url: STRING = "https://github.com/anomalyco/opencode/releases/download/{{ $release }}"
 
         IF !$has {
-            ECHO "installing latest opencode via {{ $download_url }} (shell, not npm)"
+            ECHO "installing pinned opencode {{ $release }} from {{ $base_url }} (sha256-verified)"
             // TODO: This could be replaced w/ OxDock's DSL once NET_FETCH
-            // supports binary downloads.
-            RUN ["sh", "-c", "curl -fsSL {{ $download_url }} | bash"]
+            // supports binary calls.
+            RUN ["sh", "-c", """
+                set -eu
+
+                base="{{ $base_url }}"
+                dest="$HOME/.opencode/bin"
+
+                case "$(uname -s)" in
+                    Linux)  os=linux ;;
+                    Darwin) os=darwin ;;
+                    *) echo "unsupported OS: $(uname -s)" >&2 ; exit 1 ;;
+                esac
+                case "$(uname -m)" in
+                    x86_64|amd64)  arch=x64 ;;
+                    aarch64|arm64) arch=arm64 ;;
+                    *) echo "unsupported arch: $(uname -m)" >&2 ; exit 1 ;;
+                esac
+
+                if [ "$os" = linux ]; then
+                    asset="opencode-linux-${arch}.tar.gz"
+                    pack=tar
+                else
+                    asset="opencode-darwin-${arch}.zip"
+                    pack=zip
+                fi
+
+                # Pinned sha256 digests for the release assets above.
+                case "$asset" in
+                    opencode-linux-x64.tar.gz)
+                        sha=fc0f81522aceeabac47693d88389efa2bc517ce74c2c38fd6967819fcc6e4d3b ;;
+                    opencode-linux-arm64.tar.gz)
+                        sha=3207fb5cdec448d479242c0f1a14f4f7bdfcad3a79209b5eb8f9003725e93711 ;;
+                    opencode-darwin-x64.zip)
+                        sha=79a4841925e3344d5bb4b000acf6c50b11de301e9047aa9bea9e288e77fe4249 ;;
+                    opencode-darwin-arm64.zip)
+                        sha=7907df2b12720a840fbb49c5b978b9b82925b6bf75479a5fd216afa8932b6702 ;;
+                    *) echo "no pinned sha256 for $asset" >&2 ; exit 1 ;;
+                esac
+
+                tmp="$(mktemp -d)"
+                trap 'rm -rf "$tmp"' EXIT
+                echo "fetching $base/$asset"
+                curl -fsSL -o "$tmp/$asset" "$base/$asset"
+
+                if command -v sha256sum >/dev/null 2>&1; then
+                    echo "$sha  $tmp/$asset" | sha256sum -c -
+                else
+                    echo "$sha  $tmp/$asset" | shasum -a 256 -c -
+                fi
+
+                if [ "$pack" = tar ]; then
+                    tar -xzf "$tmp/$asset" -C "$tmp"
+                else
+                    command -v unzip >/dev/null 2>&1 || { echo "unzip is required to unpack $asset" >&2 ; exit 1; }
+                    unzip -q -o "$tmp/$asset" -d "$tmp"
+                fi
+
+                mkdir -p "$dest"
+                install -m 755 "$tmp/opencode" "$dest/opencode"
+                "$dest/opencode" --version
+            """]
         }
 
         # Top-level ENV: block-scoped ENV unwinds on exit, so the user-local
