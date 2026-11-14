@@ -1,7 +1,7 @@
 # Opencode smoke: IS_EXEC probe, install if missing, standalone run.
-# Tokenless except the model reply itself: the final `opencode run`
-# needs a provider credential (OPENCODE_API_KEY when configured),
-# otherwise it fails closed with the provider auth error.
+# The model reply itself needs a provider credential: the final
+# `opencode run` executes only when OPENCODE_API_KEY is set, otherwise
+# the smoke proves install + executable and exits green.
 INHERIT_ENV [PATH, HOME, GITHUB_ACTIONS, GITHUB_PATH, OPENCODE_API_KEY]
 WORKSPACE SYSTEM
 
@@ -120,8 +120,16 @@ IMPORT [STD]
 
     ENSURE_OPENCODE()
 
-    LET $query: STRING = "Hello model!"
-    LET $response: STRING = QUERY($query)
+    # Anonymous free-model quota is IP-scoped and shared runner IPs burn
+    # it, so the model call runs only with a credential. Without one the
+    # smoke still proves install + executable and exits green.
+    IF "{{ env:OPENCODE_API_KEY }}" != "" {
+        LET $query: STRING = "Hello model!"
+        LET $response: STRING = QUERY($query)
 
-    ECHO "model reply: {{ $response }}"
+        ECHO "model reply: {{ $response }}"
+    }
+    IF "{{ env:OPENCODE_API_KEY }}" == "" {
+        ECHO "OPENCODE_API_KEY unset: model call skipped (install + exec proven)"
+    }
 }

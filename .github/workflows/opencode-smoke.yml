@@ -27,8 +27,9 @@ jobs:
             https://raw.githubusercontent.com/jzombie/rust-oxdock/main/install.sh | bash
       - run: oxdock .github/scripts/opencode-smoke.oxfile
         env:
-          # Optional: without a provider key the final `opencode run`
-          # fails closed with the provider auth error (still proves
-          # IS_EXEC + install + executable). With the secret set, the
-          # model reply echoes to the log.
+          # Optional: with a provider key the final `opencode run` executes
+          # and the model reply echoes to the log. Without it the smoke
+          # proves install + executable, skips the model call (anonymous
+          # free-model quota is IP-scoped and unreliable from runners),
+          # and exits green.
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
