@@ -1,0 +1,8 @@
+# Build proof inputs. Tokenless: renders whatever data/ holds.
+# Re-collect first when stale: oxdock scripts/collect.oxfile, then this.
+# Assembly is the outer oxdock-render's job — this lane never calls it.
+WORKSPACE LOCAL
+
+IMPORT ["./lanes.oxfile" AS LANES]
+
+LANES::REFRESH_PROOF_INPUTS()

@@ -212,11 +212,11 @@ fn snapshot_reference_portfolio() {
     });
 }
 
-/// Schema drift guard: the committed `json/portfolio-graph-schema.json` is
+/// Schema drift guard: the committed `data/portfolio-graph-schema.json` is
 /// generated output, never hand-edited. Any struct change that alters the
 /// output contract fails here until the schema is consciously regenerated
-/// (`cargo run -- --format schema`, which defaults to `json/portfolio-graph-schema.json`,
-/// then copy over `json/portfolio-graph-schema.json`).
+/// (`cargo run -- --format schema`, which defaults to `data/portfolio-graph-schema.json`,
+/// then copy over `data/portfolio-graph-schema.json`).
 #[test]
 fn schema_matches_committed_asset() {
     use jzombie_graph::paths::COMMITTED_SCHEMA;

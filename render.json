@@ -1,0 +1,9 @@
+{
+  "hooks": {
+    "pre": ["scripts/proof.oxfile"]
+  },
+  "global_values": ".oxdock-render/values.json",
+  "scopes": [
+    ".oxdock-render"
+  ]
+}

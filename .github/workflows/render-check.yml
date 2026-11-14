@@ -1,0 +1,33 @@
+name: render-check
+on:
+  push:
+  pull_request:
+  workflow_dispatch: {}
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      # The proof page is renderer-owned: one command assembles it from
+      # the committed fragments, then the drift gate fires on any
+      # hand-edit. Input freshness (fragment + chart lanes) rides the
+      # renderer's pre-hook once hook support lands.
+      # Authenticated renderer install. The old
+      # setup-oxdock-render@feat/render-action ref does not exist upstream
+      # (and the action's anonymous stub fetch 403s like the engine's).
+      # Tracks latest; same installer as the engine, product-switched.
+      - name: Install oxdock-render (latest)
+        shell: bash
+        env:
+          VERSION: latest
+          INSTALL_DIR: ${{ runner.temp }}/oxdock-render
+          OXDOCK_PRODUCT: oxdock-render
+          OXDOCK_BINARY_NAME: oxdock-render
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
+            https://raw.githubusercontent.com/jzombie/rust-oxdock/main/install.sh | bash
+      - run: oxdock-render
+      - run: git diff --exit-code -- proof/ data/

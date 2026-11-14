@@ -5,34 +5,43 @@ WORKSPACE LOCAL
 
 IMPORT ["./lanes-steps.oxfile" AS STEPS]
 
-# Collect: the live sweep alone.
-FUNC COLLECT(): VOID {
+# CollectGraph: the live sweep alone.
+FUNC COLLECT_GRAPH(): VOID {
     WORKSPACE LOCAL
-    STEPS::COLLECT()
+    STEPS::COLLECT_GRAPH()
 }
 
-# RenderProof: tokenless proof page from whatever json/ holds.
-FUNC RENDER_PROOF(): VOID {
+# RefreshProofInputs: proof inputs from whatever data/ holds. Assembly is
+# the outer oxdock-render's job — never call STEPS::ASSEMBLE_PROOF_PAGE()
+# here, or the pre-hook re-enters the renderer forever.
+FUNC REFRESH_PROOF_INPUTS(): VOID {
     WORKSPACE LOCAL
-    STEPS::FRAGMENT()
-    STEPS::PREVIEW()
-    ECHO "preview complete"
+    STEPS::RENDER_MAP_FRAGMENT()
+    STEPS::BUILD_PROOF_INPUTS()
+    ECHO "proof complete"
 }
 
-# Pipeline: fragment + charts + proof page, collecting first when $collect.
-FUNC PIPELINE($collect: BOOL): VOID {
+# VerifyProof: tokenless rebuild + drift gate (CI render-check).
+FUNC VERIFY_PROOF(): VOID {
+    WORKSPACE LOCAL
+    STEPS::RENDER_MAP_FRAGMENT()
+    STEPS::BUILD_PROOF_INPUTS()
+    STEPS::ASSEMBLE_PROOF_PAGE()
+    STEPS::GATE_PROOF_DRIFT()
+    ECHO "render clean"
+}
+
+# NightlySweep: fragment + charts + proof page, collecting first when $collect.
+FUNC NIGHTLY_SWEEP($collect: BOOL): VOID {
     WORKSPACE LOCAL
     IF $collect {
-        STEPS::COLLECT()
+        STEPS::COLLECT_GRAPH()
     }
-    STEPS::FRAGMENT()
-    STEPS::CHART_SHARE()
-    STEPS::CHART_FOCUS()
-    STEPS::CHART_FLAME()
-    STEPS::CHART_INDICATORS()
-    STEPS::PREVIEW()
+    STEPS::RENDER_MAP_FRAGMENT()
+    STEPS::BUILD_PROOF_INPUTS()
+    STEPS::ASSEMBLE_PROOF_PAGE()
     STEPS::COMMIT_PROOF()
     ECHO "pipeline complete"
 }
 
-EXPORT [FUNC COLLECT, FUNC RENDER_PROOF, FUNC PIPELINE]
+EXPORT [FUNC COLLECT_GRAPH, FUNC REFRESH_PROOF_INPUTS, FUNC VERIFY_PROOF, FUNC NIGHTLY_SWEEP]

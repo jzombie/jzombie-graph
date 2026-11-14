@@ -19,3 +19,6 @@ jzombie-graph = { path = "../.." }
 
 [dev-dependencies]
 chrono.workspace = true
+
+[lints]
+workspace = true

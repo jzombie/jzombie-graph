@@ -17,23 +17,25 @@ path = "src/lib.rs"
 [workspace]
 members = [".", "crates/cartographer", "crates/charts"]
 
+[workspace.lints.cargo]
+unused_dependencies = "deny"
+
 [workspace.dependencies]
 anyhow = "1"
 base64 = "0.22"
 chrono = { version = "0.4", features = ["serde", "clock"] }
 clap = { version = "4", features = ["derive", "env"] }
 insta = { version = "1", features = ["json"] }
-oxdock = "=0.37.0-alpha"
-oxdock-core = "=0.37.0-alpha"
-oxdock-markdown-plugin = "=0.37.0-alpha"
+oxdock = "=0.38.0-alpha"
+oxdock-core = "=0.38.0-alpha"
+oxdock-markdown-plugin = "=0.38.0-alpha"
 regex = "1"
-reqwest = { version = "0.13", features = ["json", "rustls"] }
+reqwest = { version = "0.13.5", features = ["json", "rustls"] }
 reqwest-drive = "0.13.5-alpha.1"
 reqwest-middleware = { version = "0.5", features = ["json"] }
 schemars = { version = "1", features = ["chrono04"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-serde_yaml = "0.9"
 syn = { version = "2", features = ["full", "parsing"] }
 tempfile = "3"
 toml = { version = "0.8", features = ["parse", "display"] }
@@ -51,7 +53,6 @@ reqwest-middleware.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-serde_yaml.workspace = true
 syn.workspace = true
 toml.workspace = true
 tokio.workspace = true
@@ -59,3 +60,6 @@ tokio.workspace = true
 [dev-dependencies]
 insta.workspace = true
 tempfile.workspace = true
+
+[lints]
+workspace = true

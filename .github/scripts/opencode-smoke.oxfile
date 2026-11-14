@@ -1,0 +1,135 @@
+# Opencode smoke: IS_EXEC probe, install if missing, standalone run.
+# The model reply itself needs a provider credential: the final
+# `opencode run` executes only when OPENCODE_API_KEY is set, otherwise
+# the smoke proves install + executable and exits green.
+INHERIT_ENV [PATH, HOME, GITHUB_ACTIONS, GITHUB_PATH, OPENCODE_API_KEY]
+WORKSPACE SYSTEM
+
+IMPORT [STD]
+
+[family:windows] {
+    // Windows could easily be supported, it just isn't right now.
+    ECHO "This script has Unix-only assumptions. Windows not supported."
+    EXIT 1
+}
+
+[family:unix] {
+    # Block-top-level PATH seed: ENV is block-scoped and unwinds on exit,
+    # so seeding inside ENSURE_OPENCODE would vanish before QUERY runs
+    # (spawn ENOENT despite IS_EXEC passing inside the FUNC).
+    # The installer also appends to $GITHUB_PATH, which only affects later
+    # GitHub steps, not this process.
+    ENV PATH="{{ env:HOME }}/.opencode/bin:{{ env:PATH }}"
+
+    FUNC ENSURE_OPENCODE($include_version_check?: BOOL): VOID {
+        LET $has: BOOL = IS_EXEC("opencode")
+        ECHO "opencode present: {{ $has }}"
+
+        # Pinned opencode release. Bump $release and the four sha256 digests
+        # in the install snippet together — they describe the same release.
+        # Downloads the immutable release asset (never a floating installer
+        # script) and fails closed on any digest mismatch.
+        LET $release: STRING = "v2.3.0"
+        LET $base_url: STRING = "https://github.com/anomalyco/opencode/releases/download/{{ $release }}"
+
+        IF !$has {
+            ECHO "installing pinned opencode {{ $release }} from {{ $base_url }} (sha256-verified)"
+            // TODO: This could be replaced w/ OxDock's DSL once NET_FETCH
+            // supports binary calls.
+            RUN ["sh", "-c", """
+                set -eu
+
+                base="{{ $base_url }}"
+                dest="$HOME/.opencode/bin"
+
+                case "$(uname -s)" in
+                    Linux)  os=linux ;;
+                    Darwin) os=darwin ;;
+                    *) echo "unsupported OS: $(uname -s)" >&2 ; exit 1 ;;
+                esac
+                case "$(uname -m)" in
+                    x86_64|amd64)  arch=x64 ;;
+                    aarch64|arm64) arch=arm64 ;;
+                    *) echo "unsupported arch: $(uname -m)" >&2 ; exit 1 ;;
+                esac
+
+                if [ "$os" = linux ]; then
+                    asset="opencode-linux-${arch}.tar.gz"
+                    pack=tar
+                else
+                    asset="opencode-darwin-${arch}.zip"
+                    pack=zip
+                fi
+
+                # Pinned sha256 digests for the release assets above.
+                case "$asset" in
+                    opencode-linux-x64.tar.gz)
+                        sha=fc0f81522aceeabac47693d88389efa2bc517ce74c2c38fd6967819fcc6e4d3b ;;
+                    opencode-linux-arm64.tar.gz)
+                        sha=3207fb5cdec448d479242c0f1a14f4f7bdfcad3a79209b5eb8f9003725e93711 ;;
+                    opencode-darwin-x64.zip)
+                        sha=79a4841925e3344d5bb4b000acf6c50b11de301e9047aa9bea9e288e77fe4249 ;;
+                    opencode-darwin-arm64.zip)
+                        sha=7907df2b12720a840fbb49c5b978b9b82925b6bf75479a5fd216afa8932b6702 ;;
+                    *) echo "no pinned sha256 for $asset" >&2 ; exit 1 ;;
+                esac
+
+                tmp="$(mktemp -d)"
+                trap 'rm -rf "$tmp"' EXIT
+                echo "fetching $base/$asset"
+                curl -fsSL -o "$tmp/$asset" "$base/$asset"
+
+                if command -v sha256sum >/dev/null 2>&1; then
+                    echo "$sha  $tmp/$asset" | sha256sum -c -
+                else
+                    echo "$sha  $tmp/$asset" | shasum -a 256 -c -
+                fi
+
+                if [ "$pack" = tar ]; then
+                    tar -xzf "$tmp/$asset" -C "$tmp"
+                else
+                    command -v unzip >/dev/null 2>&1 || { echo "unzip is required to unpack $asset" >&2 ; exit 1; }
+                    unzip -q -o "$tmp/$asset" -d "$tmp"
+                fi
+
+                mkdir -p "$dest"
+                install -m 755 "$tmp/opencode" "$dest/opencode"
+                "$dest/opencode" --version
+            """]
+        }
+
+        LET $now: BOOL = IS_EXEC("opencode")
+        ECHO "opencode present after install: {{ $now }}"
+        IF !$now {
+            ECHO "opencode install failed: not on PATH after install"
+            EXIT 1
+        }
+
+        IF $include_version_check {
+            LET $version: STRING = RUN ["opencode", "--version"]
+            ECHO "opencode version: {{ $version }}"
+        }
+
+    }
+
+    FUNC QUERY($query: STRING): STRING {
+        LET $response: STRING = RUN ["opencode", "run", "--standalone", $query]
+
+        RETURN $response
+    }
+
+    ENSURE_OPENCODE()
+
+    # Anonymous free-model quota is IP-scoped and shared runner IPs burn
+    # it, so the model call runs only with a credential. Without one the
+    # smoke still proves install + executable and exits green.
+    IF "{{ env:OPENCODE_API_KEY }}" != "" {
+        LET $query: STRING = "Hello model!"
+        LET $response: STRING = QUERY($query)
+
+        ECHO "model reply: {{ $response }}"
+    }
+    IF "{{ env:OPENCODE_API_KEY }}" == "" {
+        ECHO "OPENCODE_API_KEY unset: model call skipped (install + exec proven)"
+    }
+}

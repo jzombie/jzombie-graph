@@ -929,7 +929,6 @@ fn engine() -> Engine {
             FocusBars::registration(),
             Indicators::registration(),
             DataTable::registration(),
-            Portfolio::registration(),
             ChartStyleFn::registration(),
             Flame::registration(),
         ],
@@ -1426,45 +1425,6 @@ fn data_table(graph_json: String) -> anyhow::Result<Value> {
     )?)?))
 }
 
-/// Portfolio page document: fragment + chart embeds + the data table +
-/// the indicator table (each rendered by its own template, passed in).
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
-struct PortfolioDoc {
-    header: String,
-    data: String,
-    table: String,
-    footer: String,
-}
-
-/// Plugin function: portfolio page out. Static bands, caller-supplied
-/// fragment and image names — no paths live in any template or script.
-#[oxdock_func(pure, name = "PORTFOLIO")]
-fn portfolio(
-    frag: String,
-    share: String,
-    focus: String,
-    flame: String,
-    data: String,
-    table: String,
-) -> anyhow::Result<Value> {
-    let frag = transport_out(&frag)?;
-    let data = transport_out(&data)?;
-    let header = format!(
-        "# portfolio-graph — render proof\n\n*Generated — do not hand-edit. Regenerate with `oxdock scripts/preview-indicators.oxfile`. Fragment carried verbatim; charts embedded as files.*\n\n## Map fragment\n\n{frag}\n## Commit share\n\n![share]({share})\n\n## Developer Focus\n\nDeveloper Focus is a heuristic of where the developer's attention is right now.\n\n![developer focus]({focus})\n\n<sub>Each score blends commit heat (recent commit rates vs the trailing 30d baseline) with issue comment heat (owner authored comment volume, same comparison), then discounts idle months. A signal with no baseline sits out: triage free repos rank on commits alone, commit free weeks on comments alone.</sub>\n\n## Heat flame\n\n![flame]({flame})\n\n",
-        frag = frag.trim_end(),
-        share = share,
-        focus = focus,
-        flame = flame,
-    );
-    let doc = PortfolioDoc {
-        header,
-        data,
-        table,
-        footer: String::new(),
-    };
-    Ok(Value::string(serde_json::to_string(&doc)?))
-}
-
 /// Render the indicator strip: all four bands in one row. Graph-free —
 /// bands are static; the strip is the look-check.
 pub fn render_indicators_svg() -> anyhow::Result<String> {
@@ -1481,7 +1441,7 @@ pub fn render_indicator_svg(band: &str) -> anyhow::Result<String> {
     render_indicator_doc(band)
 }
 
-/// Render the preview table: badge embeds + band + heat, one row per band.
+/// Render the indicator table: badge embeds + band + heat, one row per band.
 /// Same doc as the SVGs, markdown template — the committed render proof.
 /// Static header in Rust; only the rows ride the template.
 pub fn render_indicators_md() -> anyhow::Result<String> {
@@ -1495,7 +1455,7 @@ pub fn render_indicators_md() -> anyhow::Result<String> {
         WRITE md.md """
             # Indicator preview
 
-            *Generated — do not hand-edit. Regenerate with `oxdock scripts/preview-indicators.oxfile`. Badges sit beside this file; the rows come from the same template doc as the SVGs.*
+            *Regenerate with `oxdock scripts/proof.oxfile`. Badges sit beside this file; the rows come from the same template doc as the SVGs.*
 
             | badge | band | heat |
             |---|---|---|
@@ -1542,46 +1502,6 @@ pub fn render_data_table_md(graph_json: &str) -> anyhow::Result<String> {
         }
         LET $check: STRING = READ md.md
         ASSERT_CONTAINS $check "machine-readable"
-    };
-    let temp = oxdock::GuardedPath::tempdir().expect("tempdir");
-    let root = temp.as_guarded_path().clone();
-    engine.run_steps_without_snapshot(&root, &steps)?;
-    let resolver = oxdock::PathResolver::new(root.as_path(), root.as_path()).expect("resolver");
-    let out = root.join("md.md").expect("md path");
-    Ok(resolver.read_to_string(&out).expect("read md"))
-}
-
-/// Render the full proof page: fragment + embeds + data table + indicator
-/// table. One OxDock template, zero path literals — names arrive as args.
-pub fn render_preview_md(
-    frag: &str,
-    share: &str,
-    focus: &str,
-    flame: &str,
-    data: &str,
-    table: &str,
-) -> anyhow::Result<String> {
-    let engine = engine();
-    let (frag_arg, share_arg, focus_arg, flame_arg, data_arg, table_arg) = (
-        transport_in(frag),
-        share.to_string(),
-        focus.to_string(),
-        flame.to_string(),
-        transport_in(data),
-        table.to_string(),
-    );
-    let steps: Vec<oxdock_parser::Step> = oxdock! {
-        modules: [CHARTS],
-        IMPORT [STD, CHARTS]
-        LET $page_json: STRING = CHARTS::PORTFOLIO(#frag_arg, #share_arg, #focus_arg, #flame_arg, #data_arg, #table_arg)
-        WRITE rows.json $page_json
-        LET $doc: MAP<ANY> = LOAD_JSON("rows.json")
-        WRITE md.md $doc.header
-        APPEND md.md $doc.data
-        APPEND md.md $doc.table
-        LET $check: STRING = READ md.md
-        ASSERT_CONTAINS $check "| badge |"
-        ASSERT_CONTAINS $check "Commit data"
     };
     let temp = oxdock::GuardedPath::tempdir().expect("tempdir");
     let root = temp.as_guarded_path().clone();
@@ -2054,23 +1974,6 @@ mod tests {
     }
 
     #[test]
-    fn preview_page_carries_everything_verbatim() {
-        let table = render_indicators_md().unwrap();
-        let g = graph_with(&[("big", 30), ("small", 10)]);
-        let data = render_data_table_md(&g).unwrap();
-        let md = render_preview_md("# Frag\n", "s.svg", "f.svg", "fl.svg", &data, &table).unwrap();
-        // Fragment verbatim, embeds by file name, both tables inlined.
-        assert!(md.contains("# Frag\n"));
-        assert!(md.contains("![share](s.svg)"));
-        assert!(md.contains("![developer focus](f.svg)"));
-        assert!(md.contains("![flame](fl.svg)"));
-        assert!(md.contains("## Commit data — machine-readable"));
-        assert!(md.contains("| ![heating](indicators/heating.svg) | heating | 3.00 |"));
-        assert!(md.contains("oxdock scripts/preview-indicators.oxfile"));
-        assert!(md.ends_with("|\n"));
-    }
-
-    #[test]
     fn data_table_top10_names_the_tail_in_a_comment() {
         // 12 active repos: 10 rows, tail named in an HTML comment —
         // no junk row. Hottest first, badge in the heat cell.
@@ -2140,8 +2043,8 @@ mod tests {
         assert!(md.contains("12 repos"));
         assert!(md.contains("As of"), "last run on top");
         assert!(md.contains("UTC"), "timestamps read UTC");
-        assert!(md.contains("json/portfolio-graph.json"));
-        assert!(md.contains("json/portfolio-graph-schema.json"));
+        assert!(md.contains("data/portfolio-graph.json"));
+        assert!(md.contains("data/portfolio-graph-schema.json"));
         assert!(
             !md.contains("data/json"),
             "published paths, not working copies"
