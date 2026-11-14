@@ -14,8 +14,11 @@ jobs:
       # the committed fragments, then the drift gate fires on any
       # hand-edit. Input freshness (fragment + chart lanes) rides the
       # renderer's pre-hook once hook support lands.
-      # Renderer install tracks the 301 stub-auth branch until it lands;
-      # then pin to a SHA. (The old @feat/render-action ref never existed.)
-      - uses: jzombie/rust-oxdock/.github/actions/setup-oxdock-render@301-setup-oxdock-render-authenticate-stub-fetch-anonymous-rawgithubusercontent-403s-from-shared-runner-ips
+      # Renderer install: unified action with product input, tracking the
+      # 301 branch until it lands; then pin to a SHA.
+      # (The old @feat/render-action ref never existed.)
+      - uses: jzombie/rust-oxdock@301-setup-oxdock-render-authenticate-stub-fetch-anonymous-rawgithubusercontent-403s-from-shared-runner-ips
+        with:
+          product: oxdock-render
       - run: oxdock-render
       - run: git diff --exit-code -- proof/ data/

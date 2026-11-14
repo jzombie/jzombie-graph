@@ -11,9 +11,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       # OxDock engine owns the smoke logic (IS_EXEC probe → install → run).
-      # Tracks the 301 stub-auth branch until it lands (anonymous stub
-      # fetch 403s from shared runner IPs); then pin to a SHA.
-      - uses: jzombie/rust-oxdock/.github/actions/setup-oxdock@301-setup-oxdock-render-authenticate-stub-fetch-anonymous-rawgithubusercontent-403s-from-shared-runner-ips
+      # Unified action, tracking the 301 branch until it lands
+      # (anonymous stub fetch 403s from shared runner IPs); then pin
+      # to a SHA. Defaults: product oxdock, version latest.
+      - uses: jzombie/rust-oxdock@301-setup-oxdock-render-authenticate-stub-fetch-anonymous-rawgithubusercontent-403s-from-shared-runner-ips
+        with:
+          product: oxdock
       - run: oxdock .github/scripts/opencode-smoke.oxfile
         env:
           # Optional: with a provider key the final `opencode run` executes
