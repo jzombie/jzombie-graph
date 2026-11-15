@@ -101,7 +101,10 @@ fn seven() -> Vec<Node> {
     ];
     let langs = ["Rust", "Rust", "Rust", "Rust", "Rust", "Rust", "Go"];
     let mut nodes = vec![];
-    for (i, name) in ["r0", "r1", "r2", "r3", "r4", "r5", "r6"].iter().enumerate() {
+    for (i, name) in ["r0", "r1", "r2", "r3", "r4", "r5", "r6"]
+        .iter()
+        .enumerate()
+    {
         let (stars, forks, focus) = stats[i];
         nodes.push(node(
             name,
@@ -128,7 +131,10 @@ fn pins_bundle_one_card_per_repo_each_linking_out() {
     assert!(!paths.iter().any(|p| p.contains("r6")), "top-6 cut");
     // Stars desc, forks break the r1/r2 tie, focus ignored.
     let first = &bundle[0].1;
-    assert!(first.contains("https://github.com/me/r0"), "top card links out");
+    assert!(
+        first.contains("https://github.com/me/r0"),
+        "top card links out"
+    );
     assert!(first.contains("fill=\"#000000\""), "black card");
     assert!(first.contains("#dea584"), "Rust dot");
     let frag = &bundle[6].1;

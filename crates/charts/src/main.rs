@@ -119,9 +119,7 @@ fn main() {
             }
         }
         for (rel, content) in &bundle {
-            if let Err(e) =
-                jzombie_graph::output::write_file(std::path::Path::new(rel), content)
-            {
+            if let Err(e) = jzombie_graph::output::write_file(std::path::Path::new(rel), content) {
                 eprintln!("writing {rel}: {e:#}");
                 std::process::exit(1);
             }

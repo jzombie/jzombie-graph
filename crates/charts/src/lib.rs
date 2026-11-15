@@ -1178,10 +1178,7 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
             format!(
                 "[![{}](charts/{})]({})",
                 c.name,
-                c.dest
-                    .rsplit('/')
-                    .next()
-                    .unwrap_or(&c.dest),
+                c.dest.rsplit('/').next().unwrap_or(&c.dest),
                 c.url
             )
         };
@@ -1278,8 +1275,7 @@ pub fn render_pins_bundle(graph_json: &str) -> anyhow::Result<Vec<(String, Strin
     // Card inventory rides rows.json: deterministic temp names in,
     // committed relpaths out.
     let doc_path = root.join("rows.json").expect("doc path");
-    let doc: PinDoc =
-        serde_json::from_str(&resolver.read_to_string(&doc_path).expect("read doc"))?;
+    let doc: PinDoc = serde_json::from_str(&resolver.read_to_string(&doc_path).expect("read doc"))?;
     let mut bundle: Vec<(String, String)> = vec![];
     for card in &doc.cards {
         let rel = format!("svg/{}", card.file);
@@ -1291,10 +1287,7 @@ pub fn render_pins_bundle(graph_json: &str) -> anyhow::Result<Vec<(String, Strin
     }
     let frag_path = root.join("frag/pins.md").expect("frag path");
     let frag = resolver.read_to_string(&frag_path).expect("read frag");
-    bundle.push((
-        jzombie_graph::paths::PINS_FRAG_MD.to_string(),
-        frag,
-    ));
+    bundle.push((jzombie_graph::paths::PINS_FRAG_MD.to_string(), frag));
     Ok(bundle)
 }
 
