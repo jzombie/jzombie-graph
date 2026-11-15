@@ -1,6 +1,6 @@
 # jzombie — portfolio dashboard
 
-Nightly self-portrait of my GitHub: real dependency edges plus a Developer Focus gauge ranking where attention is going. Rebuilt nightly — counts live in the data. Raw JSON: [`data/portfolio-graph.json`](https://github.com/jzombie/jzombie-graph/blob/main/data/portfolio-graph.json).
+Nightly map of jzombie's open-source Rust portfolio: which repos build on which, and where attention is going right now. Hiring managers read scope here; agents read the same facts as JSON in [`data/portfolio-graph.json`](https://github.com/jzombie/jzombie-graph/blob/main/data/portfolio-graph.json).
 
 [![flame](charts/portfolio-graph-flame.svg)](https://github.com/jzombie?tab=repositories)
 
@@ -12,11 +12,11 @@ Nightly self-portrait of my GitHub: real dependency edges plus a Developer Focus
 
 ## jzombie portfolio cluster
 
-jzombie portfolio as a 2D projection — proximity is edge strength. Drawn: 15 repos, 21 dependence edges (+2 runtime-coupling); layers 4 foundation · 5 middleware · 7 application · 1 isolated. Hottest now: rust-sec-fetcher (heat 4.00); most depended-upon: rust-line-ending (5).
+How these 15 repos connect — ones that work together sit close together. 21 links between them (+2 from docs alone); layers 4 foundation · 5 middleware · 7 application · 1 isolated. Busiest right now: rust-sec-fetcher; most reused: rust-line-ending (5 use it).
 
-Generated from the `portfolio-graph` collection (schema v7) — last run 2026-11-14 23:03 UTC. Braille traces show cargo dependence plus docs runtime coupling; every label links to GitHub.
+Rebuilt nightly from GitHub data — last run 2026-11-14 23:03 UTC. Every label links to its repo.
 
-<sub>Diagram: a 2D projection of these repos — closeness means shared dependencies. Screen readers: the block below uses braille characters for lines and is noisy, so it is hidden; the same edges are machine-readable in `graph.json`.</sub>
+<sub>Diagram: repos that work together sit close together. Screen readers: the block below uses braille characters for lines and is noisy, so it is hidden; the same edges are machine-readable in `data/portfolio-graph.json`.</sub>
 
 <pre aria-hidden="true">
                                  [<a href="https://github.com/jzombie/windows-headless">windows-headless</a>]
@@ -46,7 +46,7 @@ Generated from the `portfolio-graph` collection (schema v7) — last run 2026-11
                                           [<a href="https://github.com/jzombie/rust-argtuner">argtuner</a>]
 
 </pre>
-Proximity reflects dependence strength: nodes sharing an edge attract, unconnected nodes repel. Forks appear only when diverged or renamed; repos untouched for over a year are omitted unless something current depends on them.
+Repos that work together pull close; unconnected ones drift apart. Forks show up only after diverging or being renamed; repos quiet for over a year are left out unless something current uses them.
 ## Developer Focus
 
 Developer Focus is a heuristic of where the developer's attention is right now.

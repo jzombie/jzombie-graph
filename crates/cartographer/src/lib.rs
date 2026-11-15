@@ -59,27 +59,25 @@ pub fn render_cartographer(graph: &Graph) -> String {
     let _ = writeln!(s, "## {owner} portfolio cluster\n");
     let _ = writeln!(
         s,
-        "{owner} portfolio as a 2D projection — proximity is edge strength. Drawn: {n} repos, {dep} dependence edges (+{weak} runtime-coupling); layers {layers}.{live}\n",
+        "How these {n} repos connect — ones that work together sit close together. {dep} links between them (+{weak} from docs alone); layers {layers}.{live}\n",
         n = draw.nodes.len(),
         live = live_sentence(graph, &draw),
     );
     let _ = writeln!(
         s,
-        "Generated from the `{name}` collection (schema v{}) — last run {}. Braille traces show cargo dependence plus docs runtime coupling; every label links to GitHub.\n",
-        graph.schema_version,
+        "Rebuilt nightly from GitHub data — last run {}. Every label links to its repo.\n",
         graph.generated_at.format("%Y-%m-%d %H:%M UTC"),
-        name = jzombie_graph::paths::GRAPH_NAME,
     );
     s.push_str(
-        "<sub>Diagram: a 2D projection of these repos — closeness means shared dependencies. \
+        "<sub>Diagram: repos that work together sit close together. \
 Screen readers: the block below uses braille characters for lines and is noisy, so it is hidden; \
-the same edges are machine-readable in `graph.json`.</sub>\n\n",
+the same edges are machine-readable in `data/portfolio-graph.json`.</sub>\n\n",
     );
     s.push_str(&render_pre(graph, &draw));
     s.push_str(
-        "Proximity reflects dependence strength: nodes sharing an edge attract, \
-unconnected nodes repel. Forks appear only when diverged or renamed; \
-repos untouched for over a year are omitted unless something current depends on them.\n",
+        "Repos that work together pull close; unconnected ones drift apart. \
+Forks show up only after diverging or being renamed; \
+repos quiet for over a year are left out unless something current uses them.\n",
     );
     s
 }
@@ -131,8 +129,8 @@ fn layer_mix(graph: &Graph, draw: &Cluster) -> (usize, usize, usize, usize, usiz
     (found, mid, app, iso, untagged)
 }
 
-/// Live signals from drawn data: hottest repo by commit heat, most
-/// depended-upon by dependence fan-in. Absent parts omit silently.
+/// Live signals from drawn data: busiest repo by commit heat, most
+/// reused by dependence fan-in. Absent parts omit silently.
 fn live_sentence(graph: &Graph, draw: &Cluster) -> String {
     let drawn: Vec<&jzombie_graph::graph::Node> = draw
         .nodes
@@ -158,12 +156,12 @@ fn live_sentence(graph: &Graph, draw: &Cluster) -> String {
         .map(|id| (id.as_str(), fan.get(id).copied().unwrap_or(0)))
         .max_by(|a, b| a.1.cmp(&b.1).then_with(|| b.0.cmp(a.0)));
     let mut s = String::new();
-    if let Some((name, h)) = hot {
-        s.push_str(&format!(" Hottest now: {name} (heat {h:.2});"));
+    if let Some((name, _)) = hot {
+        s.push_str(&format!(" Busiest right now: {name};"));
     }
     if let Some((id, c)) = dep.filter(|(_, c)| *c > 0) {
         let name = id.split('/').nth(1).unwrap_or(id);
-        s.push_str(&format!(" most depended-upon: {name} ({c})."));
+        s.push_str(&format!(" most reused: {name} ({c} use it)."));
     }
     s
 }

@@ -96,7 +96,7 @@ fn cluster_draws_linked_nodes_with_braille_traces() {
     let md = render_cartographer(&fixture());
     // Header derives from data: owner + counts, never brand strings.
     assert!(md.contains("me portfolio cluster"), "data-driven title");
-    assert!(md.contains("Drawn: 4 repos"), "drawn count");
+    assert!(md.contains("How these 4 repos connect"), "drawn count");
     assert!(!md.contains("zenOSmosis"), "no hardcoded brand");
     assert!(!md.contains("Zenosmosis"), "old casing gone");
     assert!(
@@ -367,11 +367,14 @@ fn header_sentence_carries_layers_and_live_signals() {
         "layer mix from data:\n{md}"
     );
     assert!(
-        md.contains("most depended-upon: mid (2)"),
+        md.contains("most reused: mid (2 use it)"),
         "fan-in leader from data:\n{md}"
     );
-    assert!(!md.contains("Hottest now"), "no heat, no hottest clause");
-    assert!(md.contains("portfolio-graph"), "graph name from paths");
+    assert!(
+        !md.contains("Busiest right now"),
+        "no heat, no busiest clause"
+    );
+    assert!(md.contains("Rebuilt nightly"), "rebuild note from data");
     assert!(md.contains("last run"), "run timestamp on top");
     assert!(md.contains("UTC"), "timestamps read UTC");
 }
