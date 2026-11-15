@@ -929,7 +929,7 @@ const PINS_PER_ROW: usize = 3;
 const PIN_W: f64 = 280.0;
 const PIN_NAME_MAX: usize = 22;
 const PIN_DESC_WIDTH: usize = 34;
-const PIN_DESC_MAX_LINES: usize = 5;
+const PIN_DESC_MAX_LINES: usize = 4;
 
 /// Card palette: GitHub dark-mode bubbles — black card, dark link blue,
 /// secondary gray type. Language dots keep linguist colors.
@@ -975,10 +975,10 @@ fn k_fmt(n: u32) -> String {
     }
 }
 
-/// Word-wrap a description the way the reference card does: 34 chars
-/// per line, 5 lines max. Overflow pushes nothing — the canvas is
-/// fixed — so a cut tail gets an ellipsis instead of vanishing
-/// mid-sentence. Empty input names itself.
+/// Word-wrap a description for the card: 34 chars per line, 4 lines
+/// max, left-aligned. Overflow pushes nothing — the canvas is fixed —
+/// so a cut tail gets an ellipsis instead of vanishing mid-sentence.
+/// Empty input names itself.
 fn wrap_desc(s: &str) -> Vec<String> {
     let flat: String = s.split_whitespace().collect::<Vec<_>>().join(" ");
     if flat.is_empty() {
@@ -1048,20 +1048,23 @@ struct PinCard {
     d2: String,
     d3: String,
     d4: String,
-    d5: String,
-    /// Justified advance per line: every line but the last stretches
-    /// (word gaps only) to the longest line's width, so the block gets
-    /// an even right edge instead of a ragged wedge. The last line
-    /// keeps its natural width.
-    tw1: String,
-    tw2: String,
-    tw3: String,
-    tw4: String,
-    tw5: String,
     has2: bool,
     has3: bool,
     has4: bool,
-    has5: bool,
+    /// Heat-band color: left strip + footer dot, so the card carries
+    /// proof data (30d heat) GitHub's pinned cards don't show.
+    band: String,
+    /// Breathe class for the heat markers (`pulse`, `pulse slow`, or
+    /// empty): heating breathes fast, steady slow, cooling/dormant static.
+    pulse: String,
+    /// Footer readout, e.g. `steady · 19 commits in 30d`: heat band
+    /// spelled out next to the count, on its own footer line under the
+    /// GitHub-like language/stars/forks row. Visible text, not a hover —
+    /// README `<img>` embeds are non-interactive, so tooltips don't fire.
+    heat: String,
+    /// Plain-language summary for `<desc>`: what the card is plus the
+    /// numbers, for direct-file readers (screen readers, agents, indexers).
+    meta: String,
     has_lang: bool,
     lang: String,
     lang_color: String,
@@ -1074,6 +1077,7 @@ struct PinCard {
     bw: String,
     bh: String,
     fy: String,
+    fy2: String,
 }
 
 /// Pins document: static decor prebuilt in Rust, cards + fragment
@@ -1143,7 +1147,7 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
     for nd in shown.iter() {
         let desc = nd.description.as_deref().unwrap_or("");
         let lines = wrap_desc(desc);
-        let h = if lines.len() > 1 { 100.0 } else { 90.0 } + lines.len() as f64 * 10.0;
+        let h = if lines.len() > 1 { 100.0 } else { 90.0 } + lines.len() as f64 * 10.0 + 16.0;
         h_max = h_max.max(h);
         line_sets.push(lines);
     }
@@ -1151,7 +1155,7 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
     for (i, nd) in shown.iter().enumerate() {
         let lines = &line_sets[i];
         let mut d = lines.clone();
-        while d.len() < 5 {
+        while d.len() < 4 {
             d.push(String::new());
         }
         let name = if nd.name.chars().count() > PIN_NAME_MAX {
@@ -1187,34 +1191,19 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
             0.0
         };
         let fx_fork = fx_star + star_w + 12.0;
+        let heat = nd.commit_heat.or_else(|| nd.commit_heat());
+        let (band, pulse) = match heat_band(heat) {
+            "heating" => (palette::heating(), "pulse"),
+            "steady" => (palette::steady(), "pulse slow"),
+            "cooling" => (palette::cooling(), ""),
+            _ => (palette::dormant(), ""),
+        };
         let url = format!("https://github.com/{}", nd.id);
         let dest = format!(
             "{}/portfolio-graph-pin-{}.svg",
             jzombie_graph::paths::CHARTS_DIR,
             slug
         );
-        // Justify target: the longest non-last line. Every line but
-        // the last stretches (word gaps only) to this width, so the
-        // block reads as a block instead of a leftward pile.
-        let justify_w = if lines.len() > 1 {
-            lines[..lines.len() - 1]
-                .iter()
-                .map(|l| est_w(l))
-                .fold(0.0_f64, f64::max)
-        } else {
-            est_w(&lines[0])
-        };
-        let tw: Vec<String> = d
-            .iter()
-            .enumerate()
-            .map(|(i, l)| {
-                if i < lines.len().saturating_sub(1) {
-                    f1(justify_w)
-                } else {
-                    f1(est_w(l))
-                }
-            })
-            .collect();
         cards.push(PinCard {
             file: format!("pin-{i}.svg"),
             dest: dest.clone(),
@@ -1225,16 +1214,36 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
             d2: xml_escape(&d[1]),
             d3: xml_escape(&d[2]),
             d4: xml_escape(&d[3]),
-            d5: xml_escape(&d[4]),
             has2: lines.len() > 1,
             has3: lines.len() > 2,
             has4: lines.len() > 3,
-            has5: lines.len() > 4,
-            tw1: tw[0].clone(),
-            tw2: tw[1].clone(),
-            tw3: tw[2].clone(),
-            tw4: tw[3].clone(),
-            tw5: tw[4].clone(),
+            band,
+            pulse: pulse.to_string(),
+            heat: format!(
+                "{} · {} {} in 30d",
+                heat_band(heat),
+                nd.commits_30d,
+                if nd.commits_30d == 1 {
+                    "commit"
+                } else {
+                    "commits"
+                }
+            ),
+            meta: xml_escape(&format!(
+                "{}: {}. {} {}, {} {}, {} {} in the last 30 days.",
+                nd.name,
+                lines.join(" "),
+                nd.stars,
+                if nd.stars == 1 { "star" } else { "stars" },
+                nd.forks_count,
+                if nd.forks_count == 1 { "fork" } else { "forks" },
+                nd.commits_30d,
+                if nd.commits_30d == 1 {
+                    "commit"
+                } else {
+                    "commits"
+                }
+            )),
             has_lang: lang_raw.is_some(),
             lang: xml_escape(lang_raw.unwrap_or("")),
             lang_color: lang_raw.map(lang_color).unwrap_or("").to_string(),
@@ -1246,7 +1255,8 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
             h: f1(h_max),
             bw: f1(PIN_W - 1.0),
             bh: f1(h_max - 1.0),
-            fy: f1(h_max - 10.0),
+            fy: f1(h_max - 26.0),
+            fy2: f1(h_max - 10.0),
         });
     }
     // Fragment rows: three linked bubbles per line, rank order left to
@@ -1286,12 +1296,14 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
     })
 }
 
-/// Pins chrome: per-card font classes on the shared Segoe stack, no
-/// animations — the bubbles are static by design. One copy rides every
+/// Pins chrome: per-card font classes on the shared Segoe stack, plus the
+/// family's breathe animation on the heat markers (strip + footer dot).
+/// Heating breathes fast, steady slow, cooling/dormant stay static —
+/// same thresholds as the flame and indicator bands. One copy rides every
 /// card file so each SVG stands alone.
 fn pins_card_css() -> String {
     format!(
-        ".pname {{ font: 600 18px 'Segoe UI', Ubuntu, Sans-Serif; fill: {title}; }} .pdesc {{ font: 400 13px 'Segoe UI', Ubuntu, Sans-Serif; fill: {text}; }} .pfoot {{ font: 400 12px 'Segoe UI', Ubuntu, Sans-Serif; fill: {text}; }}",
+        ".pname {{ font: 600 18px 'Segoe UI', Ubuntu, Sans-Serif; fill: {title}; }} .pdesc {{ font: 400 12px 'Segoe UI', Ubuntu, Sans-Serif; fill: {text}; }} .pfoot {{ font: 400 12px 'Segoe UI', Ubuntu, Sans-Serif; fill: {text}; }} .pulse {{ animation: breathe 2.2s ease-in-out infinite; }} .slow {{ animation-duration: 3.4s; }} @keyframes breathe {{ 0%, 100% {{ opacity: .95; }} 50% {{ opacity: .62; }} }} @media (prefers-reduced-motion: reduce) {{ .pulse {{ animation: none; }} }}",
         title = PIN_TITLE,
         text = PIN_TEXT,
     )
@@ -1328,26 +1340,24 @@ pub fn render_pins_bundle(graph_json: &str) -> anyhow::Result<Vec<(String, Strin
             WRITE frag/pins.md "## Popular repositories\n\n*{{ $doc.msg }}*\n"
         } ELSE {
             FOR $c: MAP<ANY> IN $doc.cards {
-                WRITE svg/{{ $c.file }} "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{{ $c.w }}\" height=\"{{ $c.h }}\" viewBox=\"0 0 {{ $c.w }} {{ $c.h }}\" role=\"img\" font-family=\"{{ $doc.font }}\"><title>{{ $c.fullname }}</title><style>{{ $doc.css }}</style><a href=\"{{ $c.url }}\"><rect x=\"0.5\" y=\"0.5\" width=\"{{ $c.bw }}\" height=\"{{ $c.bh }}\" rx=\"4.5\" fill=\"{{ $doc.bg }}\" stroke=\"{{ $doc.border }}\"/><g transform=\"translate(12,30)\">"
+                WRITE svg/{{ $c.file }} "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{{ $c.w }}\" height=\"{{ $c.h }}\" viewBox=\"0 0 {{ $c.w }} {{ $c.h }}\" role=\"img\" font-family=\"{{ $doc.font }}\"><title>{{ $c.fullname }}</title><desc>{{ $c.meta }}</desc><style>{{ $doc.css }}</style><a href=\"{{ $c.url }}\"><rect x=\"0.5\" y=\"0.5\" width=\"{{ $c.bw }}\" height=\"{{ $c.bh }}\" rx=\"4.5\" fill=\"{{ $doc.bg }}\" stroke=\"{{ $doc.border }}\"/><rect x=\"0.5\" y=\"0.5\" width=\"5\" height=\"{{ $c.bh }}\" rx=\"2\" fill=\"{{ $c.band }}\" class=\"{{ $c.pulse }}\"/><g transform=\"translate(12,30)\">"
                 APPEND svg/{{ $c.file }} "<svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 110-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1V9h-8c-.356 0-.694.074-1 .208V2.5a1 1 0 011-1h8zM5 12.25v3.25a.25.25 0 00.4.2l1.45-1.087a.25.25 0 01.3 0L8.6 15.7a.25.25 0 00.4-.2v-3.25a.25.25 0 00-.25-.25h-3.5a.25.25 0 00-.25.25z\"/></svg><text x=\"28\" y=\"0\" class=\"pname\">{{ $c.name }}</text></g>"
-                APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"54\" class=\"pdesc\" textLength=\"{{ $c.tw1 }}\" lengthAdjust=\"spacing\">{{ $c.d1 }}</text>"
+                APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"54\" class=\"pdesc\">{{ $c.d1 }}</text>"
                 IF $c.has2 {
-                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"70\" class=\"pdesc\" textLength=\"{{ $c.tw2 }}\" lengthAdjust=\"spacing\">{{ $c.d2 }}</text>"
+                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"70\" class=\"pdesc\">{{ $c.d2 }}</text>"
                 }
                 IF $c.has3 {
-                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"86\" class=\"pdesc\" textLength=\"{{ $c.tw3 }}\" lengthAdjust=\"spacing\">{{ $c.d3 }}</text>"
+                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"86\" class=\"pdesc\">{{ $c.d3 }}</text>"
                 }
                 IF $c.has4 {
-                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"102\" class=\"pdesc\" textLength=\"{{ $c.tw4 }}\" lengthAdjust=\"spacing\">{{ $c.d4 }}</text>"
-                }
-                IF $c.has5 {
-                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"118\" class=\"pdesc\" textLength=\"{{ $c.tw5 }}\" lengthAdjust=\"spacing\">{{ $c.d5 }}</text>"
+                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"102\" class=\"pdesc\">{{ $c.d4 }}</text>"
                 }
                 APPEND svg/{{ $c.file }} "<g transform=\"translate(15,{{ $c.fy }})\" class=\"pfoot\">"
                 IF $c.has_lang {
                     APPEND svg/{{ $c.file }} "<circle cx=\"0\" cy=\"-4\" r=\"5\" fill=\"{{ $c.lang_color }}\"/><text x=\"9\" y=\"0\">{{ $c.lang }}</text>"
                 }
                 APPEND svg/{{ $c.file }} "<g transform=\"translate({{ $c.fx_star }},0)\"><svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25zm0 2.445L6.615 5.5a.75.75 0 01-.564.41l-3.097.45 2.24 2.184a.75.75 0 01.216.664l-.528 3.084 2.769-1.456a.75.75 0 01.698 0l2.77 1.456-.53-3.084a.75.75 0 01.216-.664l2.24-2.183-3.096-.45a.75.75 0 01-.564-.41L8 2.694v.001z\"/></svg><text x=\"19\" y=\"0\">{{ $c.stars }}</text></g><g transform=\"translate({{ $c.fx_fork }},0)\"><svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M5 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm0 2.122a2.25 2.25 0 10-1.5 0v.878A2.25 2.25 0 005.75 8.5h1.5v2.128a2.251 2.251 0 101.5 0V8.5h1.5a2.25 2.25 0 002.25-2.25v-.878a2.25 2.25 0 10-1.5 0v.878a.75.75 0 01-.75.75h-4.5A.75.75 0 015 6.25v-.878zm3.75 7.378a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm3-8.75a.75.75 0 100-1.5.75.75 0 000 1.5z\"></path></svg><text x=\"19\" y=\"0\">{{ $c.forks }}</text></g></g>"
+                APPEND svg/{{ $c.file }} "<g transform=\"translate(15,{{ $c.fy2 }})\" class=\"pfoot\"><circle cx=\"0\" cy=\"-4\" r=\"5\" fill=\"{{ $c.band }}\" class=\"{{ $c.pulse }}\"/><text x=\"9\" y=\"0\">{{ $c.heat }}</text></g>"
                 APPEND svg/{{ $c.file }} "</a></svg>"
             }
             WRITE frag/pins.md "## Popular repositories\n\n"
