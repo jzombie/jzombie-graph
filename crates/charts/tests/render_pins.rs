@@ -78,7 +78,8 @@ fn node(
     }
 }
 
-fn seven() -> Vec<Node> {    let descs = [
+fn seven() -> Vec<Node> {
+    let descs = [
         "Async Rust client for SEC EDGAR: fetch filings, fund holdings, XBRL data, and IPO registrations with compliant rate limiting",
         "Nightly map of my GitHub portfolio",
         "Composable data sampling primitives",
