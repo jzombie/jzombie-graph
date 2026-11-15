@@ -26,7 +26,7 @@ pub const DATA_DIR: &str = "data";
 /// dangling artifacts, no sibling dirs to reason about.
 pub const DASHBOARD_DIR: &str = "proof/dashboard";
 pub const CHARTS_DIR: &str = "proof/dashboard/charts";
-pub const FRAGMENTS_DIR: &str = "proof/fragments";
+pub const FRAGMENTS_DIR: &str = "proof/dashboard/fragments";
 pub const INDICATORS_DIR: &str = "proof/dashboard/indicators";
 
 /// File names (no directories): the only place a file name is spelled out.
@@ -45,7 +45,6 @@ pub const FLAME_FILE: &str = "portfolio-graph-flame.svg";
 pub const FLAME_FRAG_FILE: &str = "heat-flame.md";
 pub const PINS_FRAG_FILE: &str = "pins.md";
 pub const INDICATORS_FILE: &str = "portfolio-graph-indicators.svg";
-pub const INDICATORS_MD_FILE: &str = "indicators.md";
 pub const PROOF_README_FILE: &str = "README.md";
 
 /// Collector output: node/edge JSON. Committed — the nightly sweep
@@ -136,12 +135,6 @@ pub fn indicators_svg() -> String {
 /// strip above is the preview sheet.
 pub fn indicator_badge(name: &str) -> String {
     format!("{INDICATORS_DIR}/{name}.svg")
-}
-
-/// Committed render proof: OxDock-templated table embedding the badges,
-/// so github.com shows exactly what readers see. Regenerate, never edit.
-pub fn proof_indicators_md() -> String {
-    format!("{PROOF_DIR}/{INDICATORS_MD_FILE}")
 }
 
 /// Assembled proof page. `oxdock-render` owns it — never hand-edited.

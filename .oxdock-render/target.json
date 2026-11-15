@@ -7,18 +7,18 @@
       "template": ".oxdock-render/README.md.tmpl",
       "fragments": {
         "map": [
-          "proof/fragments/portfolio-graph.md"
+          "proof/dashboard/fragments/portfolio-graph.md"
         ],
         "sections": [
-          "proof/fragments/languages.md",
-          "proof/fragments/commit-share.md",
-          "proof/fragments/developer-focus.md",
-          "proof/fragments/heat-flame.md"
+          "proof/dashboard/fragments/languages.md",
+          "proof/dashboard/fragments/commit-share.md",
+          "proof/dashboard/fragments/developer-focus.md",
+          "proof/dashboard/fragments/heat-flame.md"
         ],
         "data": [
-          "proof/fragments/commit-data.md",
-          "proof/fragments/pins.md",
-          "proof/fragments/footer.md"
+          "proof/dashboard/fragments/commit-data.md",
+          "proof/dashboard/fragments/pins.md",
+          "proof/dashboard/fragments/footer.md"
         ]
       }
     }
