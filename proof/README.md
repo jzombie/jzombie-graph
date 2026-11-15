@@ -46,7 +46,7 @@ How these 15 repos connect: 21 links between them (+2 from docs alone); layers 4
 Repos quiet for over a year are left out unless something current uses them; forks show up only after diverging or being renamed.
 ## Developer focus
 
-Developer focus is a heuristic of where the developer's attention is right now.
+Developer focus is a heuristic of what's being planned and developed right now.
 
 [![developer focus](charts/portfolio-graph-developer-focus.svg?v=202611142303)](https://github.com/jzombie?tab=repositories)
 

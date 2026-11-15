@@ -1,6 +1,6 @@
 ## Developer focus
 
-Developer focus is a heuristic of where the developer's attention is right now.
+Developer focus is a heuristic of what's being planned and developed right now.
 
 [![developer focus](charts/portfolio-graph-developer-focus.svg?v=202611142303)]({{ $global.repos }})
 
