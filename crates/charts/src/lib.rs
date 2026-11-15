@@ -1032,8 +1032,13 @@ struct PinCard {
     d1: String,
     d2: String,
     d3: String,
+    d4: String,
+    d5: String,
     has2: bool,
     has3: bool,
+    has4: bool,
+    has5: bool,
+    has_lang: bool,
     lang: String,
     lang_color: String,
     stars: String,
@@ -1114,7 +1119,7 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
     for nd in shown.iter() {
         let desc = nd.description.as_deref().unwrap_or("");
         let lines = wrap_desc(desc);
-        let h = if lines.len() > 1 { 120.0 } else { 110.0 } + lines.len() as f64 * 10.0;
+        let h = if lines.len() > 1 { 100.0 } else { 90.0 } + lines.len() as f64 * 10.0;
         h_max = h_max.max(h);
         line_sets.push(lines);
     }
@@ -1122,7 +1127,7 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
     for (i, nd) in shown.iter().enumerate() {
         let lines = &line_sets[i];
         let mut d = lines.clone();
-        while d.len() < 3 {
+        while d.len() < 5 {
             d.push(String::new());
         }
         let name = if nd.name.chars().count() > PIN_NAME_MAX {
@@ -1141,11 +1146,15 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
                 }
             })
             .collect();
-        let lang = nd.language.as_deref().unwrap_or("Unspecified");
         let stars = k_fmt(nd.stars);
         let forks = k_fmt(nd.forks_count);
-        let lang_w = 10.0 + 8.0 + est_w(lang);
-        let star_w = 16.0 + 6.0 + est_w(&stars);
+        let lang_raw = nd.language.as_deref();
+        let lang_w = match lang_raw {
+            Some(l) => 10.0 + 4.0 + est_w(l),
+            None => 0.0,
+        };
+        let star_w = 16.0 + 3.0 + est_w(&stars);
+        let fx_star = if lang_raw.is_some() { lang_w + 12.0 } else { 0.0 };
         let url = format!("https://github.com/{}", nd.id);
         let dest = format!(
             "{}/portfolio-graph-pin-{}.svg",
@@ -1161,19 +1170,24 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
             d1: xml_escape(&d[0]),
             d2: xml_escape(&d[1]),
             d3: xml_escape(&d[2]),
+            d4: xml_escape(&d[3]),
+            d5: xml_escape(&d[4]),
             has2: lines.len() > 1,
             has3: lines.len() > 2,
-            lang: xml_escape(lang),
-            lang_color: lang_color(lang).to_string(),
+            has4: lines.len() > 3,
+            has5: lines.len() > 4,
+            has_lang: lang_raw.is_some(),
+            lang: xml_escape(lang_raw.unwrap_or("")),
+            lang_color: lang_raw.map(lang_color).unwrap_or("").to_string(),
             stars: xml_escape(&stars),
             forks: xml_escape(&forks),
-            fx_star: f1(lang_w + 25.0),
-            fx_fork: f1(lang_w + 25.0 + star_w + 25.0),
+            fx_star: f1(fx_star),
+            fx_fork: f1(fx_star + star_w + 12.0),
             w: f1(PIN_W),
             h: f1(h_max),
             bw: f1(PIN_W - 1.0),
             bh: f1(h_max - 1.0),
-            fy: f1(h_max - 20.0),
+            fy: f1(h_max - 10.0),
         });
     }
     // Fragment rows: three linked bubbles per line, rank order left to
@@ -1255,16 +1269,26 @@ pub fn render_pins_bundle(graph_json: &str) -> anyhow::Result<Vec<(String, Strin
             WRITE frag/pins.md "## Popular repositories\n\n*{{ $doc.msg }}*\n"
         } ELSE {
             FOR $c: MAP<ANY> IN $doc.cards {
-                WRITE svg/{{ $c.file }} "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{{ $c.w }}\" height=\"{{ $c.h }}\" viewBox=\"0 0 {{ $c.w }} {{ $c.h }}\" role=\"img\" font-family=\"{{ $doc.font }}\"><title>{{ $c.fullname }}</title><style>{{ $doc.css }}</style><a href=\"{{ $c.url }}\"><rect x=\"0.5\" y=\"0.5\" width=\"{{ $c.bw }}\" height=\"{{ $c.bh }}\" rx=\"4.5\" fill=\"{{ $doc.bg }}\" stroke=\"{{ $doc.border }}\"/><g transform=\"translate(25,35)\">"
-                APPEND svg/{{ $c.file }} "<svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 110-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1V9h-8c-.356 0-.694.074-1 .208V2.5a1 1 0 011-1h8zM5 12.25v3.25a.25.25 0 00.4.2l1.45-1.087a.25.25 0 01.3 0L8.6 15.7a.25.25 0 00.4-.2v-3.25a.25.25 0 00-.25-.25h-3.5a.25.25 0 00-.25.25z\"/></svg><text x=\"41\" y=\"0\" class=\"pname\">{{ $c.name }}</text></g>"
-                APPEND svg/{{ $c.file }} "<text x=\"25\" y=\"62\" class=\"pdesc\">{{ $c.d1 }}</text>"
+                WRITE svg/{{ $c.file }} "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{{ $c.w }}\" height=\"{{ $c.h }}\" viewBox=\"0 0 {{ $c.w }} {{ $c.h }}\" role=\"img\" font-family=\"{{ $doc.font }}\"><title>{{ $c.fullname }}</title><style>{{ $doc.css }}</style><a href=\"{{ $c.url }}\"><rect x=\"0.5\" y=\"0.5\" width=\"{{ $c.bw }}\" height=\"{{ $c.bh }}\" rx=\"4.5\" fill=\"{{ $doc.bg }}\" stroke=\"{{ $doc.border }}\"/><g transform=\"translate(12,30)\">"
+                APPEND svg/{{ $c.file }} "<svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 110-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1V9h-8c-.356 0-.694.074-1 .208V2.5a1 1 0 011-1h8zM5 12.25v3.25a.25.25 0 00.4.2l1.45-1.087a.25.25 0 01.3 0L8.6 15.7a.25.25 0 00.4-.2v-3.25a.25.25 0 00-.25-.25h-3.5a.25.25 0 00-.25.25z\"/></svg><text x=\"28\" y=\"0\" class=\"pname\">{{ $c.name }}</text></g>"
+                APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"54\" class=\"pdesc\">{{ $c.d1 }}</text>"
                 IF $c.has2 {
-                    APPEND svg/{{ $c.file }} "<text x=\"25\" y=\"78\" class=\"pdesc\">{{ $c.d2 }}</text>"
+                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"70\" class=\"pdesc\">{{ $c.d2 }}</text>"
                 }
                 IF $c.has3 {
-                    APPEND svg/{{ $c.file }} "<text x=\"25\" y=\"94\" class=\"pdesc\">{{ $c.d3 }}</text>"
+                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"86\" class=\"pdesc\">{{ $c.d3 }}</text>"
                 }
-                APPEND svg/{{ $c.file }} "<g transform=\"translate(30,{{ $c.fy }})\" class=\"pfoot\"><circle cx=\"0\" cy=\"-4\" r=\"5\" fill=\"{{ $c.lang_color }}\"/><text x=\"14\" y=\"0\">{{ $c.lang }}</text><g transform=\"translate({{ $c.fx_star }},0)\"><svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25zm0 2.445L6.615 5.5a.75.75 0 01-.564.41l-3.097.45 2.24 2.184a.75.75 0 01.216.664l-.528 3.084 2.769-1.456a.75.75 0 01.698 0l2.77 1.456-.53-3.084a.75.75 0 01.216-.664l2.24-2.183-3.096-.45a.75.75 0 01-.564-.41L8 2.694v.001z\"/></svg><text x=\"22\" y=\"0\">{{ $c.stars }}</text></g><g transform=\"translate({{ $c.fx_fork }},0)\"><svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M5 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm0 2.122a2.25 2.25 0 10-1.5 0v.878A2.25 2.25 0 005.75 8.5h1.5v2.128a2.251 2.251 0 101.5 0V8.5h1.5a2.25 2.25 0 002.25-2.25v-.878a2.25 2.25 0 10-1.5 0v.878a.75.75 0 01-.75.75h-4.5A.75.75 0 015 6.25v-.878zm3.75 7.378a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm3-8.75a.75.75 0 100-1.5.75.75 0 000 1.5z\"></path></svg><text x=\"22\" y=\"0\">{{ $c.forks }}</text></g></g>"
+                IF $c.has4 {
+                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"102\" class=\"pdesc\">{{ $c.d4 }}</text>"
+                }
+                IF $c.has5 {
+                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"118\" class=\"pdesc\">{{ $c.d5 }}</text>"
+                }
+                APPEND svg/{{ $c.file }} "<g transform=\"translate(15,{{ $c.fy }})\" class=\"pfoot\">"
+                IF $c.has_lang {
+                    APPEND svg/{{ $c.file }} "<circle cx=\"0\" cy=\"-4\" r=\"5\" fill=\"{{ $c.lang_color }}\"/><text x=\"9\" y=\"0\">{{ $c.lang }}</text>"
+                }
+                APPEND svg/{{ $c.file }} "<g transform=\"translate({{ $c.fx_star }},0)\"><svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25zm0 2.445L6.615 5.5a.75.75 0 01-.564.41l-3.097.45 2.24 2.184a.75.75 0 01.216.664l-.528 3.084 2.769-1.456a.75.75 0 01.698 0l2.77 1.456-.53-3.084a.75.75 0 01.216-.664l2.24-2.183-3.096-.45a.75.75 0 01-.564-.41L8 2.694v.001z\"/></svg><text x=\"19\" y=\"0\">{{ $c.stars }}</text></g><g transform=\"translate({{ $c.fx_fork }},0)\"><svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M5 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm0 2.122a2.25 2.25 0 10-1.5 0v.878A2.25 2.25 0 005.75 8.5h1.5v2.128a2.251 2.251 0 101.5 0V8.5h1.5a2.25 2.25 0 002.25-2.25v-.878a2.25 2.25 0 10-1.5 0v.878a.75.75 0 01-.75.75h-4.5A.75.75 0 015 6.25v-.878zm3.75 7.378a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm3-8.75a.75.75 0 100-1.5.75.75 0 000 1.5z\"></path></svg><text x=\"19\" y=\"0\">{{ $c.forks }}</text></g></g>"
                 APPEND svg/{{ $c.file }} "</a></svg>"
             }
             WRITE frag/pins.md "## Popular repositories\n\nTop 6 by stars — the repos the community reaches for.\n\n"

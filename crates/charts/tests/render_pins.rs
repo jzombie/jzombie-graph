@@ -99,7 +99,17 @@ fn seven() -> Vec<Node> {
         (10, 2, 5.0),
         (1, 0, 99.0),
     ];
-    let langs = ["Rust", "Rust", "Rust", "Rust", "Rust", "Rust", "Go"];
+    // r5 has no language: the footer must skip the dot, not print
+    // "Unspecified".
+    let langs = [
+        Some("Rust"),
+        Some("Rust"),
+        Some("Rust"),
+        Some("Rust"),
+        Some("Rust"),
+        None,
+        Some("Go"),
+    ];
     let mut nodes = vec![];
     for (i, name) in ["r0", "r1", "r2", "r3", "r4", "r5", "r6"]
         .iter()
@@ -109,7 +119,7 @@ fn seven() -> Vec<Node> {
         nodes.push(node(
             name,
             Some(descs[i]),
-            Some(langs[i]),
+            langs[i],
             stars,
             forks,
             Some(focus),
@@ -141,6 +151,10 @@ fn pins_bundle_one_card_per_repo_each_linking_out() {
     );
     assert!(first.contains("fill=\"#000000\""), "black card");
     assert!(first.contains("#dea584"), "Rust dot");
+    // r5 has no language: no dot, no "Unspecified" anywhere.
+    let r5 = &bundle[5].1;
+    assert!(!r5.contains("Unspecified"), "no language, no label");
+    assert!(!r5.contains("<circle"), "no language, no dot");
     let frag = &bundle[6].1;
     assert!(frag.contains("## Popular repositories"));
     let r0 = frag.find("me/r0").unwrap();
