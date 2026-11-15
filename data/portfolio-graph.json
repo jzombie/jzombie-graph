@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-11-15T04:35:01.198098208Z",
+  "generated_at": "2026-11-15T05:30:55.966629771Z",
   "velocity_scope": "all",
   "velocity_owner": "jzombie",
   "nodes": [
@@ -3964,7 +3964,7 @@
       "private": false,
       "upstream": null,
       "ahead_by": null,
-      "pushed_at": "2026-11-15T04:10:53Z",
+      "pushed_at": "2026-11-15T05:18:30Z",
       "description": "Nightly map of my GitHub portfolio: real dependency edges plus a self-normalized Developer Focus gauge ranking where attention is going.",
       "topics": [
         "automation",
@@ -3983,15 +3983,15 @@
       "language": "Rust",
       "stars": 0,
       "forks_count": 0,
-      "open_issues": 3,
+      "open_issues": 2,
       "license": "Apache-2.0",
-      "size_kb": 849,
+      "size_kb": 951,
       "has_readme": true,
       "has_license_file": true,
-      "commits_1d": 50,
-      "commits_5d": 52,
-      "commits_15d": 147,
-      "commits_30d": 147,
+      "commits_1d": 61,
+      "commits_5d": 63,
+      "commits_15d": 157,
+      "commits_30d": 157,
       "issues_open_1d": 0,
       "issues_open_5d": 0,
       "issues_open_15d": 2,
@@ -4008,33 +4008,39 @@
         "enhancement": 2
       },
       "issue_heat": 0.6666667,
-      "commit_heat": 4.7755103,
-      "focus": 2.7210884,
-      "last_commit_at": "2026-11-15T04:24:21Z",
+      "commit_heat": 5.3545647,
+      "focus": 3.0106156,
+      "last_commit_at": "2026-11-15T05:18:27Z",
       "branch_heat": [
         {
           "branch": "magnet",
           "is_default": false,
-          "commits_1d": 50,
-          "commits_5d": 52,
+          "commits_1d": 59,
+          "commits_5d": 61,
           "commits_15d": 100,
           "commits_30d": 100
         },
         {
           "branch": "main",
           "is_default": true,
-          "commits_1d": 2,
-          "commits_5d": 4,
-          "commits_15d": 99,
-          "commits_30d": 99
+          "commits_1d": 4,
+          "commits_5d": 6,
+          "commits_15d": 100,
+          "commits_30d": 100
         }
       ],
       "recent_prs": [
         {
+          "title": "Move fragments into dashboard directory",
+          "branch": "magnet2",
+          "base": "main",
+          "state": "MERGED"
+        },
+        {
           "title": "Draft dashboard view",
           "branch": "magnet",
           "base": "main",
-          "state": "OPEN"
+          "state": "MERGED"
         },
         {
           "title": "Use OxDock setup actions for workflows",
@@ -8913,7 +8919,7 @@
       "issue_labels": {
         "bug": 1
       },
-      "focus": -20.366667,
+      "focus": -20.4,
       "last_commit_at": "2025-03-13T04:54:14Z",
       "branch_heat": [
         {
@@ -11654,7 +11660,7 @@
       "forks_count": 0,
       "open_issues": 3,
       "license": "Apache-2.0",
-      "size_kb": 5814,
+      "size_kb": 5823,
       "has_readme": true,
       "has_license_file": true,
       "commits_1d": 1,
@@ -12076,7 +12082,7 @@
       "commits_15d": 10,
       "commits_30d": 10,
       "issues_open_1d": 0,
-      "issues_open_5d": 1,
+      "issues_open_5d": 0,
       "issues_open_15d": 2,
       "issues_open_30d": 2,
       "issues_closed_1d": 0,
@@ -12280,7 +12286,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-15T04:10:53Z",
+      "recency": "2026-11-15T05:18:30Z",
       "version": "0.39.0-alpha"
     },
     {
@@ -12310,7 +12316,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-15T04:10:53Z",
+      "recency": "2026-11-15T05:18:30Z",
       "version": "0.13.5-alpha.1"
     },
     {
