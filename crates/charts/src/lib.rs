@@ -1045,18 +1045,6 @@ struct PinCard {
     fy: String,
 }
 
-/// One fragment table row: two linked-card cells. Headers stay blank:
-/// like the data table's `" repo"` sort key, spaces survive
-/// `MAP_TO_MD_TABLE`, so a single and double space order `c1` first
-/// with empty header cells.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-struct PinTableRow {
-    #[serde(rename = " ")]
-    c1: String,
-    #[serde(rename = "  ")]
-    c2: String,
-}
-
 /// Pins document: static decor prebuilt in Rust, cards + fragment
 /// interpolated. One oxdock run writes the whole family.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -1073,7 +1061,7 @@ struct PinDoc {
     icon: String,
     title: String,
     cards: Vec<PinCard>,
-    table_rows: Vec<PinTableRow>,
+    frag_rows: Vec<String>,
 }
 
 /// Pins rows: top-6 own-work repos by stars, ties break on forks
@@ -1093,7 +1081,7 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
         icon: PIN_ICON.to_string(),
         title: "Popular repositories".to_string(),
         cards: vec![],
-        table_rows: vec![],
+        frag_rows: vec![],
     };
     let mut repos: Vec<&jzombie_graph::graph::Node> = graph
         .nodes
@@ -1111,13 +1099,21 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
             .then_with(|| a.name.cmp(&b.name))
     });
     let shown = &repos[..repos.len().min(PINS_TOPN)];
-    // Card height follows the reference formula per card — no grid to
-    // align now that each bubble is its own file.
-    let mut cards: Vec<PinCard> = vec![];
-    for (i, nd) in shown.iter().enumerate() {
+    // Card height follows the reference formula per card, then the
+    // tallest wins for the whole family: uniform files, so the profile
+    // grid reads as one set instead of six odd sizes.
+    let mut line_sets: Vec<Vec<String>> = vec![];
+    let mut h_max = 0.0_f64;
+    for nd in shown.iter() {
         let desc = nd.description.as_deref().unwrap_or("");
         let lines = wrap_desc(desc);
         let h = if lines.len() > 1 { 120.0 } else { 110.0 } + lines.len() as f64 * 10.0;
+        h_max = h_max.max(h);
+        line_sets.push(lines);
+    }
+    let mut cards: Vec<PinCard> = vec![];
+    for (i, nd) in shown.iter().enumerate() {
+        let lines = &line_sets[i];
         let mut d = lines.clone();
         while d.len() < 3 {
             d.push(String::new());
@@ -1166,15 +1162,17 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
             fx_star: f1(lang_w + 25.0),
             fx_fork: f1(lang_w + 25.0 + star_w + 25.0),
             w: f1(PIN_W),
-            h: f1(h),
+            h: f1(h_max),
             bw: f1(PIN_W - 1.0),
-            bh: f1(h - 1.0),
-            fy: f1(h - 20.0),
+            bh: f1(h_max - 1.0),
+            fy: f1(h_max - 20.0),
         });
     }
-    // Fragment table: two linked bubbles per row, pairs in rank order.
-    // A short tail leaves the second cell empty rather than a junk row.
-    let mut table_rows: Vec<PinTableRow> = vec![];
+    // Fragment rows: two linked bubbles per line, pairs in rank order —
+    // plain inline images, no table. Tables wrap every cell in padding
+    // plus a header chrome row; inline pairs sit tight like the pinned
+    // grid they mimic. A short tail leaves a lone bubble, never a junk row.
+    let mut frag_rows: Vec<String> = vec![];
     for pair in cards.chunks(2) {
         let cell = |c: &PinCard| {
             format!(
@@ -1187,10 +1185,12 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
                 c.url
             )
         };
-        table_rows.push(PinTableRow {
-            c1: cell(&pair[0]),
-            c2: pair.get(1).map(cell).unwrap_or_default(),
-        });
+        let mut line = cell(&pair[0]);
+        if let Some(second) = pair.get(1) {
+            line.push(' ');
+            line.push_str(&cell(second));
+        }
+        frag_rows.push(line);
     }
     Ok(PinDoc {
         header: String::new(),
@@ -1205,7 +1205,7 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
         icon: PIN_ICON.to_string(),
         title: "Popular repositories".to_string(),
         cards,
-        table_rows,
+        frag_rows,
     })
 }
 
@@ -1239,10 +1239,9 @@ pub fn render_pins_bundle(graph_json: &str) -> anyhow::Result<Vec<(String, Strin
     let engine = engine();
     let arg = transport_in(graph_json);
     let steps: Vec<oxdock_parser::Step> = oxdock! {
-        modules: [CHARTS, MARKDOWN],
+        modules: [CHARTS],
         IMPORT [CHARTS]
         IMPORT [STD]
-        IMPORT [MARKDOWN]
         LET $doc_json: STRING = CHARTS::PINS(#arg)
         WRITE rows.json $doc_json
         LET $doc: MAP<ANY> = LOAD_JSON("rows.json")
@@ -1265,7 +1264,9 @@ pub fn render_pins_bundle(graph_json: &str) -> anyhow::Result<Vec<(String, Strin
                 APPEND svg/{{ $c.file }} "</a></svg>"
             }
             WRITE frag/pins.md "## Popular repositories\n\nTop 6 by stars — the repos the community reaches for.\n\n"
-            APPEND frag/pins.md "{{ MARKDOWN::MAP_TO_MD_TABLE($doc.table_rows) }}"
+            FOR $line: STRING IN $doc.frag_rows {
+                APPEND frag/pins.md "{{ $line }}\n\n"
+            }
         }
         LET $check: STRING = READ frag/pins.md
         ASSERT_CONTAINS $check "Popular repositories"
