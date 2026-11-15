@@ -2,6 +2,10 @@
 
 Nightly self-portrait of my GitHub: real dependency edges plus a Developer Focus gauge ranking where attention is going. Rebuilt nightly — counts live in the data. Raw JSON: [`data/portfolio-graph.json`](https://github.com/jzombie/jzombie-graph/blob/main/data/portfolio-graph.json).
 
+## Commit activity
+
+[![flame](charts/portfolio-graph-flame.svg)](https://github.com/jzombie?tab=repositories)
+
 ## Popular repositories
 
 Top 6 by stars — the repos the community reaches for.
@@ -9,18 +13,6 @@ Top 6 by stars — the repos the community reaches for.
 [![rust-muxio](charts/portfolio-graph-pin-rust-muxio.svg?v=202611142303)](https://github.com/jzombie/rust-muxio) [![docker-mqtt-mosquitto…](charts/portfolio-graph-pin-docker-mqtt-mosquitto-cloudflare-tunnel.svg?v=202611142303)](https://github.com/jzombie/docker-mqtt-mosquitto-cloudflare-tunnel) [![rust-simd-r-drive](charts/portfolio-graph-pin-rust-simd-r-drive.svg?v=202611142303)](https://github.com/jzombie/rust-simd-r-drive)
 
 [![sshfs-mac-docker](charts/portfolio-graph-pin-sshfs-mac-docker.svg?v=202611142303)](https://github.com/jzombie/sshfs-mac-docker) [![term-wm](charts/portfolio-graph-pin-term-wm.svg?v=202611142303)](https://github.com/jzombie/term-wm) [![rust-line-ending](charts/portfolio-graph-pin-rust-line-ending.svg?v=202611142303)](https://github.com/jzombie/rust-line-ending)
-
-## Developer Focus
-
-Developer Focus is a heuristic of where the developer's attention is right now.
-
-[![developer focus](charts/portfolio-graph-developer-focus.svg)](https://github.com/jzombie?tab=repositories)
-
-<sub>Each score blends commit heat (recent commit rates vs the trailing 30d baseline) with issue comment heat (owner authored comment volume, same comparison), then discounts idle months. A signal with no baseline sits out: triage free repos rank on commits alone, commit free weeks on comments alone.</sub>
-
-## Commit share
-
-[![share](charts/portfolio-graph-share.svg)](https://github.com/jzombie?tab=repositories)
 
 # jzombie portfolio cluster
 
@@ -59,11 +51,17 @@ Generated from the `portfolio-graph` collection (schema v7) — last run 2026-11
 
 </pre>
 Proximity reflects dependence strength: nodes sharing an edge attract, unconnected nodes repel. Forks appear only when diverged or renamed; repos untouched for over a year are omitted unless something current depends on them.
-## Commit activity
+## Developer Focus
 
-[![flame](charts/portfolio-graph-flame.svg)](https://github.com/jzombie?tab=repositories)
+Developer Focus is a heuristic of where the developer's attention is right now.
 
-<details><summary>Commit data — top-10 + roll-up (machine-readable)</summary>
+[![developer focus](charts/portfolio-graph-developer-focus.svg)](https://github.com/jzombie?tab=repositories)
+
+<sub>Each score blends commit heat (recent commit rates vs the trailing 30d baseline) with issue comment heat (owner authored comment volume, same comparison), then discounts idle months. A signal with no baseline sits out: triage free repos rank on commits alone, commit free weeks on comments alone.</sub>
+
+## Commit share
+
+[![share](charts/portfolio-graph-share.svg)](https://github.com/jzombie?tab=repositories)
 
 ## Commit data — machine-readable
 
@@ -83,5 +81,3 @@ As of 2026-11-14 23:03 UTC · 16 repos · 266 commits/30d · 2 foundation · 4 m
 | [lab-qemu-portable](https://github.com/jzombie/lab-qemu-portable)<br><sub>★ 0</sub>   | Extract-and-run QEMU + wimlib (WHPX/KVM/HVF, no installer, headless-ready) plus… <sub>[#emulation](https://github.com/search?q=user%3Ajzombie+topic%3Aemulation&type=repositories) [#headless](https://github.com/search?q=user%3Ajzombie+topic%3Aheadless&type=repositories) [#hvf](https://github.com/search?q=user%3Ajzombie+topic%3Ahvf&type=repositories) [#kvm](https://github.com/search?q=user%3Ajzombie+topic%3Akvm&type=repositories) +8</sub>                                                                                                        | 4<br><sub>single branch</sub>               | <div align="center">![heating](indicators/heating.svg)<br><sub>heating</sub></div> | isolated                 | —                                                                                                                                                                                                                                                                                                                                                |
 
 <!-- +6 more below top-10 (9 commits/30d combined): rust-simd-r-drive, rust-muxio, deepwiki-to-mdbook, docker-mqtt-mosquitto-cloudflare-tunnel, rust-line-ending, sshfs-mac-docker -->
-
-</details>
