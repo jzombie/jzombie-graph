@@ -926,10 +926,11 @@ pub fn render_flame_svg(graph_json: &str) -> anyhow::Result<String> {
 /// 2-column grid, uniform height, so the top of the dashboard reads
 /// like a profile's pinned section.
 const PINS_TOPN: usize = 6;
-const PIN_W: f64 = 400.0;
-const PIN_NAME_MAX: usize = 35;
-const PIN_DESC_WIDTH: usize = 59;
-const PIN_DESC_MAX_LINES: usize = 3;
+const PINS_PER_ROW: usize = 3;
+const PIN_W: f64 = 280.0;
+const PIN_NAME_MAX: usize = 22;
+const PIN_DESC_WIDTH: usize = 34;
+const PIN_DESC_MAX_LINES: usize = 5;
 
 /// Card palette: GitHub dark-mode bubbles — black card, dark link blue,
 /// secondary gray type. Language dots keep linguist colors.
@@ -1027,6 +1028,7 @@ struct PinCard {
     dest: String,
     url: String,
     name: String,
+    fullname: String,
     d1: String,
     d2: String,
     d3: String,
@@ -1150,6 +1152,7 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
             dest: dest.clone(),
             url: url.clone(),
             name: xml_escape(&name),
+            fullname: xml_escape(&nd.name),
             d1: xml_escape(&d[0]),
             d2: xml_escape(&d[1]),
             d3: xml_escape(&d[2]),
@@ -1168,12 +1171,10 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
             fy: f1(h_max - 20.0),
         });
     }
-    // Fragment rows: two linked bubbles per line, pairs in rank order —
-    // plain inline images, no table. Tables wrap every cell in padding
-    // plus a header chrome row; inline pairs sit tight like the pinned
-    // grid they mimic. A short tail leaves a lone bubble, never a junk row.
+    // Fragment rows: three linked bubbles per line, rank order left to
+    // right. A short tail leaves a lone bubble, never a junk row.
     let mut frag_rows: Vec<String> = vec![];
-    for pair in cards.chunks(2) {
+    for trio in cards.chunks(PINS_PER_ROW) {
         let cell = |c: &PinCard| {
             format!(
                 "[![{}](charts/{})]({})",
@@ -1182,10 +1183,10 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
                 c.url
             )
         };
-        let mut line = cell(&pair[0]);
-        if let Some(second) = pair.get(1) {
+        let mut line = cell(&trio[0]);
+        for extra in trio.iter().skip(1) {
             line.push(' ');
-            line.push_str(&cell(second));
+            line.push_str(&cell(extra));
         }
         frag_rows.push(line);
     }
@@ -1248,7 +1249,7 @@ pub fn render_pins_bundle(graph_json: &str) -> anyhow::Result<Vec<(String, Strin
             WRITE frag/pins.md "## Popular repositories\n\n*{{ $doc.msg }}*\n"
         } ELSE {
             FOR $c: MAP<ANY> IN $doc.cards {
-                WRITE svg/{{ $c.file }} "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{{ $c.w }}\" height=\"{{ $c.h }}\" viewBox=\"0 0 {{ $c.w }} {{ $c.h }}\" role=\"img\" font-family=\"{{ $doc.font }}\"><title>{{ $c.name }}</title><style>{{ $doc.css }}</style><a href=\"{{ $c.url }}\"><rect x=\"0.5\" y=\"0.5\" width=\"{{ $c.bw }}\" height=\"{{ $c.bh }}\" rx=\"4.5\" fill=\"{{ $doc.bg }}\" stroke=\"{{ $doc.border }}\"/><g transform=\"translate(25,35)\">"
+                WRITE svg/{{ $c.file }} "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{{ $c.w }}\" height=\"{{ $c.h }}\" viewBox=\"0 0 {{ $c.w }} {{ $c.h }}\" role=\"img\" font-family=\"{{ $doc.font }}\"><title>{{ $c.fullname }}</title><style>{{ $doc.css }}</style><a href=\"{{ $c.url }}\"><rect x=\"0.5\" y=\"0.5\" width=\"{{ $c.bw }}\" height=\"{{ $c.bh }}\" rx=\"4.5\" fill=\"{{ $doc.bg }}\" stroke=\"{{ $doc.border }}\"/><g transform=\"translate(25,35)\">"
                 APPEND svg/{{ $c.file }} "<svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 110-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1V9h-8c-.356 0-.694.074-1 .208V2.5a1 1 0 011-1h8zM5 12.25v3.25a.25.25 0 00.4.2l1.45-1.087a.25.25 0 01.3 0L8.6 15.7a.25.25 0 00.4-.2v-3.25a.25.25 0 00-.25-.25h-3.5a.25.25 0 00-.25.25z\"/></svg><text x=\"41\" y=\"0\" class=\"pname\">{{ $c.name }}</text></g>"
                 APPEND svg/{{ $c.file }} "<text x=\"25\" y=\"62\" class=\"pdesc\">{{ $c.d1 }}</text>"
                 IF $c.has2 {
