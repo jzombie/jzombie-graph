@@ -1,6 +1,6 @@
 # jzombie — portfolio dashboard
 
-Nightly map of jzombie's open-source Rust portfolio: which repos build on which, and where attention is going right now. Hiring managers read scope here; agents read the same facts as JSON in [`data/portfolio-graph.json`](https://github.com/jzombie/jzombie-graph/blob/main/data/portfolio-graph.json).
+Nightly map of jzombie's open-source Rust portfolio for hiring managers and collaborators: what's active, what's used, and where attention is going.
 
 [![flame](charts/portfolio-graph-flame.svg)](https://github.com/jzombie?tab=repositories)
 
@@ -12,11 +12,9 @@ Nightly map of jzombie's open-source Rust portfolio: which repos build on which,
 
 ## jzombie portfolio cluster
 
-How these 15 repos connect — ones that work together sit close together. 21 links between them (+2 from docs alone); layers 4 foundation · 5 middleware · 7 application · 1 isolated. Busiest right now: rust-sec-fetcher; most reused: rust-line-ending (5 use it).
+How these 15 repos connect: 21 links between them (+2 from docs alone); layers 4 foundation · 5 middleware · 7 application · 1 isolated. Busiest right now: rust-sec-fetcher; most reused: rust-line-ending (5 use it).
 
-Rebuilt nightly from GitHub data — last run 2026-11-14 23:03 UTC. Every label links to its repo.
-
-<sub>Diagram: repos that work together sit close together. Screen readers: the block below uses braille characters for lines and is noisy, so it is hidden; the same edges are machine-readable in `data/portfolio-graph.json`.</sub>
+<sub>Diagram: closeness means the repos work together. Screen readers: the block below uses braille characters for lines and is noisy, so it is hidden; the table below names every repo in text.</sub>
 
 <pre aria-hidden="true">
                                  [<a href="https://github.com/jzombie/windows-headless">windows-headless</a>]
@@ -46,7 +44,7 @@ Rebuilt nightly from GitHub data — last run 2026-11-14 23:03 UTC. Every label 
                                           [<a href="https://github.com/jzombie/rust-argtuner">argtuner</a>]
 
 </pre>
-Repos that work together pull close; unconnected ones drift apart. Forks show up only after diverging or being renamed; repos quiet for over a year are left out unless something current uses them.
+Repos quiet for over a year are left out unless something current uses them; forks show up only after diverging or being renamed.
 ## Developer Focus
 
 Developer Focus is a heuristic of where the developer's attention is right now.
@@ -61,7 +59,7 @@ Developer Focus is a heuristic of where the developer's attention is right now.
 
 ## Commit data
 
-Updated 2026-11-14 23:03 UTC — 16 repos, 266 commits in the last 30 days. Full data: [`data/portfolio-graph.json`](https://github.com/jzombie/jzombie-graph/blob/main/data/portfolio-graph.json) ([`data/portfolio-graph-schema.json`](https://github.com/jzombie/jzombie-graph/blob/main/data/portfolio-graph-schema.json)).
+Updated 2026-11-14 23:03 UTC — 16 repos, 266 commits in the last 30 days.
 
 |  repo                                                                                 | about                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | commits/30d                                 | heat                                                                               | layer                    | reuse (portfolio)                                                                                                                                                                                                                                                                                                                                |
 | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

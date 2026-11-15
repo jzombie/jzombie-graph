@@ -20,14 +20,9 @@ pub const SCHEMA_JSON: &str = "data/portfolio-graph-schema.json";
 /// Cartographer output: the verbatim fragment.
 pub const FRAGMENT_MD: &str = "proof/fragments/portfolio-graph.md";
 
-/// Blob-view base for committed files. Absolute so vendored copies
-/// (profile README) keep working links — same base the proof template
-/// hardcodes for its raw-JSON link.
-pub const BLOB_BASE: &str = "https://github.com/jzombie/jzombie-graph/blob/main";
-
-/// Commit-data table fragment: the machine-readable section of the
-/// proof page, computed from the fresh JSON. Rendered by the charts
-/// proof lane, assembled by `oxdock-render` — never hand-edited.
+/// Commit-data table fragment: the data section of the proof page,
+/// computed from the fresh JSON. Rendered by the charts lane,
+/// assembled by `oxdock-render` — never hand-edited.
 pub const COMMIT_DATA_MD: &str = "proof/fragments/commit-data.md";
 
 /// Commit-share pie SVG.

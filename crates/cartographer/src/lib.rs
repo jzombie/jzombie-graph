@@ -59,25 +59,19 @@ pub fn render_cartographer(graph: &Graph) -> String {
     let _ = writeln!(s, "## {owner} portfolio cluster\n");
     let _ = writeln!(
         s,
-        "How these {n} repos connect — ones that work together sit close together. {dep} links between them (+{weak} from docs alone); layers {layers}.{live}\n",
+        "How these {n} repos connect: {dep} links between them (+{weak} from docs alone); layers {layers}.{live}\n",
         n = draw.nodes.len(),
         live = live_sentence(graph, &draw),
     );
-    let _ = writeln!(
-        s,
-        "Rebuilt nightly from GitHub data — last run {}. Every label links to its repo.\n",
-        graph.generated_at.format("%Y-%m-%d %H:%M UTC"),
-    );
     s.push_str(
-        "<sub>Diagram: repos that work together sit close together. \
+        "<sub>Diagram: closeness means the repos work together. \
 Screen readers: the block below uses braille characters for lines and is noisy, so it is hidden; \
-the same edges are machine-readable in `data/portfolio-graph.json`.</sub>\n\n",
+the table below names every repo in text.</sub>\n\n",
     );
     s.push_str(&render_pre(graph, &draw));
     s.push_str(
-        "Repos that work together pull close; unconnected ones drift apart. \
-Forks show up only after diverging or being renamed; \
-repos quiet for over a year are left out unless something current uses them.\n",
+        "Repos quiet for over a year are left out unless something current uses them; \
+forks show up only after diverging or being renamed.\n",
     );
     s
 }

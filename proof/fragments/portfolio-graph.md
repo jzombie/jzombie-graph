@@ -1,10 +1,8 @@
 ## jzombie portfolio cluster
 
-How these 15 repos connect — ones that work together sit close together. 21 links between them (+2 from docs alone); layers 4 foundation · 5 middleware · 7 application · 1 isolated. Busiest right now: rust-sec-fetcher; most reused: rust-line-ending (5 use it).
+How these 15 repos connect: 21 links between them (+2 from docs alone); layers 4 foundation · 5 middleware · 7 application · 1 isolated. Busiest right now: rust-sec-fetcher; most reused: rust-line-ending (5 use it).
 
-Rebuilt nightly from GitHub data — last run 2026-11-14 23:03 UTC. Every label links to its repo.
-
-<sub>Diagram: repos that work together sit close together. Screen readers: the block below uses braille characters for lines and is noisy, so it is hidden; the same edges are machine-readable in `data/portfolio-graph.json`.</sub>
+<sub>Diagram: closeness means the repos work together. Screen readers: the block below uses braille characters for lines and is noisy, so it is hidden; the table below names every repo in text.</sub>
 
 <pre aria-hidden="true">
                                  [<a href="https://github.com/jzombie/windows-headless">windows-headless</a>]
@@ -34,4 +32,4 @@ Rebuilt nightly from GitHub data — last run 2026-11-14 23:03 UTC. Every label 
                                           [<a href="https://github.com/jzombie/rust-argtuner">argtuner</a>]
 
 </pre>
-Repos that work together pull close; unconnected ones drift apart. Forks show up only after diverging or being renamed; repos quiet for over a year are left out unless something current uses them.
+Repos quiet for over a year are left out unless something current uses them; forks show up only after diverging or being renamed.

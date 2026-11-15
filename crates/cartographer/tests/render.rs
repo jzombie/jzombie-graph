@@ -374,9 +374,10 @@ fn header_sentence_carries_layers_and_live_signals() {
         !md.contains("Busiest right now"),
         "no heat, no busiest clause"
     );
-    assert!(md.contains("Rebuilt nightly"), "rebuild note from data");
-    assert!(md.contains("last run"), "run timestamp on top");
-    assert!(md.contains("UTC"), "timestamps read UTC");
+    assert!(
+        md.contains("left out unless something current uses them"),
+        "omission rule stated"
+    );
 }
 
 #[test]

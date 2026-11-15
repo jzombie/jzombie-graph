@@ -1690,16 +1690,10 @@ fn data_rows(graph_json: &str) -> anyhow::Result<DataDoc> {
     });
     let total: u32 = repos.iter().map(|n| n.commits_30d).sum();
     let summary = format!(
-        "Updated {} UTC — {} repos, {} commits in the last 30 days. Full data: [`{}`]({}/{}) ([`{}`]({}/{})).",
+        "Updated {} UTC — {} repos, {} commits in the last 30 days.",
         graph.generated_at.format("%Y-%m-%d %H:%M"),
         repos.len(),
         total,
-        jzombie_graph::paths::GRAPH_JSON,
-        jzombie_graph::paths::BLOB_BASE,
-        jzombie_graph::paths::GRAPH_JSON,
-        jzombie_graph::paths::SCHEMA_JSON,
-        jzombie_graph::paths::BLOB_BASE,
-        jzombie_graph::paths::SCHEMA_JSON,
     );
     if repos.is_empty() {
         return Ok(DataDoc {
@@ -2498,16 +2492,16 @@ mod tests {
             ),
             "badge + small label in heat cell:\n{md}"
         );
-        // Summary is data: run time, counts, layers, published paths.
+        // Summary is data: run time and counts; raw-file links live
+        // nowhere in the rendered page.
         assert!(md.contains("12 repos"));
         assert!(md.contains("Updated"), "last run on top");
         assert!(md.contains("UTC"), "timestamps read UTC");
-        assert!(md.contains("data/portfolio-graph.json"));
-        assert!(md.contains("data/portfolio-graph-schema.json"));
         assert!(
-            !md.contains("data/json"),
-            "published paths, not working copies"
+            !md.contains("data/portfolio-graph.json"),
+            "no raw-file links in prose"
         );
+        assert!(!md.contains("blob/main"), "no absolute repo links in prose");
     }
 
     #[test]

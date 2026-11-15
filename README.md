@@ -1,6 +1,6 @@
 # jzombie-graph
 
-Nightly self-portrait of my GitHub portfolio: real dependency edges (manifest, workflow, docs) plus a self-normalized Developer Focus gauge ranking where attention is going. Counts live in the data, not in this prose: every rebuild refreshes the proof page under `proof/` with repo and edge totals, 30d commits and comments, open and closed threads touched, and top languages. Nothing here is hand-counted.
+Nightly map of jzombie's open-source Rust portfolio for hiring managers and collaborators: what's active, what's used, and where attention is going. Counts live in the data, not in this prose: every rebuild refreshes the proof page under `proof/` with repo and edge totals, 30d commits and comments, open and closed threads touched, and top languages. Nothing here is hand-counted.
 
 Code and data live here together. The collector, renderers, and lanes in this repo are the program; `proof/` is its latest output, committed back by the nightly run. Reading this repo at HEAD is reading the freshest sweep: the code that produced the data sits next to the data it produced.
 
@@ -10,7 +10,7 @@ Code and data live here together. The collector, renderers, and lanes in this re
 
 [![Commit share](proof/charts/portfolio-graph-share.svg)](proof/README.md)
 
-Full proof with map, flame, table, and machine-readable data: [`proof/README.md`](proof/README.md). Raw JSON: [`data/portfolio-graph.json`](data/portfolio-graph.json).
+Full proof: [`proof/README.md`](proof/README.md).
 
 Own repo, personal scope. `publish = false` — internal tool, never published to crates.io. Private repos are stripped from default output, so the committed files are safe to publish; `--include-private` is local-briefing only and never committed.
 
