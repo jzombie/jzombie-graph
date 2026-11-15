@@ -1,6 +1,6 @@
 # jzombie — portfolio dashboard
 
-Nightly map of jzombie's open-source systems portfolio: what's active, what's used, and where development and planning focus is going.
+Nightly generated map of jzombie's open-source systems portfolio, independent systems interconnected where they build on one another: what's active, what's used, and where development and planning focus is going.
 
 [![flame](charts/portfolio-graph-flame.svg?v=202611142303)](https://github.com/jzombie?tab=repositories)
 ## Popular repositories
