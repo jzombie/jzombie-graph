@@ -1405,6 +1405,35 @@ fn engine() -> Engine {
 /// Render the commit-share pie for validated graph JSON. The embedded
 /// script emits markup into a temp workspace; Rust reads it back and the
 /// caller writes the bytes (so output paths stay in one place).
+pub fn bust_token(graph_json: &str) -> anyhow::Result<String> {
+    let graph = jzombie_graph::graph::Graph::from_json(graph_json)?;
+    Ok(graph.generated_at.format("%Y%m%d%H%M").to_string())
+}
+
+/// Section fragments with cache-busted image URLs. Same bust token as pins:
+/// the sweep timestamp, so GitHub's image proxy refetches after every
+/// nightly rebuild instead of serving the stale bytes.
+pub fn render_flame_md(graph_json: &str) -> anyhow::Result<String> {
+    let bust = bust_token(graph_json)?;
+    Ok(format!(
+        "[![flame](charts/portfolio-graph-flame.svg?v={bust})](https://github.com/jzombie?tab=repositories)\n"
+    ))
+}
+
+pub fn render_share_md(graph_json: &str) -> anyhow::Result<String> {
+    let bust = bust_token(graph_json)?;
+    Ok(format!(
+        "## Commit share\n\n[![share](charts/portfolio-graph-share.svg?v={bust})](https://github.com/jzombie?tab=repositories)\n"
+    ))
+}
+
+pub fn render_focus_md(graph_json: &str) -> anyhow::Result<String> {
+    let bust = bust_token(graph_json)?;
+    Ok(format!(
+        "## Developer focus\n\nDeveloper focus is a heuristic of where the developer's attention is right now.\n\n[![developer focus](charts/portfolio-graph-developer-focus.svg?v={bust})](https://github.com/jzombie?tab=repositories)\n\n<sub>Each score blends commit heat (recent commit rates vs the trailing 30d baseline) with issue comment heat (owner authored comment volume, same comparison), then discounts idle months. A signal with no baseline sits out: triage free repos rank on commits alone, commit free weeks on comments alone.</sub>\n"
+    ))
+}
+
 pub fn render_share_svg(graph_json: &str) -> anyhow::Result<String> {
     let engine = engine();
     let arg = transport_in(graph_json);

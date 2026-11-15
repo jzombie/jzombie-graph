@@ -28,13 +28,22 @@ pub const COMMIT_DATA_MD: &str = "proof/fragments/commit-data.md";
 /// Commit-share pie SVG.
 pub const SHARE_SVG: &str = "proof/charts/portfolio-graph-share.svg";
 
+/// Commit-share section fragment (generated with cache-bust, like pins).
+pub const SHARE_FRAG_MD: &str = "proof/fragments/commit-share.md";
+
 /// Developer Focus bars SVG.
 pub const DEVELOPER_FOCUS_SVG: &str = "proof/charts/portfolio-graph-developer-focus.svg";
+
+/// Developer-focus section fragment (generated with cache-bust).
+pub const FOCUS_FRAG_MD: &str = "proof/fragments/developer-focus.md";
 
 /// Commit activity flame SVGs (strip + per-band badges live under
 /// `proof/charts/` and `proof/indicators/`): portfolio → repos → branches
 /// → embers, widths pro-rata 30d share, color + motion from the heat bands.
 pub const FLAME_SVG: &str = "proof/charts/portfolio-graph-flame.svg";
+
+/// Flame strip section fragment (generated with cache-bust).
+pub const FLAME_FRAG_MD: &str = "proof/fragments/heat-flame.md";
 
 /// Pinned repo cards live one-per-file under this dir, slugged by repo
 /// name: `portfolio-graph-pin-{slug}.svg`.

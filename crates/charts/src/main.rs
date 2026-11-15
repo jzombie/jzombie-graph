@@ -168,4 +168,36 @@ fn main() {
         eprintln!("writing {}: {e:#}", dest.display());
         std::process::exit(1);
     }
+    // Section fragments carry the same bust token as pins, so the
+    // assembled page refetches these SVGs after every nightly rebuild.
+    // Fixed layout: no --stdout/--output.
+    let frag: Option<(&str, anyhow::Result<String>)> = match cli.chart {
+        Chart::Share => Some((
+            jzombie_graph::paths::SHARE_FRAG_MD,
+            charts::render_share_md(&text),
+        )),
+        Chart::Focus => Some((
+            jzombie_graph::paths::FOCUS_FRAG_MD,
+            charts::render_focus_md(&text),
+        )),
+        Chart::Flame => Some((
+            jzombie_graph::paths::FLAME_FRAG_MD,
+            charts::render_flame_md(&text),
+        )),
+        _ => None,
+    };
+    if let Some((rel, md)) = frag {
+        match md {
+            Ok(m) => {
+                if let Err(e) = jzombie_graph::output::write_file(std::path::Path::new(rel), &m) {
+                    eprintln!("writing {rel}: {e:#}");
+                    std::process::exit(1);
+                }
+            }
+            Err(e) => {
+                eprintln!("render error: {e:#}");
+                std::process::exit(1);
+            }
+        }
+    }
 }
