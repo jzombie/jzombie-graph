@@ -555,6 +555,14 @@ fn pie_slices(graph_json: String, n: i64) -> anyhow::Result<Value> {
     Ok(Value::string(serde_json::to_string(&doc)?))
 }
 
+/// One window edge: x position plus which edge it is (`15d`, `5d`,
+/// `1d`). Interior boundaries only — the card edges need no line.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+struct FlameStop {
+    x: String,
+    label: String,
+}
+
 /// One card: name, what it's about, activity, top work. Whisked through
 /// one at a time; the readout is the drilldown — no tiny bars to squint at.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
@@ -567,6 +575,7 @@ struct FlameRepo {
     stats: String,
     detail: String,
     pulse: String,
+    stops: Vec<FlameStop>,
 }
 
 /// Flame document: static decor prebuilt in Rust, rows interpolated.
@@ -589,6 +598,10 @@ struct FlameDoc {
     pw: String,
     ph: String,
     pty: String,
+    /// Right track end (left end is `px`): the frame never moves, so the
+    /// `30d ago → today` endpoint labels are static while per-card ticks
+    /// travel with their card.
+    ax1: String,
     dx: String,
     dy: String,
     dw: String,
@@ -598,10 +611,16 @@ struct FlameDoc {
     l2y: String,
     l3y: String,
     l4y: String,
+    /// Window-edge marker geometry: label row above the cards, tick
+    /// bottom just inside the card top.
+    tick_ly: String,
+    tick_by: String,
     rows: Vec<FlameRepo>,
 }
 
-/// Flame layout: the prototype's skeleton, widths now pro-rata real data.
+/// Flame layout: cards share one full-track width; the per-card gradient
+/// wash carries the mix (oldest commits left, newest right), and marker
+/// ticks name the 1d/5d/15d window edges on each card.
 const FLAME_W: f64 = 800.0;
 const FLAME_H: f64 = 262.0;
 const FLAME_X0: f64 = 16.0;
@@ -652,6 +671,7 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
         pw: String::new(),
         ph: String::new(),
         pty: String::new(),
+        ax1: String::new(),
         dx: f1(FLAME_X0),
         dy: f1(100.0),
         dw: f1(FLAME_TRACK),
@@ -661,6 +681,8 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
         l2y: f1(152.0),
         l3y: f1(168.0),
         l4y: f1(182.0),
+        tick_ly: String::new(),
+        tick_by: String::new(),
         rows: vec![],
     };
     if total == 0 {
@@ -765,6 +787,28 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
             ));
         }
         grads.push_str("</linearGradient>");
+        // Window-edge markers: the same bucket boundaries as the gradient
+        // above, but only interior ones (card edges need no line). Each
+        // line says where a band stops, so the card reads without
+        // forensics; the stats line below still carries exact numbers.
+        let mut markers: Vec<FlameStop> = vec![];
+        let mut macc = 0.0;
+        let mut mlast = 0.0;
+        for (m, edge) in [(m30, "15d"), (m15, "5d"), (m5, "1d")] {
+            macc += m as f64 / t;
+            if macc > mlast + 1e-9 && macc < 1.0 - 1e-9 {
+                let x = FLAME_X0 + macc * FLAME_TRACK;
+                // Near the right edge the static `today` label owns the
+                // row: the tick still draws, its text yields to it.
+                let label = if x > FLAME_X0 + FLAME_TRACK - 34.0 {
+                    String::new()
+                } else {
+                    edge.to_string()
+                };
+                markers.push(FlameStop { x: f1(x), label });
+                mlast = macc;
+            }
+        }
         let title = match heat {
             Some(h) => format!(
                 "{} \u{00b7} {} commits/30d \u{00b7} heat {h:.2} {band}",
@@ -793,6 +837,7 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
             stats: xml_escape(&stats),
             detail: xml_escape(&detail),
             pulse: palette::heat_pulse(heat).to_string(),
+            stops: markers,
         });
     }
     let cut_c: u32 = repos[shown.len()..].iter().map(|n| n.commits_30d).sum();
@@ -810,7 +855,9 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
         ),
         None => format!("portfolio \u{00b7} {total} commits / 30d"),
     };
-    let mut note = String::from("heat bands \u{00b7} cycling cards");
+    let mut note = String::from(
+        "color = pace vs own usual (1.0 = usual); bands run oldest → newest, lines mark the 1d / 5d / 15d window edges",
+    );
     if cut > 0 {
         note.push_str(&format!(" \u{00b7} +{cut} more \u{00b7} {cut_c} commits"));
     }
@@ -831,6 +878,7 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
         pw: f1(FLAME_TRACK),
         ph: f1(34.0),
         pty: f1(74.0),
+        ax1: f1(FLAME_X0 + FLAME_TRACK),
         dx: f1(FLAME_X0),
         dy: f1(100.0),
         dw: f1(FLAME_TRACK),
@@ -840,6 +888,8 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
         l2y: f1(152.0),
         l3y: f1(168.0),
         l4y: f1(182.0),
+        tick_ly: f1(96.0),
+        tick_by: f1(110.0),
         rows,
     })
 }
@@ -894,10 +944,16 @@ pub fn render_flame_svg(graph_json: &str) -> anyhow::Result<String> {
         } ELSE {
             APPEND out.svg "<rect x=\"{{ $doc.px }}\" y=\"{{ $doc.py }}\" width=\"{{ $doc.pw }}\" height=\"{{ $doc.ph }}\" rx=\"4\" fill=\"#222\"/>"
             APPEND out.svg "<text x=\"28\" y=\"{{ $doc.pty }}\" class=\"lbl\">{{ $doc.port_label }}</text>"
+            APPEND out.svg "<text x=\"{{ $doc.px }}\" y=\"{{ $doc.tick_ly }}\" font-size=\"10\" fill=\"#9198a1\">30d ago</text>"
+            APPEND out.svg "<text x=\"{{ $doc.ax1 }}\" y=\"{{ $doc.tick_ly }}\" font-size=\"10\" text-anchor=\"end\" fill=\"#9198a1\">today</text>"
             APPEND out.svg $doc.grads
             FOR $r: MAP<ANY> IN $doc.rows {
                 APPEND out.svg "<g id=\"{{ $r.rid }}\" class=\"card {{ $r.pulse }}\" style=\"animation-duration:{{ $doc.tour_dur }}s;animation-delay:{{ $r.tour_delay }}\">"
                 APPEND out.svg "<rect x=\"{{ $doc.dx }}\" y=\"{{ $doc.dy }}\" width=\"{{ $doc.dw }}\" height=\"{{ $doc.dh }}\" rx=\"4\" fill=\"url(#grad-{{ $r.rid }})\"><title>{{ $r.title }}</title></rect>"
+                FOR $s: MAP<ANY> IN $r.stops {
+                    APPEND out.svg "<line x1=\"{{ $s.x }}\" y1=\"{{ $doc.dy }}\" x2=\"{{ $s.x }}\" y2=\"{{ $doc.tick_by }}\" stroke=\"#9198a1\" stroke-width=\"1\" opacity=\"0.8\"/>"
+                    APPEND out.svg "<text x=\"{{ $s.x }}\" y=\"{{ $doc.tick_ly }}\" font-size=\"10\" text-anchor=\"middle\" fill=\"#9198a1\">{{ $s.label }}</text>"
+                }
                 APPEND out.svg "<text x=\"{{ $doc.lx }}\" y=\"{{ $doc.l1y }}\" font-size=\"20\" font-weight=\"bold\" fill=\"#222\">{{ $r.nav }}</text>"
                 APPEND out.svg "<text x=\"{{ $doc.lx }}\" y=\"{{ $doc.l2y }}\" class=\"dim\" font-weight=\"bold\">{{ $r.desc }}</text>"
                 APPEND out.svg "<text x=\"{{ $doc.lx }}\" y=\"{{ $doc.l3y }}\" class=\"sub\">{{ $r.stats }}</text>"
