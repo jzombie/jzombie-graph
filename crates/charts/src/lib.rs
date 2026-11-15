@@ -1050,6 +1050,15 @@ struct PinCard {
     d3: String,
     d4: String,
     d5: String,
+    /// Justified advance per line: every line but the last stretches
+    /// (word gaps only) to the longest line's width, so the block gets
+    /// an even right edge instead of a ragged wedge. The last line
+    /// keeps its natural width.
+    tw1: String,
+    tw2: String,
+    tw3: String,
+    tw4: String,
+    tw5: String,
     has2: bool,
     has3: bool,
     has4: bool,
@@ -1190,6 +1199,28 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
             jzombie_graph::paths::CHARTS_DIR,
             slug
         );
+        // Justify target: the longest non-last line. Every line but
+        // the last stretches (word gaps only) to this width, so the
+        // block reads as a block instead of a leftward pile.
+        let justify_w = if lines.len() > 1 {
+            lines[..lines.len() - 1]
+                .iter()
+                .map(|l| est_w(l))
+                .fold(0.0_f64, f64::max)
+        } else {
+            est_w(&lines[0])
+        };
+        let tw: Vec<String> = d
+            .iter()
+            .enumerate()
+            .map(|(i, l)| {
+                if i < lines.len().saturating_sub(1) {
+                    f1(justify_w)
+                } else {
+                    f1(est_w(l))
+                }
+            })
+            .collect();
         cards.push(PinCard {
             file: format!("pin-{i}.svg"),
             dest: dest.clone(),
@@ -1205,6 +1236,11 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
             has3: lines.len() > 2,
             has4: lines.len() > 3,
             has5: lines.len() > 4,
+            tw1: tw[0].clone(),
+            tw2: tw[1].clone(),
+            tw3: tw[2].clone(),
+            tw4: tw[3].clone(),
+            tw5: tw[4].clone(),
             has_lang: lang_raw.is_some(),
             lang: xml_escape(lang_raw.unwrap_or("")),
             lang_color: lang_raw.map(lang_color).unwrap_or("").to_string(),
@@ -1303,18 +1339,18 @@ pub fn render_pins_bundle(graph_json: &str) -> anyhow::Result<Vec<(String, Strin
             FOR $c: MAP<ANY> IN $doc.cards {
                 WRITE svg/{{ $c.file }} "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{{ $c.w }}\" height=\"{{ $c.h }}\" viewBox=\"0 0 {{ $c.w }} {{ $c.h }}\" role=\"img\" font-family=\"{{ $doc.font }}\"><title>{{ $c.fullname }}</title><style>{{ $doc.css }}</style><a href=\"{{ $c.url }}\"><rect x=\"0.5\" y=\"0.5\" width=\"{{ $c.bw }}\" height=\"{{ $c.bh }}\" rx=\"4.5\" fill=\"{{ $doc.bg }}\" stroke=\"{{ $doc.border }}\"/><g transform=\"translate(12,30)\">"
                 APPEND svg/{{ $c.file }} "<svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 110-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1V9h-8c-.356 0-.694.074-1 .208V2.5a1 1 0 011-1h8zM5 12.25v3.25a.25.25 0 00.4.2l1.45-1.087a.25.25 0 01.3 0L8.6 15.7a.25.25 0 00.4-.2v-3.25a.25.25 0 00-.25-.25h-3.5a.25.25 0 00-.25.25z\"/></svg><text x=\"28\" y=\"0\" class=\"pname\">{{ $c.name }}</text></g>"
-                APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"54\" class=\"pdesc\">{{ $c.d1 }}</text>"
+                APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"54\" class=\"pdesc\" textLength=\"{{ $c.tw1 }}\" lengthAdjust=\"spacing\">{{ $c.d1 }}</text>"
                 IF $c.has2 {
-                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"70\" class=\"pdesc\">{{ $c.d2 }}</text>"
+                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"70\" class=\"pdesc\" textLength=\"{{ $c.tw2 }}\" lengthAdjust=\"spacing\">{{ $c.d2 }}</text>"
                 }
                 IF $c.has3 {
-                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"86\" class=\"pdesc\">{{ $c.d3 }}</text>"
+                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"86\" class=\"pdesc\" textLength=\"{{ $c.tw3 }}\" lengthAdjust=\"spacing\">{{ $c.d3 }}</text>"
                 }
                 IF $c.has4 {
-                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"102\" class=\"pdesc\">{{ $c.d4 }}</text>"
+                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"102\" class=\"pdesc\" textLength=\"{{ $c.tw4 }}\" lengthAdjust=\"spacing\">{{ $c.d4 }}</text>"
                 }
                 IF $c.has5 {
-                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"118\" class=\"pdesc\">{{ $c.d5 }}</text>"
+                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"118\" class=\"pdesc\" textLength=\"{{ $c.tw5 }}\" lengthAdjust=\"spacing\">{{ $c.d5 }}</text>"
                 }
                 APPEND svg/{{ $c.file }} "<g transform=\"translate(15,{{ $c.fy }})\" class=\"pfoot\">"
                 IF $c.has_lang {
