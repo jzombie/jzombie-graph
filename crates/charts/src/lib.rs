@@ -1091,9 +1091,13 @@ fn est_w(s: &str) -> f64 {
 /// links to its own repo.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 struct PinCard {
-    /// Temp workspace filename (`pin-{i}.svg`); final path rides `dest`.
+    /// Temp workspace filename (`pin-{i}.svg`); the committed file name
+    /// rides `fname`, the committed path `dest`.
     file: String,
-    /// Final committed path, e.g. `proof/charts/portfolio-graph-pin-foo.svg`.
+    /// Committed file name, built once from the slug — the fragment URL
+    /// derives from this, never by re-splitting the path.
+    fname: String,
+    /// Final committed path.
     dest: String,
     url: String,
     name: String,
@@ -1253,13 +1257,11 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
             _ => (palette::dormant(), ""),
         };
         let url = format!("https://github.com/{}", nd.id);
-        let dest = format!(
-            "{}/portfolio-graph-pin-{}.svg",
-            jzombie_graph::paths::CHARTS_DIR,
-            slug
-        );
+        let fname = jzombie_graph::paths::pin_file_name(&slug);
+        let dest = format!("{}/{fname}", jzombie_graph::paths::CHARTS_DIR);
         cards.push(PinCard {
             file: format!("pin-{i}.svg"),
+            fname: fname.clone(),
             dest: dest.clone(),
             url: url.clone(),
             name: xml_escape(&name),
@@ -1319,10 +1321,9 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
     let mut cells: Vec<String> = vec![];
     for c in cards.iter() {
         cells.push(format!(
-            "[![{}](charts/{}?v={})]({})",
+            "[![{}]({})]({})",
             c.name,
-            c.dest.rsplit('/').next().unwrap_or(&c.dest),
-            bust,
+            jzombie_graph::paths::chart_url(&c.fname, &bust),
             c.url
         ));
     }
@@ -1467,7 +1468,7 @@ pub fn render_pins_bundle(graph_json: &str) -> anyhow::Result<Vec<(String, Strin
     }
     let frag_path = root.join("frag/pins.md").expect("frag path");
     let frag = resolver.read_to_string(&frag_path).expect("read frag");
-    bundle.push((jzombie_graph::paths::PINS_FRAG_MD.to_string(), frag));
+    bundle.push((jzombie_graph::paths::pins_fragment(), frag));
     Ok(bundle)
 }
 
@@ -1506,21 +1507,27 @@ pub fn bust_token(graph_json: &str) -> anyhow::Result<String> {
 pub fn render_flame_md(graph_json: &str) -> anyhow::Result<String> {
     let bust = bust_token(graph_json)?;
     Ok(format!(
-        "[![flame](charts/portfolio-graph-flame.svg?v={bust})]({{{{ $global.repos }}}})\n"
+        "[![flame]({})]({})\n",
+        jzombie_graph::paths::chart_url(jzombie_graph::paths::FLAME_FILE, &bust),
+        jzombie_graph::paths::REPOS_URL,
     ))
 }
 
 pub fn render_share_md(graph_json: &str) -> anyhow::Result<String> {
     let bust = bust_token(graph_json)?;
     Ok(format!(
-        "## Commit share\n\n[![share](charts/portfolio-graph-share.svg?v={bust})]({{{{ $global.repos }}}})\n"
+        "## Commit share\n\n[![share]({})]({})\n",
+        jzombie_graph::paths::chart_url(jzombie_graph::paths::SHARE_FILE, &bust),
+        jzombie_graph::paths::REPOS_URL,
     ))
 }
 
 pub fn render_focus_md(graph_json: &str) -> anyhow::Result<String> {
     let bust = bust_token(graph_json)?;
     Ok(format!(
-        "## Developer focus\n\nDeveloper focus is a heuristic of what's being planned and developed right now.\n\n[![developer focus](charts/portfolio-graph-developer-focus.svg?v={bust})]({{{{ $global.repos }}}})\n\n<sub>Each score blends commit heat (recent commit rates vs the trailing 30d baseline) with issue comment heat (owner authored comment volume, same comparison), then discounts idle months. A signal with no baseline sits out: triage free repos rank on commits alone, commit free weeks on comments alone.</sub>\n"
+        "## Developer focus\n\nDeveloper focus is a heuristic of what's being planned and developed right now.\n\n[![developer focus]({})]({})\n\n<sub>Each score blends commit heat (recent commit rates vs the trailing 30d baseline) with issue comment heat (owner authored comment volume, same comparison), then discounts idle months. A signal with no baseline sits out: triage free repos rank on commits alone, commit free weeks on comments alone.</sub>\n",
+        jzombie_graph::paths::chart_url(jzombie_graph::paths::FOCUS_FILE, &bust),
+        jzombie_graph::paths::REPOS_URL,
     ))
 }
 

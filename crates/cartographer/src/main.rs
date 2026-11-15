@@ -1,7 +1,7 @@
 //! `cartographer` binary: collected JSON in, Markdown doc out.
 //!
-//! Defaults to the standard paths (`paths::GRAPH_JSON` in,
-//! `paths::FRAGMENT_MD` out) so bare `cartographer` does the right thing.
+//! Defaults to the standard paths (`paths::graph_json` in,
+//! `paths::map_fragment` out) so bare `cartographer` does the right thing.
 //! Explicit `--output` beats the default; `--stdout` beats both. Piped
 //! stdin still wins over the default input (pipeline-friendly).
 
@@ -49,12 +49,12 @@ fn main() {
             }
         },
         None if !stdin_text.trim().is_empty() => stdin_text,
-        None => match std::fs::read_to_string(jzombie_graph::paths::GRAPH_JSON) {
+        None => match std::fs::read_to_string(jzombie_graph::paths::graph_json()) {
             Ok(t) => t,
             Err(e) => {
                 eprintln!(
                     "reading {}: {e} (run a live collect first?)",
-                    jzombie_graph::paths::GRAPH_JSON
+                    jzombie_graph::paths::graph_json()
                 );
                 std::process::exit(1);
             }
@@ -80,7 +80,8 @@ fn main() {
             }
         }
         None => {
-            let dest = std::path::Path::new(jzombie_graph::paths::FRAGMENT_MD);
+            let rel = jzombie_graph::paths::map_fragment();
+            let dest = std::path::Path::new(&rel);
             if let Err(e) = jzombie_graph::output::write_file(dest, &md) {
                 eprintln!("writing {}: {e:#}", dest.display());
                 std::process::exit(1);

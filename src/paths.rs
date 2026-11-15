@@ -4,70 +4,144 @@
 //! `proof/` and commits — no gitignored working copies, no separate
 //! publish step, no duplicated trees. Local runs write the same paths,
 //! so what you see is what ships.
+//!
+//! Splitting rule: directories and file names live once, as constants;
+//! every full path below is composed from them by a helper. Moving a
+//! directory or renaming a stem touches exactly one line — no base
+//! directory is ever repeated inside a full path.
 
-/// The graph this repo publishes. Every related asset shares the stem.
+/// Single stem shared by every portfolio-graph asset.
 pub const GRAPH_NAME: &str = "portfolio-graph";
+
+/// Link target for chart strips: the owner's repo tab. Fragments embed
+/// this instead of templating it, so generated markdown carries no
+/// template syntax and every `.md` file is final.
+pub const REPOS_URL: &str = "https://github.com/jzombie?tab=repositories";
+
+/// Directories: the only place a location is spelled out.
+pub const PROOF_DIR: &str = "proof";
+pub const DATA_DIR: &str = "data";
+pub const CHARTS_DIR: &str = "proof/charts";
+pub const FRAGMENTS_DIR: &str = "proof/fragments";
+pub const INDICATORS_DIR: &str = "proof/indicators";
+
+/// File names (no directories): the only place a file name is spelled out.
+pub const GRAPH_FILE: &str = "portfolio-graph.json";
+pub const SCHEMA_FILE: &str = "portfolio-graph-schema.json";
+pub const MAP_FRAG_FILE: &str = "portfolio-graph.md";
+pub const DATA_FRAG_FILE: &str = "commit-data.md";
+pub const SHARE_FILE: &str = "portfolio-graph-share.svg";
+pub const SHARE_FRAG_FILE: &str = "commit-share.md";
+pub const FOCUS_FILE: &str = "portfolio-graph-developer-focus.svg";
+pub const FOCUS_FRAG_FILE: &str = "developer-focus.md";
+pub const FLAME_FILE: &str = "portfolio-graph-flame.svg";
+pub const FLAME_FRAG_FILE: &str = "heat-flame.md";
+pub const PINS_FRAG_FILE: &str = "pins.md";
+pub const INDICATORS_FILE: &str = "portfolio-graph-indicators.svg";
+pub const INDICATORS_MD_FILE: &str = "indicators.md";
+pub const PROOF_README_FILE: &str = "README.md";
 
 /// Collector output: node/edge JSON. Committed — the nightly sweep
 /// regenerates it and commits it back.
-pub const GRAPH_JSON: &str = "data/portfolio-graph.json";
+pub fn graph_json() -> String {
+    format!("{DATA_DIR}/{GRAPH_FILE}")
+}
 
 /// Schema lane output: the generated contract, paired beside the data
 /// it validates. The drift test guards this file: whatever the types
 /// derive is what ships.
-pub const SCHEMA_JSON: &str = "data/portfolio-graph-schema.json";
+pub fn schema_json() -> String {
+    format!("{DATA_DIR}/{SCHEMA_FILE}")
+}
 
 /// Cartographer output: the verbatim fragment.
-pub const FRAGMENT_MD: &str = "proof/fragments/portfolio-graph.md";
+pub fn map_fragment() -> String {
+    format!("{FRAGMENTS_DIR}/{MAP_FRAG_FILE}")
+}
 
 /// Commit-data table fragment: the data section of the proof page,
 /// computed from the fresh JSON. Rendered by the charts lane,
 /// assembled by `oxdock-render` — never hand-edited.
-pub const COMMIT_DATA_MD: &str = "proof/fragments/commit-data.md";
+pub fn commit_data_fragment() -> String {
+    format!("{FRAGMENTS_DIR}/{DATA_FRAG_FILE}")
+}
 
 /// Commit-share pie SVG.
-pub const SHARE_SVG: &str = "proof/charts/portfolio-graph-share.svg";
+pub fn share_svg() -> String {
+    format!("{CHARTS_DIR}/{SHARE_FILE}")
+}
 
 /// Commit-share section fragment (generated with cache-bust, like pins).
-pub const SHARE_FRAG_MD: &str = "proof/fragments/commit-share.md";
+pub fn share_fragment() -> String {
+    format!("{FRAGMENTS_DIR}/{SHARE_FRAG_FILE}")
+}
 
 /// Developer Focus bars SVG.
-pub const DEVELOPER_FOCUS_SVG: &str = "proof/charts/portfolio-graph-developer-focus.svg";
+pub fn developer_focus_svg() -> String {
+    format!("{CHARTS_DIR}/{FOCUS_FILE}")
+}
 
 /// Developer-focus section fragment (generated with cache-bust).
-pub const FOCUS_FRAG_MD: &str = "proof/fragments/developer-focus.md";
+pub fn focus_fragment() -> String {
+    format!("{FRAGMENTS_DIR}/{FOCUS_FRAG_FILE}")
+}
 
-/// Commit activity flame SVGs (strip + per-band badges live under
-/// `proof/charts/` and `proof/indicators/`): portfolio → repos → branches
-/// → embers, widths pro-rata 30d share, color + motion from the heat bands.
-pub const FLAME_SVG: &str = "proof/charts/portfolio-graph-flame.svg";
+/// Commit activity flame strip SVG (per-band badges live under
+/// `proof/indicators/`): portfolio → repos → branches → embers.
+pub fn flame_svg() -> String {
+    format!("{CHARTS_DIR}/{FLAME_FILE}")
+}
 
 /// Flame strip section fragment (generated with cache-bust).
-pub const FLAME_FRAG_MD: &str = "proof/fragments/heat-flame.md";
+pub fn flame_fragment() -> String {
+    format!("{FRAGMENTS_DIR}/{FLAME_FRAG_FILE}")
+}
 
-/// Pinned repo cards live one-per-file under this dir, slugged by repo
-/// name: `portfolio-graph-pin-{slug}.svg`.
-pub const CHARTS_DIR: &str = "proof/charts";
-
-/// Popular repositories fragment: the 2-col table embedding the pin
-/// cards, regenerated with the family — never hand-edited.
-pub const PINS_FRAG_MD: &str = "proof/fragments/pins.md";
+/// Popular repositories fragment: the flowing paragraph embedding the
+/// pin cards, regenerated with the family — never hand-edited.
+pub fn pins_fragment() -> String {
+    format!("{FRAGMENTS_DIR}/{PINS_FRAG_FILE}")
+}
 
 /// Status-indicator strip SVG. The per-repo badges below are what
 /// tables embed; the strip above is the look-check.
-pub const INDICATORS_SVG: &str = "proof/charts/portfolio-graph-indicators.svg";
+pub fn indicators_svg() -> String {
+    format!("{CHARTS_DIR}/{INDICATORS_FILE}")
+}
 
-/// One-off badge files, one per heat band (`<band>.svg`).
-/// Table cells embed these; the strip above is the preview sheet.
-pub const INDICATORS_DIR: &str = "proof/indicators";
+/// One-off badge file for a heat band. Table cells embed these; the
+/// strip above is the preview sheet.
+pub fn indicator_badge(name: &str) -> String {
+    format!("{INDICATORS_DIR}/{name}.svg")
+}
 
 /// Committed render proof: OxDock-templated table embedding the badges,
 /// so github.com shows exactly what readers see. Regenerate, never edit.
-pub const PROOF_INDICATORS_MD: &str = "proof/indicators.md";
+pub fn proof_indicators_md() -> String {
+    format!("{PROOF_DIR}/{INDICATORS_MD_FILE}")
+}
 
 /// Assembled proof page. `oxdock-render` owns it — never hand-edited.
-pub const PROOF_README_MD: &str = "proof/README.md";
+pub fn proof_readme() -> String {
+    format!("{PROOF_DIR}/{PROOF_README_FILE}")
+}
 
-/// Checked-in schema expectation the drift test guards. Same file the
-/// schema lane writes — generation and expectation are one path.
-pub const COMMITTED_SCHEMA: &str = "data/portfolio-graph-schema.json";
+/// Pinned repo card file, slugged by repo name.
+/// One SVG per repo, each linking to its own repo.
+pub fn pin_file_name(slug: &str) -> String {
+    format!("{GRAPH_NAME}-pin-{slug}.svg")
+}
+
+/// Committed path for a pinned repo card.
+pub fn pin_svg_path(slug: &str) -> String {
+    format!("{CHARTS_DIR}/{}", pin_file_name(slug))
+}
+
+/// Relative chart URL for assembled markdown (`proof/README.md` sits in
+/// `proof/`, so the prefix is the charts dir without it). Every rendered
+/// asset URL carries the sweep it came from: GitHub's image proxy caches
+/// by URL, so a fresh `?v=` per nightly is what refetches.
+pub fn chart_url(file: &str, bust: &str) -> String {
+    let prefix = CHARTS_DIR.strip_prefix("proof/").unwrap_or(CHARTS_DIR);
+    format!("{prefix}/{file}?v={bust}")
+}
