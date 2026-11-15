@@ -1110,7 +1110,7 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
         msg: "No commits in trailing 30d".to_string(),
         muted: palette::muted(),
         font: palette::family(),
-        css: pins_card_css(),
+        css: pins_card_css()?,
         bg: PIN_BG.to_string(),
         border: PIN_BORDER.to_string(),
         icon: PIN_ICON.to_string(),
@@ -1286,7 +1286,7 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
         msg: String::new(),
         muted: palette::muted(),
         font: palette::family(),
-        css: pins_card_css(),
+        css: pins_card_css()?,
         bg: PIN_BG.to_string(),
         border: PIN_BORDER.to_string(),
         icon: PIN_ICON.to_string(),
@@ -1296,17 +1296,50 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
     })
 }
 
+/// Shared motion rules, extracted from the single-sourced chart style —
+/// no second copy of the breathe timing to drift. Fails loudly if the
+/// shared stylesheet ever stops carrying these rules.
+fn chart_pulse_css() -> anyhow::Result<String> {
+    let css = chart_style()?;
+    fn block<'a>(css: &'a str, pat: &str) -> anyhow::Result<&'a str> {
+        let start = css
+            .find(pat)
+            .ok_or_else(|| anyhow::anyhow!("{pat} missing in shared style"))?;
+        let mut depth = 0;
+        for (i, c) in css[start..].char_indices() {
+            if c == '{' {
+                depth += 1;
+            }
+            if c == '}' {
+                depth -= 1;
+                if depth == 0 {
+                    return Ok(css[start..start + i + 1].trim());
+                }
+            }
+        }
+        Err(anyhow::anyhow!("{pat} unterminated in shared style"))
+    }
+    Ok([
+        block(&css, ".pulse {")?,
+        block(&css, ".slow {")?,
+        block(&css, "@keyframes breathe")?,
+        block(&css, "@media (prefers-reduced-motion: reduce)")?,
+    ]
+    .join("\n"))
+}
+
 /// Pins chrome: per-card font classes on the shared Segoe stack, plus the
-/// family's breathe animation on the heat markers (strip + footer dot).
+/// family's breathe rules lifted from the shared template above.
 /// Heating breathes fast, steady slow, cooling/dormant stay static —
 /// same thresholds as the flame and indicator bands. One copy rides every
 /// card file so each SVG stands alone.
-fn pins_card_css() -> String {
-    format!(
-        ".pname {{ font: 600 18px 'Segoe UI', Ubuntu, Sans-Serif; fill: {title}; }} .pdesc {{ font: 400 12px 'Segoe UI', Ubuntu, Sans-Serif; fill: {text}; }} .pfoot {{ font: 400 12px 'Segoe UI', Ubuntu, Sans-Serif; fill: {text}; }} .pulse {{ animation: breathe 2.2s ease-in-out infinite; }} .slow {{ animation-duration: 3.4s; }} @keyframes breathe {{ 0%, 100% {{ opacity: .95; }} 50% {{ opacity: .62; }} }} @media (prefers-reduced-motion: reduce) {{ .pulse {{ animation: none; }} }}",
+fn pins_card_css() -> anyhow::Result<String> {
+    Ok(format!(
+        ".pname {{ font: 600 18px 'Segoe UI', Ubuntu, Sans-Serif; fill: {title}; }} .pdesc {{ font: 400 12px 'Segoe UI', Ubuntu, Sans-Serif; fill: {text}; }} .pfoot {{ font: 400 12px 'Segoe UI', Ubuntu, Sans-Serif; fill: {text}; }} {pulse}",
         title = PIN_TITLE,
         text = PIN_TEXT,
-    )
+        pulse = chart_pulse_css()?,
+    ))
 }
 
 /// Plugin function: validated graph JSON in, pins document out.
