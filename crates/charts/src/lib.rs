@@ -975,13 +975,11 @@ pub fn render_flame_svg(graph_json: &str) -> anyhow::Result<String> {
     Ok(resolver.read_to_string(&out).expect("read out"))
 }
 
-/// Pinned-repo cards mimicking GitHub's Popular repositories bubbles:
-/// 400px bordered card, book icon + name header, wrapped description,
-/// language dot + stars + forks footer. Top-6 by stars in a
-/// 2-column grid, uniform height, so the top of the dashboard reads
-/// like a profile's pinned section.
-const PINS_TOPN: usize = 6;
-const PINS_PER_ROW: usize = 3;
+/// Pinned-repo cards: bordered card, book icon + name header, wrapped
+/// description, language dot + stars + forks footer, plus a heat band
+/// and proof footer. Top-9 by stars, uniform height, emitted as one
+/// flowing paragraph so the viewport wraps them as it wishes.
+const PINS_TOPN: usize = 9;
 const PIN_W: f64 = 280.0;
 const PIN_NAME_MAX: usize = 22;
 const PIN_DESC_WIDTH: usize = 34;
@@ -1152,7 +1150,7 @@ struct PinDoc {
     icon: String,
     title: String,
     cards: Vec<PinCard>,
-    frag_rows: Vec<String>,
+    frag_flow: String,
 }
 
 /// Pins rows: top-6 own-work repos by stars, ties break on forks
@@ -1172,7 +1170,7 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
         icon: PIN_ICON.to_string(),
         title: "Popular repositories".to_string(),
         cards: vec![],
-        frag_rows: vec![],
+        frag_flow: String::new(),
     };
     let mut repos: Vec<&jzombie_graph::graph::Node> = graph
         .nodes
@@ -1315,26 +1313,20 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
             fy2: f1(h_max - 10.0),
         });
     }
-    // Fragment rows: three linked bubbles per line, rank order left to
-    // right. A short tail leaves a lone bubble, never a junk row.
-    let mut frag_rows: Vec<String> = vec![];
-    for trio in cards.chunks(PINS_PER_ROW) {
-        let cell = |c: &PinCard| {
-            format!(
-                "[![{}](charts/{}?v={})]({})",
-                c.name,
-                c.dest.rsplit('/').next().unwrap_or(&c.dest),
-                bust,
-                c.url
-            )
-        };
-        let mut line = cell(&trio[0]);
-        for extra in trio.iter().skip(1) {
-            line.push(' ');
-            line.push_str(&cell(extra));
-        }
-        frag_rows.push(line);
+    // Fragment: one flowing paragraph, rank order left to right. No
+    // fixed trios — the viewport wraps the bubbles as it wishes, and the
+    // centered wrapper balances each visual line.
+    let mut cells: Vec<String> = vec![];
+    for c in cards.iter() {
+        cells.push(format!(
+            "[![{}](charts/{}?v={})]({})",
+            c.name,
+            c.dest.rsplit('/').next().unwrap_or(&c.dest),
+            bust,
+            c.url
+        ));
     }
+    let frag_flow = cells.join(" ");
     Ok(PinDoc {
         header: String::new(),
         footer: String::new(),
@@ -1348,7 +1340,7 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
         icon: PIN_ICON.to_string(),
         title: "Popular repositories".to_string(),
         cards,
-        frag_rows,
+        frag_flow,
     })
 }
 
@@ -1449,10 +1441,9 @@ pub fn render_pins_bundle(graph_json: &str) -> anyhow::Result<Vec<(String, Strin
                 APPEND svg/{{ $c.file }} "<g transform=\"translate(15,{{ $c.fy2 }})\" class=\"pfoot\"><circle cx=\"0\" cy=\"-4\" r=\"5\" fill=\"{{ $c.band }}\" class=\"{{ $c.pulse }}\"/><text x=\"9\" y=\"0\">{{ $c.heat }}</text></g>"
                 APPEND svg/{{ $c.file }} "</a></svg>"
             }
-            WRITE frag/pins.md "## Popular repositories\n\n"
-            FOR $line: STRING IN $doc.frag_rows {
-                APPEND frag/pins.md "{{ $line }}\n\n"
-            }
+            WRITE frag/pins.md "## Popular repositories\n\n<div align=\"center\">\n\n"
+            APPEND frag/pins.md "{{ $doc.frag_flow }}\n\n"
+            APPEND frag/pins.md "</div>\n"
         }
         LET $check: STRING = READ frag/pins.md
         ASSERT_CONTAINS $check "Popular repositories"
