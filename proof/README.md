@@ -51,7 +51,7 @@ Generated from the `portfolio-graph` collection (schema v7) — last run 2026-11
 
 </pre>
 Proximity reflects dependence strength: nodes sharing an edge attract, unconnected nodes repel. Forks appear only when diverged or renamed; repos untouched for over a year are omitted unless something current depends on them.
-## Heat flame
+## Commit activity
 
 [![flame](charts/portfolio-graph-flame.svg)](https://github.com/jzombie?tab=repositories)
 

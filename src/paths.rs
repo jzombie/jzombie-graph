@@ -31,7 +31,7 @@ pub const SHARE_SVG: &str = "proof/charts/portfolio-graph-share.svg";
 /// Developer Focus bars SVG.
 pub const DEVELOPER_FOCUS_SVG: &str = "proof/charts/portfolio-graph-developer-focus.svg";
 
-/// Heat flame SVG: portfolio → repos → branches → embers, widths pro-rata
+/// Commit activity flame SVG: portfolio → repos → branches → embers, widths pro-rata
 /// 30d share, color + motion from the heat bands.
 pub const FLAME_SVG: &str = "proof/charts/portfolio-graph-flame.svg";
 

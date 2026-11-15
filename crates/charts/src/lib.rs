@@ -846,7 +846,7 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
 
 fn flame_header() -> String {
     format!(
-        "<svg class=\"flame-svg\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"{family}\"><title>Portfolio heat flame</title><text x=\"16\" y=\"24\" font-size=\"14\" font-weight=\"bold\" fill=\"{ink}\">portfolio heat</text><text x=\"16\" y=\"40\" class=\"muted\">one card per repo · heat bands · cycling</text>",
+        "<svg class=\"flame-svg\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"{family}\"><title>Portfolio commit activity</title><text x=\"16\" y=\"24\" font-size=\"14\" font-weight=\"bold\" fill=\"{ink}\">portfolio activity</text><text x=\"16\" y=\"40\" class=\"muted\">one card per repo · heat bands · cycling</text>",
         f1(FLAME_W),
         f1(FLAME_H),
         ink = palette::portfolio_bar(),
@@ -875,7 +875,7 @@ fn flame(graph_json: String) -> anyhow::Result<Value> {
     )?)?))
 }
 
-/// Render the heat flame for validated graph JSON. Same transport as the
+/// Render the commit activity flame for validated graph JSON. Same transport as the
 /// pie: embedded script emits markup into a temp workspace.
 pub fn render_flame_svg(graph_json: &str) -> anyhow::Result<String> {
     let engine = engine();
