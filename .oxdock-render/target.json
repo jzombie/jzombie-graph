@@ -10,6 +10,7 @@
           "proof/fragments/portfolio-graph.md"
         ],
         "sections": [
+          "proof/fragments/languages.md",
           "proof/fragments/commit-share.md",
           "proof/fragments/developer-focus.md",
           "proof/fragments/heat-flame.md"

@@ -38,6 +38,7 @@ enum Chart {
     Pins,
     Indicators,
     Data,
+    Languages,
 }
 
 /// Badge files + indicator table. Written atomically with the strip
@@ -141,6 +142,7 @@ fn main() {
         Chart::Pins => unreachable!("handled by the family return above"),
         Chart::Indicators => charts::render_indicators_svg(),
         Chart::Data => unreachable!("handled by the early return above"),
+        Chart::Languages => charts::render_languages_svg(&text),
     };
     let svg = match svg {
         Ok(s) => s,
@@ -156,6 +158,7 @@ fn main() {
         Chart::Indicators => jzombie_graph::paths::indicators_svg(),
         Chart::Share => jzombie_graph::paths::share_svg(),
         Chart::Data => unreachable!("handled by the early return above"),
+        Chart::Languages => jzombie_graph::paths::languages_svg(),
     };
     if cli.stdout {
         print!("{svg}");
@@ -181,6 +184,10 @@ fn main() {
         Chart::Flame => Some((
             jzombie_graph::paths::flame_fragment(),
             charts::render_flame_md(&text),
+        )),
+        Chart::Languages => Some((
+            jzombie_graph::paths::languages_fragment(),
+            charts::render_languages_md(&text),
         )),
         _ => None,
     };

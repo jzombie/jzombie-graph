@@ -1053,7 +1053,9 @@ const PIN_BORDER: &str = "#30363d";
 fn lang_color(lang: &str) -> &'static str {
     match lang {
         "Rust" => "#dea584",
-        "TypeScript" => "#3178c6",
+        // Lightened from linguist #3178c6: Python's #3572A5 sits next to
+        // it at similar shares, and the two blues were indistinguishable.
+        "TypeScript" => "#4FA3D1",
         "JavaScript" => "#f1e05a",
         "Python" => "#3572A5",
         "Shell" => "#89e051",
@@ -1582,6 +1584,114 @@ pub fn render_focus_md(graph_json: &str) -> anyhow::Result<String> {
     Ok(format!(
         "## Developer focus\n\nDeveloper focus is a heuristic of what's being planned and developed right now.\n\n[![developer focus]({})]({})\n\n<sub>Each score blends commit heat (recent commit rates vs the trailing 30d baseline) with issue comment heat (owner authored comment volume, same comparison), then discounts idle months. A signal with no baseline sits out: triage free repos rank on commits alone, commit free weeks on comments alone.</sub>\n",
         jzombie_graph::paths::chart_url(jzombie_graph::paths::FOCUS_FILE, &bust),
+        jzombie_graph::paths::REPOS_URL,
+    ))
+}
+
+/// Top languages strip: repo counts by detected language, own-work
+/// non-private repos only. Unknown-language repos stay out entirely —
+/// no "Unspecified" slot, same rule as the pin footers. Top-6 plus an
+/// Other rollup when the tail is non-empty.
+const LANG_TOPN: usize = 6;
+/// Misc bucket gray: the pins' secondary text gray, not a language color.
+const LANG_OTHER: &str = "#9198a1";
+const LANG_W: f64 = 800.0;
+const LANG_H: f64 = 56.0;
+const LANG_X0: f64 = 16.0;
+const LANG_TRACK: f64 = 768.0;
+
+/// Language rows: `(language, repos, share)` sorted by repos desc, name
+/// asc; the tail past `LANG_TOPN` rolls into `Other`.
+fn language_shares(graph_json: &str) -> anyhow::Result<Vec<(String, u32, f32)>> {
+    let graph = jzombie_graph::graph::Graph::from_json(graph_json)?;
+    let mut counts: std::collections::BTreeMap<&str, u32> = std::collections::BTreeMap::new();
+    for n in graph
+        .nodes
+        .iter()
+        .filter(|nd| !nd.private && jzombie_graph::graph::is_own_work(nd))
+    {
+        if let Some(lang) = n.language.as_deref() {
+            *counts.entry(lang).or_default() += 1;
+        }
+    }
+    let mut ranked: Vec<(&str, u32)> = counts.into_iter().collect();
+    ranked.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(b.0)));
+    let total: u32 = ranked.iter().map(|(_, c)| c).sum();
+    if total == 0 {
+        return Ok(vec![]);
+    }
+    let mut rows: Vec<(String, u32, f32)> = ranked
+        .iter()
+        .take(LANG_TOPN)
+        .map(|(l, c)| ((*l).to_string(), *c, *c as f32 / total as f32))
+        .collect();
+    let rest: u32 = ranked.iter().skip(LANG_TOPN).map(|(_, c)| c).sum();
+    if rest > 0 {
+        rows.push(("Other".to_string(), rest, rest as f32 / total as f32));
+    }
+    Ok(rows)
+}
+
+/// Render the top-languages strip: one rounded bar, segments pro-rata
+/// repo counts, legend with shares. Pure-Rust markup (no engine round
+/// trip — the layout is arithmetic, fully unit-testable).
+pub fn render_languages_svg(graph_json: &str) -> anyhow::Result<String> {
+    let rows = language_shares(graph_json)?;
+    let family = palette::family();
+    if rows.is_empty() {
+        return Ok(format!(
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {W} {H}\" role=\"img\" font-family=\"{family}\"><title>Top languages</title><text x=\"16\" y=\"34\" font-size=\"14\" fill=\"{muted}\">No language data in scope</text></svg>",
+            W = f1(LANG_W),
+            H = f1(LANG_H),
+            muted = palette::muted(),
+        ));
+    }
+    let mut x = LANG_X0;
+    let mut segs = String::new();
+    for (lang, _, share) in &rows {
+        let w = *share as f64 * LANG_TRACK;
+        let color = if lang == "Other" {
+            LANG_OTHER.to_string()
+        } else {
+            lang_color(lang).to_string()
+        };
+        segs.push_str(&format!(
+            "<rect x=\"{}\" y=\"16\" width=\"{}\" height=\"12\" fill=\"{color}\"/>",
+            f1(x),
+            f1(w),
+        ));
+        x += w;
+    }
+    let mut lx = LANG_X0;
+    let mut legend = String::new();
+    for (lang, _, share) in &rows {
+        let label = format!("{lang} {:.1}%", share * 100.0);
+        let color = if lang == "Other" {
+            LANG_OTHER.to_string()
+        } else {
+            lang_color(lang).to_string()
+        };
+        legend.push_str(&format!(
+            "<circle cx=\"{}\" cy=\"40\" r=\"5\" fill=\"{color}\"/><text x=\"{}\" y=\"44\" font-size=\"11\" fill=\"#9198a1\">{label}</text>",
+            f1(lx + 5.0),
+            f1(lx + 14.0),
+        ));
+        lx += 14.0 + est_w(&label) + 18.0;
+    }
+    Ok(format!(
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {W} {H}\" role=\"img\" font-family=\"{family}\"><title>Top languages</title><clipPath id=\"langclip\"><rect x=\"{X}\" y=\"16\" width=\"{T}\" height=\"12\" rx=\"6\"/></clipPath><g clip-path=\"url(#langclip)\">{segs}</g>{legend}</svg>",
+        W = f1(LANG_W),
+        H = f1(LANG_H),
+        X = f1(LANG_X0),
+        T = f1(LANG_TRACK),
+    ))
+}
+
+pub fn render_languages_md(graph_json: &str) -> anyhow::Result<String> {
+    let bust = bust_token(graph_json)?;
+    Ok(format!(
+        "## Top languages\n\n[![languages]({})]({})\n\n<sub>Share of portfolio repos by detected language; repos without one stay out.</sub>\n",
+        jzombie_graph::paths::chart_url(jzombie_graph::paths::LANGUAGES_FILE, &bust),
         jzombie_graph::paths::REPOS_URL,
     ))
 }

@@ -31,7 +31,8 @@ FUNC BUILD_PROOF_INPUTS(): VOID {
         "flame",
         "pins",
         "indicators",
-        "data"
+        "data",
+        "languages"
     ]
 
     ECHO "lanes: render {{ STD::LEN($charts) }} proof inputs (page assembly is ASSEMBLE_PROOF_PAGE)"

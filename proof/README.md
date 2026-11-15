@@ -2,6 +2,12 @@
 
 Nightly generated map of jzombie's open-source systems portfolio, independent systems interconnected where they build on one another: what's active, what's used, and where development and planning focus is going.
 
+## Top languages
+
+[![languages](charts/portfolio-graph-languages.svg?v=202611142303)](https://github.com/jzombie?tab=repositories)
+
+<sub>Share of portfolio repos by detected language; repos without one stay out.</sub>
+
 [![flame](charts/portfolio-graph-flame.svg?v=202611142303)](https://github.com/jzombie?tab=repositories)
 ## Popular repositories
 
