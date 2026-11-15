@@ -457,7 +457,7 @@ fn focus_bars(graph_json: String, n_top: i64, n_bottom: i64) -> anyhow::Result<V
     let h = 44.0 + rows.len() as f64 * 26.0 + 16.0;
     let doc = FocusDoc {
         header: format!(
-            "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"{family}\"><title>Developer Focus</title><text x=\"16\" y=\"30\" font-size=\"20\" fill=\"{ink}\">Developer Focus</text>",
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"{family}\"><title>Developer focus</title><text x=\"16\" y=\"30\" font-size=\"20\" fill=\"{ink}\">Developer focus</text>",
             f1(480.0),
             f1(h),
             ink = palette::ink(),
@@ -603,7 +603,7 @@ struct FlameDoc {
 
 /// Flame layout: the prototype's skeleton, widths now pro-rata real data.
 const FLAME_W: f64 = 800.0;
-const FLAME_H: f64 = 284.0;
+const FLAME_H: f64 = 262.0;
 const FLAME_X0: f64 = 16.0;
 const FLAME_TRACK: f64 = 768.0;
 const FLAME_TOPN: usize = 8;
@@ -846,9 +846,9 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
 
 fn flame_header() -> String {
     format!(
-        "<svg class=\"flame-svg\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"{family}\"><title>Portfolio commit activity</title><text x=\"16\" y=\"24\" font-size=\"14\" font-weight=\"bold\" fill=\"{ink}\">portfolio activity</text><text x=\"16\" y=\"40\" class=\"muted\">one card per repo · heat bands · cycling</text>",
-        f1(FLAME_W),
-        f1(FLAME_H),
+        "<svg class=\"flame-svg\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {W} {H}\" role=\"img\" font-family=\"{family}\"><title>Portfolio commit activity</title><text x=\"16\" y=\"24\" font-size=\"14\" font-weight=\"bold\" fill=\"{ink}\">portfolio activity</text><text x=\"16\" y=\"40\" class=\"muted\">one card per repo · heat bands · cycling</text>",
+        W = f1(FLAME_W),
+        H = f1(FLAME_H),
         ink = palette::portfolio_bar(),
         family = palette::family(),
     )
@@ -856,12 +856,11 @@ fn flame_header() -> String {
 
 fn flame_legend(note: &str) -> String {
     format!(
-        "<g font-size=\"12\" fill=\"{dim}\"><circle cx=\"24\" cy=\"220\" r=\"6\" fill=\"{hot}\"/><text x=\"36\" y=\"224\">heating &gt;1.5</text><circle cx=\"150\" cy=\"220\" r=\"6\" fill=\"{steady}\"/><text x=\"162\" y=\"224\">steady ~1.0</text><circle cx=\"268\" cy=\"220\" r=\"6\" fill=\"{cool}\"/><text x=\"280\" y=\"224\">cooling &lt;0.5</text><circle cx=\"392\" cy=\"220\" r=\"6\" fill=\"{dorm}\"/><text x=\"404\" y=\"224\">dormant</text><text x=\"16\" y=\"250\" class=\"muted\">{note}</text></g>",
+        "<g font-size=\"12\" fill=\"#9198a1\"><circle cx=\"24\" cy=\"220\" r=\"6\" fill=\"{hot}\"/><text x=\"36\" y=\"224\">heating &gt;1.5</text><circle cx=\"150\" cy=\"220\" r=\"6\" fill=\"{steady}\"/><text x=\"162\" y=\"224\">steady ~1.0</text><circle cx=\"268\" cy=\"220\" r=\"6\" fill=\"{cool}\"/><text x=\"280\" y=\"224\">cooling &lt;0.5</text><circle cx=\"392\" cy=\"220\" r=\"6\" fill=\"{dorm}\"/><text x=\"404\" y=\"224\">dormant</text><text x=\"16\" y=\"250\" font-size=\"11\" fill=\"#9198a1\">{note}</text></g>",
         hot = palette::heating(),
         steady = palette::steady(),
         cool = palette::cooling(),
         dorm = palette::dormant(),
-        dim = palette::dim(),
         note = xml_escape(note),
     )
 }

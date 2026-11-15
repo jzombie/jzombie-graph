@@ -6,7 +6,7 @@ Code and data live here together. The collector, renderers, and lanes in this re
 
 ## Where attention is going (rebuilt nightly)
 
-[![Developer Focus](proof/charts/portfolio-graph-developer-focus.svg)](proof/README.md)
+[![Developer focus](proof/charts/portfolio-graph-developer-focus.svg)](proof/README.md)
 
 [![Commit share](proof/charts/portfolio-graph-share.svg)](proof/README.md)
 
@@ -51,7 +51,7 @@ cargo run -p jzombie-graph-charts -- --chart focus
 
 Local only, no API calls. Each `--chart` selection writes its fixed artifact path(s) under `proof/` (share pie by default; `focus` bars, `flame`, `indicators` + badges + table, `data` table fragment). The `BUILD_PROOF_INPUTS` lane runs all five. Colors come from the shared `charts::palette` module so every chart reads as one family; bytes pinned by snapshot tests.
 
-## Developer Focus (offline, no API calls)
+## Developer focus (offline, no API calls)
 
 ```bash
 cargo run -- --format focus
