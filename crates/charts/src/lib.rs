@@ -907,12 +907,12 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
         ph: f1(34.0),
         pty: f1(74.0),
         ptx: f1(28.0),
-    // Ember trio pinned to the bar's right end (12px pad, 7px
-    // stagger): label length never matters, so nightly numbers
-    // can't collide with them.
-    pfx1: f1(FLAME_X0 + FLAME_TRACK - 42.0),
-    pfx2: f1(FLAME_X0 + FLAME_TRACK - 35.0),
-    pfx3: f1(FLAME_X0 + FLAME_TRACK - 28.0),
+        // Ember trio pinned to the bar's right end (12px pad, 7px
+        // stagger): label length never matters, so nightly numbers
+        // can't collide with them.
+        pfx1: f1(FLAME_X0 + FLAME_TRACK - 42.0),
+        pfx2: f1(FLAME_X0 + FLAME_TRACK - 35.0),
+        pfx3: f1(FLAME_X0 + FLAME_TRACK - 28.0),
         port_color,
         port_pulse: port_pulse.to_string(),
         port_alt_delay: port_alt_delay.to_string(),
