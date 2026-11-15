@@ -26,7 +26,6 @@ pub const FRAGMENTS_DIR: &str = "proof/fragments";
 pub const INDICATORS_DIR: &str = "proof/indicators";
 
 /// File names (no directories): the only place a file name is spelled out.
-
 pub const GRAPH_FILE: &str = "portfolio-graph.json";
 pub const SCHEMA_FILE: &str = "portfolio-graph-schema.json";
 pub const MAP_FRAG_FILE: &str = "portfolio-graph.md";
