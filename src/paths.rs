@@ -26,6 +26,7 @@ pub const FRAGMENTS_DIR: &str = "proof/fragments";
 pub const INDICATORS_DIR: &str = "proof/indicators";
 
 /// File names (no directories): the only place a file name is spelled out.
+
 pub const GRAPH_FILE: &str = "portfolio-graph.json";
 pub const SCHEMA_FILE: &str = "portfolio-graph-schema.json";
 pub const MAP_FRAG_FILE: &str = "portfolio-graph.md";
@@ -34,6 +35,8 @@ pub const SHARE_FILE: &str = "portfolio-graph-share.svg";
 pub const SHARE_FRAG_FILE: &str = "commit-share.md";
 pub const FOCUS_FILE: &str = "portfolio-graph-developer-focus.svg";
 pub const FOCUS_FRAG_FILE: &str = "developer-focus.md";
+pub const LANGUAGES_FILE: &str = "portfolio-graph-languages.svg";
+pub const LANGUAGES_FRAG_FILE: &str = "languages.md";
 pub const FLAME_FILE: &str = "portfolio-graph-flame.svg";
 pub const FLAME_FRAG_FILE: &str = "heat-flame.md";
 pub const PINS_FRAG_FILE: &str = "pins.md";
@@ -84,6 +87,16 @@ pub fn developer_focus_svg() -> String {
 /// Developer-focus section fragment (generated with cache-bust).
 pub fn focus_fragment() -> String {
     format!("{FRAGMENTS_DIR}/{FOCUS_FRAG_FILE}")
+}
+
+/// Top-languages strip SVG: share of portfolio repos by language.
+pub fn languages_svg() -> String {
+    format!("{CHARTS_DIR}/{LANGUAGES_FILE}")
+}
+
+/// Top-languages section fragment (generated with cache-bust).
+pub fn languages_fragment() -> String {
+    format!("{FRAGMENTS_DIR}/{LANGUAGES_FRAG_FILE}")
 }
 
 /// Commit activity flame strip SVG (per-band badges live under

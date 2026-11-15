@@ -268,11 +268,18 @@ struct FocusRow {
     bx: String,
     bw: String,
     by: String,
+    /// Name position: right-anchored in the left column for positive
+    /// rows; left-anchored right of the axis for negative rows, whose
+    /// bars extend into the left column.
     tx: String,
     ty: String,
+    na: String,
+    /// Value position: tabular in the left column for positive rows;
+    /// tabular right of the axis for negative rows. Labels always sit
+    /// on white, never on a bar — one ink pass, no clip paths, so every
+    /// renderer draws the same pixels.
     vx: String,
-    vanchor: String,
-    clip: String,
+    va: String,
 }
 
 /// Chart document: diverging bars from a zero axis. Same contract as PieDoc
@@ -287,7 +294,6 @@ struct FocusDoc {
     bar_h: String,
     fs: String,
     ink: String,
-    bar_ink: String,
     muted: String,
     mx: String,
     my: String,
@@ -407,14 +413,21 @@ fn focus_rows(graph_json: &str, n_top: usize, n_bottom: usize) -> anyhow::Result
         .map(|(_, f)| f.abs())
         .fold(0.0_f32, f32::max)
         .max(0.01);
-    // Fixed columns: names right-anchored at `name_x`, values right-anchored
-    // at `value_x` (tabular, never collides with bars), zero axis, bars.
+    // Fixed columns for positive rows: names right-anchored at
+    // `name_x`, values right-anchored at `value_x`, zero axis, bars to
+    // the right — all on white. Negative rows mirror right of the
+    // axis (labels start past it, values end a bar-width beyond),
+    // because their bars extend left into the label columns.
+    // One ink pass, no clipped duplicates: every renderer draws the
+    // same pixels, and opacity animation on bars can't ghost the text.
     let title_h = 44.0;
     let row_h = 26.0;
     let name_x = 130.0;
     let value_x = 200.0;
     let zero_x = 260.0;
     let max_bar = 200.0;
+    let neg_name_x = zero_x + 8.0;
+    let neg_value_x = zero_x + max_bar;
     let rows = picked
         .into_iter()
         .enumerate()
@@ -426,6 +439,11 @@ fn focus_rows(graph_json: &str, n_top: usize, n_bottom: usize) -> anyhow::Result
             };
             let bx = if f >= 0.0 { zero_x } else { zero_x - len };
             let ty = title_h + i as f64 * row_h + 18.0;
+            let (tx, na, vx, va) = if f >= 0.0 {
+                (name_x, "end", value_x, "end")
+            } else {
+                (neg_name_x, "start", neg_value_x, "end")
+            };
             FocusRow {
                 label: xml_escape(&truncate_name(label, LABEL_MAX)),
                 value: format!("{f:.2}"),
@@ -438,11 +456,11 @@ fn focus_rows(graph_json: &str, n_top: usize, n_bottom: usize) -> anyhow::Result
                 bx: f1(bx),
                 bw: f1(len),
                 by: f1(title_h + i as f64 * row_h + 6.0),
-                tx: f1(name_x),
+                tx: f1(tx),
                 ty: f1(ty),
-                vx: f1(value_x),
-                vanchor: "end".to_string(),
-                clip: format!("fc{i}"),
+                na: na.to_string(),
+                vx: f1(vx),
+                va: va.to_string(),
             }
         })
         .collect();
@@ -470,7 +488,6 @@ fn focus_bars(graph_json: String, n_top: i64, n_bottom: i64) -> anyhow::Result<V
         bar_h: "14".to_string(),
         fs: "14".to_string(),
         ink: palette::ink(),
-        bar_ink: palette::ink_on_bar(),
         muted: palette::muted(),
         mx: f1(240.0),
         my: f1(44.0 + 40.0),
@@ -501,12 +518,8 @@ pub fn render_focus_svg(graph_json: &str) -> anyhow::Result<String> {
             APPEND out.svg "<text x=\"{{ $doc.mx }}\" y=\"{{ $doc.my }}\" text-anchor=\"middle\" font-size=\"{{ $doc.fs }}\" fill=\"{{ $doc.muted }}\">{{ $doc.msg }}</text>"
         } ELSE {
             FOR $r: MAP<ANY> IN $doc.rows {
-                APPEND out.svg """
-                    <clipPath id="{{ $r.clip }}"><rect x="{{ $r.bx }}" y="{{ $r.by }}" width="{{ $r.bw }}" height="{{ $doc.bar_h }}"/></clipPath>
-                    <rect x="{{ $r.bx }}" y="{{ $r.by }}" width="{{ $r.bw }}" height="{{ $doc.bar_h }}" fill="{{ $r.color }}" class="{{ $r.pulse }}"><title>{{ $r.label }} {{ $r.value }}</title></rect>
-                    """
-                APPEND out.svg "<text x=\"{{ $r.tx }}\" y=\"{{ $r.ty }}\" text-anchor=\"end\" font-size=\"{{ $doc.fs }}\" fill=\"{{ $doc.ink }}\">{{ $r.label }}</text><text x=\"{{ $r.vx }}\" y=\"{{ $r.ty }}\" text-anchor=\"end\" font-size=\"{{ $doc.fs }}\" fill=\"{{ $doc.ink }}\">{{ $r.value }}</text>"
-                APPEND out.svg "<text x=\"{{ $r.tx }}\" y=\"{{ $r.ty }}\" text-anchor=\"end\" font-size=\"{{ $doc.fs }}\" fill=\"{{ $doc.bar_ink }}\" clip-path=\"url(#{{ $r.clip }})\">{{ $r.label }}</text><text x=\"{{ $r.vx }}\" y=\"{{ $r.ty }}\" text-anchor=\"end\" font-size=\"{{ $doc.fs }}\" fill=\"{{ $doc.bar_ink }}\" clip-path=\"url(#{{ $r.clip }})\">{{ $r.value }}</text>"
+                APPEND out.svg "<rect x=\"{{ $r.bx }}\" y=\"{{ $r.by }}\" width=\"{{ $r.bw }}\" height=\"{{ $doc.bar_h }}\" fill=\"{{ $r.color }}\" class=\"{{ $r.pulse }}\"><title>{{ $r.label }} {{ $r.value }}</title></rect>"
+                APPEND out.svg "<text x=\"{{ $r.tx }}\" y=\"{{ $r.ty }}\" text-anchor=\"{{ $r.na }}\" font-size=\"{{ $doc.fs }}\" fill=\"{{ $doc.ink }}\">{{ $r.label }}</text><text x=\"{{ $r.vx }}\" y=\"{{ $r.ty }}\" text-anchor=\"{{ $r.va }}\" font-size=\"{{ $doc.fs }}\" fill=\"{{ $doc.ink }}\">{{ $r.value }}</text>"
             }
         }
         APPEND out.svg $doc.footer
@@ -3166,24 +3179,31 @@ mod tests {
     fn focus_bars_diverge_from_zero_by_sign() {
         let g = graph_with_focus(&[("up", Some(2.0)), ("down", Some(-4.0))]);
         let rows = focus_rows(&g, 12, 5).unwrap();
-        // Fixed tabular columns: names end at 130, values end at 200,
-        // zero axis at 260 — text over the page stays gray.
-        for r in &rows {
-            let tx: f64 = r.tx.parse().unwrap();
-            let vx: f64 = r.vx.parse().unwrap();
-            assert!((tx - 130.0).abs() < 1e-6);
-            assert!((vx - 200.0).abs() < 1e-6);
-            assert_eq!(r.vanchor, "end");
-        }
         let up = rows.iter().find(|r| r.label == "up").unwrap();
         let down = rows.iter().find(|r| r.label == "down").unwrap();
-        let up_bw: f64 = up.bw.parse().unwrap();
-        let down_bx: f64 = down.bx.parse().unwrap();
-        let down_bw: f64 = down.bw.parse().unwrap();
+        // Positive rows read left of the axis: names end at 130,
+        // values end at 200 — text over the page stays gray.
+        let up_tx: f64 = up.tx.parse().unwrap();
+        let up_vx: f64 = up.vx.parse().unwrap();
+        assert!((up_tx - 130.0).abs() < 1e-6);
+        assert!((up_vx - 200.0).abs() < 1e-6);
+        assert_eq!(up.na, "end");
+        assert_eq!(up.va, "end");
+        // Negative rows read right of the axis, clear of bars that
+        // extend left into the label columns.
+        let down_tx: f64 = down.tx.parse().unwrap();
+        let down_vx: f64 = down.vx.parse().unwrap();
+        assert!((down_tx - 268.0).abs() < 1e-6);
+        assert!((down_vx - 460.0).abs() < 1e-6);
+        assert_eq!(down.na, "start");
+        assert_eq!(down.va, "end");
         // Positive starts at zero and extends right; negative ends at zero.
         let up_bx: f64 = up.bx.parse().unwrap();
+        let down_bx: f64 = down.bx.parse().unwrap();
+        let down_bw: f64 = down.bw.parse().unwrap();
         assert!((up_bx - 260.0).abs() < 1e-6);
         assert!((down_bx + down_bw - 260.0).abs() < 1e-6);
+        let up_bw: f64 = up.bw.parse().unwrap();
         // Each side fills its own half against its own max: both bars span
         // the full half-width despite |−4| ≠ |2|.
         assert!((up_bw - 200.0).abs() < 1e-6);
@@ -3194,26 +3214,31 @@ mod tests {
     }
 
     #[test]
-    fn focus_ink_splits_by_crossing() {
-        // Two-pass ink: gray text throughout, dark re-drawn clipped to each
-        // bar rect — clip ids unique per row, both passes present in markup.
+    fn focus_labels_sit_on_white_by_sign() {
+        // One ink pass, no clip paths: positive labels live left of the
+        // axis, negative labels right of it — never on a bar, so every
+        // renderer draws the same pixels.
         let g = graph_with_focus(&[
             ("top", Some(10.0)),
             ("mid", Some(-2.0)),
             ("low", Some(-10.0)),
         ]);
         let rows = focus_rows(&g, 12, 5).unwrap();
-        let mut clips: Vec<&str> = rows.iter().map(|r| r.clip.as_str()).collect();
-        clips.sort_unstable();
-        clips.dedup();
-        assert_eq!(clips.len(), rows.len());
-        let svg = render_focus_svg(&g).unwrap();
-        assert!(svg.contains("<clipPath"));
         for r in &rows {
-            assert!(svg.contains(&format!("url(#{})", r.clip)));
+            let tx: f64 = r.tx.parse().unwrap();
+            let bx: f64 = r.bx.parse().unwrap();
+            let bw: f64 = r.bw.parse().unwrap();
+            if r.label == "top" {
+                assert!(tx < 260.0, "positive name left of axis");
+                assert!(bx >= 260.0, "positive bar starts at axis");
+            } else {
+                assert!(tx > 260.0, "negative name right of axis");
+                assert!(bx + bw <= 260.0 + 1e-6, "negative bar ends at axis");
+            }
         }
+        let svg = render_focus_svg(&g).unwrap();
+        assert!(!svg.contains("<clipPath"), "no clip paths");
         assert!(svg.contains(palette::ink().as_str()));
-        assert!(svg.contains(palette::ink_on_bar().as_str()));
     }
 
     fn mixed_ownership_graph() -> String {
