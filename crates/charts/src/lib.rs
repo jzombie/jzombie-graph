@@ -1501,7 +1501,7 @@ pub fn render_pins_bundle(graph_json: &str) -> anyhow::Result<Vec<(String, Strin
             }
             WRITE frag/pins.md "## Popular repositories\n\n<div align=\"center\">\n\n"
             APPEND frag/pins.md "{{ $doc.frag_flow }}\n\n"
-            APPEND frag/pins.md "</div>\n"
+            APPEND frag/pins.md "</div>\n\n"
         }
         LET $check: STRING = READ frag/pins.md
         ASSERT_CONTAINS $check "Popular repositories"

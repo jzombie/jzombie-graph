@@ -2,14 +2,17 @@
 
 Nightly generated map of jzombie's open-source systems portfolio, independent systems interconnected where they build on one another: what's active, what's used, and where development and planning focus is going.
 
-[![flame](charts/portfolio-graph-flame.svg?v=202611142303)](https://github.com/jzombie?tab=repositories)
+[![flame](charts/portfolio-graph-flame.svg?v=202611150435)](https://github.com/jzombie?tab=repositories)
+
 ## Popular repositories
 
 <div align="center">
 
-[![rust-muxio](charts/portfolio-graph-pin-rust-muxio.svg?v=202611142303)](https://github.com/jzombie/rust-muxio) [![docker-mqtt-mosquitto…](charts/portfolio-graph-pin-docker-mqtt-mosquitto-cloudflare-tunnel.svg?v=202611142303)](https://github.com/jzombie/docker-mqtt-mosquitto-cloudflare-tunnel) [![rust-simd-r-drive](charts/portfolio-graph-pin-rust-simd-r-drive.svg?v=202611142303)](https://github.com/jzombie/rust-simd-r-drive) [![sshfs-mac-docker](charts/portfolio-graph-pin-sshfs-mac-docker.svg?v=202611142303)](https://github.com/jzombie/sshfs-mac-docker) [![term-wm](charts/portfolio-graph-pin-term-wm.svg?v=202611142303)](https://github.com/jzombie/term-wm) [![rust-line-ending](charts/portfolio-graph-pin-rust-line-ending.svg?v=202611142303)](https://github.com/jzombie/rust-line-ending) [![deepwiki-to-mdbook](charts/portfolio-graph-pin-deepwiki-to-mdbook.svg?v=202611142303)](https://github.com/jzombie/deepwiki-to-mdbook) [![rust-oxdock](charts/portfolio-graph-pin-rust-oxdock.svg?v=202611142303)](https://github.com/jzombie/rust-oxdock) [![rust-sec-fetcher](charts/portfolio-graph-pin-rust-sec-fetcher.svg?v=202611142303)](https://github.com/jzombie/rust-sec-fetcher)
+[![rust-muxio](charts/portfolio-graph-pin-rust-muxio.svg?v=202611150435)](https://github.com/jzombie/rust-muxio) [![docker-mqtt-mosquitto…](charts/portfolio-graph-pin-docker-mqtt-mosquitto-cloudflare-tunnel.svg?v=202611150435)](https://github.com/jzombie/docker-mqtt-mosquitto-cloudflare-tunnel) [![rust-simd-r-drive](charts/portfolio-graph-pin-rust-simd-r-drive.svg?v=202611150435)](https://github.com/jzombie/rust-simd-r-drive) [![sshfs-mac-docker](charts/portfolio-graph-pin-sshfs-mac-docker.svg?v=202611150435)](https://github.com/jzombie/sshfs-mac-docker) [![term-wm](charts/portfolio-graph-pin-term-wm.svg?v=202611150435)](https://github.com/jzombie/term-wm) [![rust-line-ending](charts/portfolio-graph-pin-rust-line-ending.svg?v=202611150435)](https://github.com/jzombie/rust-line-ending) [![deepwiki-to-mdbook](charts/portfolio-graph-pin-deepwiki-to-mdbook.svg?v=202611150435)](https://github.com/jzombie/deepwiki-to-mdbook) [![term-wm-vt100](charts/portfolio-graph-pin-term-wm-vt100.svg?v=202611150435)](https://github.com/jzombie/term-wm-vt100) [![rust-oxdock](charts/portfolio-graph-pin-rust-oxdock.svg?v=202611150435)](https://github.com/jzombie/rust-oxdock)
 
 </div>
+
+
 ## jzombie portfolio cluster
 
 Repos are in this chart through interconnectedness: each one builds on, is used by, or documents another repo here.
@@ -45,19 +48,22 @@ Repos are in this chart through interconnectedness: each one builds on, is used 
 
 </pre>
 Repos quiet for over a year are left out unless something current uses them; forks show up only after diverging or being renamed.
+
 ## Developer focus
 
 Developer focus is a heuristic of what's being planned and developed right now.
 
-[![developer focus](charts/portfolio-graph-developer-focus.svg?v=202611142303)](https://github.com/jzombie?tab=repositories)
+[![developer focus](charts/portfolio-graph-developer-focus.svg?v=202611150435)](https://github.com/jzombie?tab=repositories)
 
 <sub>Each score blends commit heat (recent commit rates vs the trailing 30d baseline) with issue comment heat (owner authored comment volume, same comparison), then discounts idle months. A signal with no baseline sits out: triage free repos rank on commits alone, commit free weeks on comments alone.</sub>
+
 ## Commit share
 
-[![share](charts/portfolio-graph-share.svg?v=202611142303)](https://github.com/jzombie?tab=repositories)
+[![share](charts/portfolio-graph-share.svg?v=202611150435)](https://github.com/jzombie?tab=repositories)
+
 ## Commit data
 
-Updated 2026-11-14 23:03 UTC — 16 repos, 266 commits in the last 30 days.
+Updated 2026-11-15 04:35 UTC — 17 repos, 330 commits in the last 30 days.
 
 |  repo                                                                                 | about                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | commits/30d                                 | heat                                                                               | layer                    | reuse (portfolio)                                                                                                                                                                                                                                                                                                                                |
 | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -72,12 +78,12 @@ Updated 2026-11-14 23:03 UTC — 16 repos, 266 commits in the last 30 days.
 | [rust-argtuner](https://github.com/jzombie/rust-argtuner)<br><sub>★ 0</sub>           | A language-agnostic CLI tool for black-box hyperparameter optimization. <sub>[#black-box-optimization](https://github.com/search?q=user%3Ajzombie+topic%3Ablack-box-optimization&type=repositories) [#cli](https://github.com/search?q=user%3Ajzombie+topic%3Acli&type=repositories) [#hyperparameter-optimization](https://github.com/search?q=user%3Ajzombie+topic%3Ahyperparameter-optimization&type=repositories) [#particle-swarm-optimization](https://github.com/search?q=user%3Ajzombie+topic%3Aparticle-swarm-optimization&type=repositories) +3</sub> | 9<br><sub>deduped across 9 branches</sub>   | <div align="center">![cooling](indicators/cooling.svg)<br><sub>cooling</sub></div> | application              | <sub>uses</sub><br>[rust-line-ending](https://github.com/jzombie/rust-line-ending), [term-wm](https://github.com/jzombie/term-wm)                                                                                                                                                                                                                |
 | [lab-qemu-portable](https://github.com/jzombie/lab-qemu-portable)<br><sub>★ 0</sub>   | Extract-and-run QEMU + wimlib (WHPX/KVM/HVF, no installer, headless-ready) plus… <sub>[#emulation](https://github.com/search?q=user%3Ajzombie+topic%3Aemulation&type=repositories) [#headless](https://github.com/search?q=user%3Ajzombie+topic%3Aheadless&type=repositories) [#hvf](https://github.com/search?q=user%3Ajzombie+topic%3Ahvf&type=repositories) [#kvm](https://github.com/search?q=user%3Ajzombie+topic%3Akvm&type=repositories) +8</sub>                                                                                                        | 4<br><sub>single branch</sub>               | <div align="center">![heating](indicators/heating.svg)<br><sub>heating</sub></div> | isolated                 | —                                                                                                                                                                                                                                                                                                                                                |
 
-<!-- +6 more below top-10 (9 commits/30d combined): rust-simd-r-drive, rust-muxio, deepwiki-to-mdbook, docker-mqtt-mosquitto-cloudflare-tunnel, rust-line-ending, sshfs-mac-docker -->
+<!-- +7 more below top-10 (10 commits/30d combined): rust-simd-r-drive, rust-muxio, deepwiki-to-mdbook, docker-mqtt-mosquitto-cloudflare-tunnel, rust-line-ending, sshfs-mac-docker, term-wm-vt100 -->
 
 ## Top languages
 
-[![languages](charts/portfolio-graph-languages.svg?v=202611142303)](https://github.com/jzombie?tab=repositories)
+[![languages](charts/portfolio-graph-languages.svg?v=202611150435)](https://github.com/jzombie?tab=repositories)
 
 <sub>Share of portfolio repos by detected language; repos without one stay out.</sub>
 
-<sub>Charts rendered with [OxDock](https://github.com/jzombie/rust-oxdock); data generated by [jzombie-graph](https://github.com/jzombie/jzombie-graph) · updated 2026-11-14T23:03Z.</sub>
+<sub>Charts rendered with [OxDock](https://github.com/jzombie/rust-oxdock); data generated by [jzombie-graph](https://github.com/jzombie/jzombie-graph) · updated 2026-11-15T04:35Z.</sub>

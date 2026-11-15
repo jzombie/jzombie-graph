@@ -1,3 +1,3 @@
 ## Commit share
 
-[![share](charts/portfolio-graph-share.svg?v=202611142303)](https://github.com/jzombie?tab=repositories)
+[![share](charts/portfolio-graph-share.svg?v=202611150435)](https://github.com/jzombie?tab=repositories)
