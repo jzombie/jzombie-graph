@@ -1717,7 +1717,7 @@ fn data_rows(graph_json: &str) -> anyhow::Result<DataDoc> {
         }
     }
     let summary = format!(
-        "As of {} UTC · {} repos · {} commits/30d · {} foundation · {} middleware · {} application · {} isolated — machine-readable in `{}` (schema `{}`).",
+        "As of {} UTC · {} repos · {} commits/30d · {} foundation · {} middleware · {} application · {} isolated — machine-readable in [`{}`]({}/{}) (schema [`{}`]({}/{})).",
         graph.generated_at.format("%Y-%m-%d %H:%M"),
         repos.len(),
         total,
@@ -1726,6 +1726,10 @@ fn data_rows(graph_json: &str) -> anyhow::Result<DataDoc> {
         app,
         iso,
         jzombie_graph::paths::GRAPH_JSON,
+        jzombie_graph::paths::BLOB_BASE,
+        jzombie_graph::paths::GRAPH_JSON,
+        jzombie_graph::paths::SCHEMA_JSON,
+        jzombie_graph::paths::BLOB_BASE,
         jzombie_graph::paths::SCHEMA_JSON,
     );
     if repos.is_empty() {
