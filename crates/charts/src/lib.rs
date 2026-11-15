@@ -1154,7 +1154,11 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
             None => 0.0,
         };
         let star_w = 16.0 + 3.0 + est_w(&stars);
-        let fx_star = if lang_raw.is_some() { lang_w + 12.0 } else { 0.0 };
+        let fx_star = if lang_raw.is_some() {
+            lang_w + 12.0
+        } else {
+            0.0
+        };
         let url = format!("https://github.com/{}", nd.id);
         let dest = format!(
             "{}/portfolio-graph-pin-{}.svg",
