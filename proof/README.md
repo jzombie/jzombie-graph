@@ -11,7 +11,7 @@ Nightly map of jzombie's open-source systems portfolio: what's active, what's us
 
 ## jzombie portfolio cluster
 
-How these 15 repos connect: 21 links between them (+2 from docs alone); layers 4 foundation · 5 middleware · 7 application · 1 isolated. Busiest right now: rust-sec-fetcher; most reused: rust-line-ending (5 use it).
+Repos are in this chart through interconnectedness: each one builds on, is used by, or documents another repo here.
 
 <sub>Diagram: closeness means the repos work together. Screen readers: the block below uses braille characters for lines and is noisy, so it is hidden; the table below names every repo in text.</sub>
 

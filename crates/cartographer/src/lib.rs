@@ -24,7 +24,7 @@
 //! - only the largest connected component over dependence edges is drawn,
 //!   so detached scraps never appear as footnote lists.
 
-use jzombie_graph::graph::{EdgeKind, Graph, Layer, is_own_work};
+use jzombie_graph::graph::{EdgeKind, Graph, is_own_work};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
@@ -35,9 +35,9 @@ const HEIGHT: usize = 26;
 /// Staleness cutoff: pushes older than this before generation are omitted.
 const STALE_DAYS: i64 = 365;
 
-/// Render the cluster doc for a collected graph. Title, counts, layer
-/// mix, and live signals all derive from the drawn cluster — no brand
-/// strings, no repo names baked in.
+/// Render the cluster doc for a collected graph. Title and inclusion
+/// sentence derive from the drawn cluster — no brand strings, no repo
+/// names, no counts baked in.
 pub fn render_cartographer(graph: &Graph) -> String {
     let Some(draw) = select_cluster(graph) else {
         let mut s = String::new();
@@ -45,23 +45,11 @@ pub fn render_cartographer(graph: &Graph) -> String {
         return s;
     };
     let owner = cluster_owner(graph, &draw);
-    let dep = draw.edges.len();
-    let weak = draw.weak.len();
-    let (found, mid, app, iso, untagged) = layer_mix(graph, &draw);
     let mut s = String::new();
-    let layers = if untagged > 0 {
-        format!(
-            "{found} foundation · {mid} middleware · {app} application · {iso} isolated · {untagged} untagged"
-        )
-    } else {
-        format!("{found} foundation · {mid} middleware · {app} application · {iso} isolated")
-    };
     let _ = writeln!(s, "## {owner} portfolio cluster\n");
     let _ = writeln!(
         s,
-        "How these {n} repos connect: {dep} links between them (+{weak} from docs alone); layers {layers}.{live}\n",
-        n = draw.nodes.len(),
-        live = live_sentence(graph, &draw),
+        "Repos are in this chart through interconnectedness: each one builds on, is used by, or documents another repo here.\n",
     );
     s.push_str(
         "<sub>Diagram: closeness means the repos work together. \
@@ -92,73 +80,6 @@ fn cluster_owner(graph: &Graph, draw: &Cluster) -> String {
         .unwrap_or_else(|| "portfolio".to_string())
 }
 
-/// Stored-layer tag mix over drawn nodes: a both-tag node counts twice.
-/// Tagless leaf libraries count nowhere — no layer claim, never a wrong
-/// word. Returned fifth is the untagged count (header discloses it).
-fn layer_mix(graph: &Graph, draw: &Cluster) -> (usize, usize, usize, usize, usize) {
-    let mut found = 0;
-    let mut mid = 0;
-    let mut app = 0;
-    let mut iso = 0;
-    let mut untagged = 0;
-    for id in &draw.nodes {
-        let tags = graph.nodes.iter().find(|n| &n.id == id).map(|n| &n.layer);
-        if tags.is_none_or(|t| t.is_empty()) {
-            untagged += 1;
-            continue;
-        }
-        if tags.is_some_and(|t| t.contains(&Layer::Foundation)) {
-            found += 1;
-        }
-        if tags.is_some_and(|t| t.contains(&Layer::Middleware)) {
-            mid += 1;
-        }
-        if tags.is_some_and(|t| t.contains(&Layer::Application)) {
-            app += 1;
-        }
-        if tags.is_some_and(|t| t.contains(&Layer::Isolated)) {
-            iso += 1;
-        }
-    }
-    (found, mid, app, iso, untagged)
-}
-
-/// Live signals from drawn data: busiest repo by commit heat, most
-/// reused by dependence fan-in. Absent parts omit silently.
-fn live_sentence(graph: &Graph, draw: &Cluster) -> String {
-    let drawn: Vec<&jzombie_graph::graph::Node> = draw
-        .nodes
-        .iter()
-        .filter_map(|id| graph.nodes.iter().find(|n| &n.id == id))
-        .collect();
-    let hot = drawn
-        .iter()
-        .filter_map(|n| {
-            n.commit_heat
-                .or_else(|| n.commit_heat())
-                .map(|h| (n.name.as_str(), h))
-        })
-        .max_by(|a, b| {
-            a.1.partial_cmp(&b.1)
-                .unwrap_or(std::cmp::Ordering::Equal)
-                .then_with(|| b.0.cmp(a.0))
-        });
-    let fan = graph.node_fan_in();
-    let dep = draw
-        .nodes
-        .iter()
-        .map(|id| (id.as_str(), fan.get(id).copied().unwrap_or(0)))
-        .max_by(|a, b| a.1.cmp(&b.1).then_with(|| b.0.cmp(a.0)));
-    let mut s = String::new();
-    if let Some((name, _)) = hot {
-        s.push_str(&format!(" Busiest right now: {name};"));
-    }
-    if let Some((id, c)) = dep.filter(|(_, c)| *c > 0) {
-        let name = id.split('/').nth(1).unwrap_or(id);
-        s.push_str(&format!(" most reused: {name} ({c} use it)."));
-    }
-    s
-}
 /// Nodes + edges selected for the drawing. Strong edges are cargo-level
 /// dependence (`manifest`/`submodule`/`registry`); weak edges are `docs`
 /// references (runtime coupling the manifest can't see). Workflow stays

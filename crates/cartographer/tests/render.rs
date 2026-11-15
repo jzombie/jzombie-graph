@@ -94,9 +94,12 @@ fn fixture() -> Graph {
 #[test]
 fn cluster_draws_linked_nodes_with_braille_traces() {
     let md = render_cartographer(&fixture());
-    // Header derives from data: owner + counts, never brand strings.
+    // Header derives from data: owner title, never brand strings.
     assert!(md.contains("me portfolio cluster"), "data-driven title");
-    assert!(md.contains("How these 4 repos connect"), "drawn count");
+    assert!(
+        md.contains("Repos are in this chart through interconnectedness"),
+        "inclusion sentence, no counts"
+    );
     assert!(!md.contains("zenOSmosis"), "no hardcoded brand");
     assert!(!md.contains("Zenosmosis"), "old casing gone");
     assert!(
@@ -357,23 +360,20 @@ fn labels_abbreviate_rust_prefix() {
 }
 
 #[test]
-fn header_sentence_carries_layers_and_live_signals() {
-    // lib <- mid <- {app, app2}, no binaries: app/app2 are binary-less
-    // chain tops, so the middleware fallback claims them as assumed
-    // transit; mid has the fan-in. No heats stored, so no hottest clause.
+fn header_sentence_states_inclusion_with_no_details() {
     let md = render_cartographer(&fixture());
     assert!(
-        md.contains("1 foundation · 3 middleware · 0 application · 0 isolated"),
-        "layer mix from data:\n{md}"
+        md.contains("Repos are in this chart through interconnectedness: each one builds on, is used by, or documents another repo here."),
+        "inclusion sentence verbatim:\n{md}"
     );
-    assert!(
-        md.contains("most reused: mid (2 use it)"),
-        "fan-in leader from data:\n{md}"
-    );
-    assert!(
-        !md.contains("Busiest right now"),
-        "no heat, no busiest clause"
-    );
+    assert!(!md.contains("repos connect"), "no connect-counts phrasing");
+    assert!(!md.contains("links between"), "no edge counts");
+    assert!(!md.contains("foundation"), "no layer census");
+    assert!(!md.contains("middleware"), "no layer census");
+    assert!(!md.contains("application"), "no layer census");
+    assert!(!md.contains("isolated"), "no layer census");
+    assert!(!md.contains("Busiest right now"), "no busiest clause");
+    assert!(!md.contains("most reused"), "no fan-in clause");
     assert!(
         md.contains("left out unless something current uses them"),
         "omission rule stated"
