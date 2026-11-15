@@ -598,6 +598,15 @@ struct FlameDoc {
     pw: String,
     ph: String,
     pty: String,
+    ptx: String,
+    /// Twin embers pinned to the bar's right end: same band color,
+    /// overlapping by 6px, the second half a cycle behind so they
+    /// alternate instead of breathing in sync.
+    pfx1: String,
+    pfx2: String,
+    port_alt_delay: String,
+    port_color: String,
+    port_pulse: String,
     /// Right track end (left end is `px`): the frame never moves, so the
     /// `30d ago → today` endpoint labels are static while per-card ticks
     /// travel with their card.
@@ -671,6 +680,12 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
         pw: String::new(),
         ph: String::new(),
         pty: String::new(),
+        ptx: String::new(),
+        pfx1: String::new(),
+        pfx2: String::new(),
+        port_alt_delay: String::new(),
+        port_color: String::new(),
+        port_pulse: String::new(),
         ax1: String::new(),
         dx: f1(FLAME_X0),
         dy: f1(100.0),
@@ -855,6 +870,15 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
         ),
         None => format!("portfolio \u{00b7} {total} commits / 30d"),
     };
+    // Ember for the portfolio bar: band color, breathing with the
+    // band's motion (heating fast, steady slow, else static). The twin
+    // runs half a cycle behind so the pair alternates like a flicker.
+    let (port_color, port_pulse, port_alt_delay) = match heat_band(port_heat) {
+        "heating" => (palette::heating(), "pulse", "-1.1s"),
+        "steady" => (palette::steady(), "pulse slow", "-1.7s"),
+        "cooling" => (palette::cooling(), "", "0s"),
+        _ => (palette::dormant(), "", "0s"),
+    };
     let mut note = String::from(
         "color = pace vs own usual (1.0 = usual); bands run oldest → newest, lines mark the 1d / 5d / 15d window edges",
     );
@@ -878,6 +902,15 @@ fn flame_rows(graph_json: &str) -> anyhow::Result<FlameDoc> {
         pw: f1(FLAME_TRACK),
         ph: f1(34.0),
         pty: f1(74.0),
+        ptx: f1(28.0),
+        // Twin embers pinned to the bar's right end (12px pad, 6px
+        // overlap): label length never matters, so nightly numbers
+        // can't collide with them.
+        pfx1: f1(FLAME_X0 + FLAME_TRACK - 38.0),
+        pfx2: f1(FLAME_X0 + FLAME_TRACK - 28.0),
+        port_color,
+        port_pulse: port_pulse.to_string(),
+        port_alt_delay: port_alt_delay.to_string(),
         ax1: f1(FLAME_X0 + FLAME_TRACK),
         dx: f1(FLAME_X0),
         dy: f1(100.0),
@@ -943,7 +976,9 @@ pub fn render_flame_svg(graph_json: &str) -> anyhow::Result<String> {
             APPEND out.svg "<text x=\"16\" y=\"60\" font-size=\"14\" fill=\"{{ $doc.muted }}\">{{ $doc.msg }}</text>"
         } ELSE {
             APPEND out.svg "<rect x=\"{{ $doc.px }}\" y=\"{{ $doc.py }}\" width=\"{{ $doc.pw }}\" height=\"{{ $doc.ph }}\" rx=\"4\" fill=\"#222\"/>"
-            APPEND out.svg "<text x=\"28\" y=\"{{ $doc.pty }}\" class=\"lbl\">{{ $doc.port_label }}</text>"
+            APPEND out.svg "<text x=\"{{ $doc.ptx }}\" y=\"{{ $doc.pty }}\" class=\"lbl\">{{ $doc.port_label }}</text>"
+            APPEND out.svg "<svg x=\"{{ $doc.pfx1 }}\" y=\"61\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"{{ $doc.port_color }}\" class=\"{{ $doc.port_pulse }}\"><path d=\"M8 0 C10 3 13 6 13 10 A5 5 0 0 1 3 10 C3 8 4 6.5 5 5.5 C5.5 7 6.5 7.5 6.5 7.5 C6 5 7 2.5 8 0 Z\"/></svg>"
+            APPEND out.svg "<svg x=\"{{ $doc.pfx2 }}\" y=\"59\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"{{ $doc.port_color }}\" class=\"{{ $doc.port_pulse }}\" style=\"animation-delay:{{ $doc.port_alt_delay }}\"><path d=\"M8 0 C10 3 13 6 13 10 A5 5 0 0 1 3 10 C3 8 4 6.5 5 5.5 C5.5 7 6.5 7.5 6.5 7.5 C6 5 7 2.5 8 0 Z\"/></svg>"
             APPEND out.svg "<text x=\"{{ $doc.px }}\" y=\"{{ $doc.tick_ly }}\" font-size=\"10\" fill=\"#9198a1\">30d ago</text>"
             APPEND out.svg "<text x=\"{{ $doc.ax1 }}\" y=\"{{ $doc.tick_ly }}\" font-size=\"10\" text-anchor=\"end\" fill=\"#9198a1\">today</text>"
             APPEND out.svg $doc.grads
