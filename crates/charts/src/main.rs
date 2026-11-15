@@ -93,6 +93,41 @@ fn main() {
         }
         return;
     }
+    // Pins emit a file family — one SVG per repo plus the fragment
+    // table that embeds them. Fixed layout: no --stdout/--output.
+    // Stale cards from a previous top-6 never linger: the lane owns the
+    // whole `portfolio-graph-pin-*` set, so it clears before writing.
+    if cli.chart == Chart::Pins {
+        if cli.stdout || cli.output.is_some() {
+            eprintln!("--chart pins writes the fixed family paths; no --stdout/--output");
+            std::process::exit(1);
+        }
+        let bundle = match charts::render_pins_bundle(&text) {
+            Ok(b) => b,
+            Err(e) => {
+                eprintln!("render error: {e:#}");
+                std::process::exit(1);
+            }
+        };
+        let dir = std::path::Path::new(jzombie_graph::paths::CHARTS_DIR);
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let name = entry.file_name().to_string_lossy().into_owned();
+                if name.starts_with("portfolio-graph-pin-") && name.ends_with(".svg") {
+                    let _ = std::fs::remove_file(entry.path());
+                }
+            }
+        }
+        for (rel, content) in &bundle {
+            if let Err(e) =
+                jzombie_graph::output::write_file(std::path::Path::new(rel), content)
+            {
+                eprintln!("writing {rel}: {e:#}");
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
     // Indicators also drop one-off badge files beside the proof strip
     // plus the committed render proof (table + badges) — the strip
     // is the look-check, the files are what tables embed.
@@ -107,7 +142,7 @@ fn main() {
         Chart::Share => charts::render_share_svg(&text),
         Chart::Focus => charts::render_focus_svg(&text),
         Chart::Flame => charts::render_flame_svg(&text),
-        Chart::Pins => charts::render_pins_svg(&text),
+        Chart::Pins => unreachable!("handled by the family return above"),
         Chart::Indicators => charts::render_indicators_svg(),
         Chart::Data => unreachable!("handled by the early return above"),
     };
@@ -121,7 +156,7 @@ fn main() {
     let default = match cli.chart {
         Chart::Focus => jzombie_graph::paths::DEVELOPER_FOCUS_SVG,
         Chart::Flame => jzombie_graph::paths::FLAME_SVG,
-        Chart::Pins => jzombie_graph::paths::PINS_SVG,
+        Chart::Pins => unreachable!("handled by the family return above"),
         Chart::Indicators => jzombie_graph::paths::INDICATORS_SVG,
         Chart::Share => jzombie_graph::paths::SHARE_SVG,
         Chart::Data => unreachable!("handled by the early return above"),

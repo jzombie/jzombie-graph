@@ -922,23 +922,22 @@ pub fn render_flame_svg(graph_json: &str) -> anyhow::Result<String> {
 
 /// Pinned-repo cards mimicking GitHub's Popular repositories bubbles:
 /// 400px bordered card, book icon + name header, wrapped description,
-/// language dot + stars + forks footer. Top-6 by Developer Focus in a
+/// language dot + stars + forks footer. Top-6 by stars in a
 /// 2-column grid, uniform height, so the top of the dashboard reads
 /// like a profile's pinned section.
 const PINS_TOPN: usize = 6;
-const PINS_COLS: usize = 2;
 const PIN_W: f64 = 400.0;
-const PIN_GAP: f64 = 24.0;
 const PIN_NAME_MAX: usize = 35;
 const PIN_DESC_WIDTH: usize = 59;
 const PIN_DESC_MAX_LINES: usize = 3;
 
-/// Card palette: github-readme-stats `default_repocard` theme.
-const PIN_TITLE: &str = "#2f80ed";
-const PIN_ICON: &str = "#586069";
-const PIN_TEXT: &str = "#434d58";
-const PIN_BG: &str = "#fffefe";
-const PIN_BORDER: &str = "#e4e2e2";
+/// Card palette: GitHub dark-mode bubbles — black card, dark link blue,
+/// secondary gray type. Language dots keep linguist colors.
+const PIN_TITLE: &str = "#4493f8";
+const PIN_ICON: &str = "#9198a1";
+const PIN_TEXT: &str = "#9198a1";
+const PIN_BG: &str = "#000000";
+const PIN_BORDER: &str = "#30363d";
 
 /// Linguist language colors for the footer dot; unknown maps to the
 /// same `#333` fallback the reference card uses.
@@ -1018,15 +1017,14 @@ fn est_w(s: &str) -> f64 {
 
 /// One pinned card: precomputed strings, so the template carries no
 /// coordinates — same split as every other chart (Rust shapes, OxDock
-/// emits).
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
-struct PinRow {
-    x: String,
-    y: String,
-    h: String,
-    bw: String,
-    bh: String,
-    fy: String,
+/// emits). Each card renders to its own SVG file, so every bubble
+/// links to its own repo.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+struct PinCard {
+    /// Temp workspace filename (`pin-{i}.svg`); final path rides `dest`.
+    file: String,
+    /// Final committed path, e.g. `proof/charts/portfolio-graph-pin-foo.svg`.
+    dest: String,
     url: String,
     name: String,
     d1: String,
@@ -1040,80 +1038,86 @@ struct PinRow {
     forks: String,
     fx_star: String,
     fx_fork: String,
+    w: String,
+    h: String,
+    bw: String,
+    bh: String,
+    fy: String,
 }
 
-/// Pins document: static decor prebuilt in Rust, cards interpolated.
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+/// One fragment table row: two linked-card cells. Headers stay blank:
+/// like the data table's `" repo"` sort key, spaces survive
+/// `MAP_TO_MD_TABLE`, so a single and double space order `c1` first
+/// with empty header cells.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+struct PinTableRow {
+    #[serde(rename = " ")]
+    c1: String,
+    #[serde(rename = "  ")]
+    c2: String,
+}
+
+/// Pins document: static decor prebuilt in Rust, cards + fragment
+/// interpolated. One oxdock run writes the whole family.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 struct PinDoc {
     header: String,
     footer: String,
     empty: bool,
     msg: String,
     muted: String,
-    w: String,
-    h: String,
-    rows: Vec<PinRow>,
+    font: String,
+    css: String,
+    bg: String,
+    border: String,
+    icon: String,
+    title: String,
+    cards: Vec<PinCard>,
+    table_rows: Vec<PinTableRow>,
 }
 
-/// Pins rows: top-6 own-work repos by Developer Focus, ties break on
-/// 30d commits then name. Scoreless repos sink below scored ones.
+/// Pins rows: top-6 own-work repos by stars, ties break on forks
+/// then name — the same popularity order GitHub's own section uses.
 fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
     let graph = jzombie_graph::graph::Graph::from_json(graph_json)?;
-    let now = graph.generated_at;
     let empty = PinDoc {
-        header: pins_header(824.0, 120.0),
-        footer: "</svg>".to_string(),
+        header: String::new(),
+        footer: String::new(),
         empty: true,
         msg: "No commits in trailing 30d".to_string(),
         muted: palette::muted(),
-        w: f1(824.0),
-        h: f1(120.0),
-        rows: vec![],
+        font: palette::family(),
+        css: pins_card_css(),
+        bg: PIN_BG.to_string(),
+        border: PIN_BORDER.to_string(),
+        icon: PIN_ICON.to_string(),
+        title: "Popular repositories".to_string(),
+        cards: vec![],
+        table_rows: vec![],
     };
-    let mut repos: Vec<(&jzombie_graph::graph::Node, f32)> = graph
+    let mut repos: Vec<&jzombie_graph::graph::Node> = graph
         .nodes
         .iter()
         .filter(|nd| !nd.private && jzombie_graph::graph::is_own_work(nd))
         .filter(|nd| nd.commits_30d > 0)
-        .map(|nd| {
-            let f = nd.focus.or_else(|| nd.focus(&now)).unwrap_or(f32::MIN);
-            (nd, f)
-        })
         .collect();
     if repos.is_empty() {
         return Ok(empty);
     }
     repos.sort_by(|a, b| {
-        b.1.partial_cmp(&a.1)
-            .unwrap_or(std::cmp::Ordering::Equal)
-            .then_with(|| b.0.commits_30d.cmp(&a.0.commits_30d))
-            .then_with(|| a.0.name.cmp(&b.0.name))
+        b.stars
+            .cmp(&a.stars)
+            .then_with(|| b.forks_count.cmp(&a.forks_count))
+            .then_with(|| a.name.cmp(&b.name))
     });
     let shown = &repos[..repos.len().min(PINS_TOPN)];
-    // Card height follows the reference formula; the grid takes the max
-    // so rows stay aligned whatever each description needs.
-    let card_h = |n: &jzombie_graph::graph::Node| -> (Vec<String>, f64) {
-        let desc = n.description.as_deref().unwrap_or("");
+    // Card height follows the reference formula per card — no grid to
+    // align now that each bubble is its own file.
+    let mut cards: Vec<PinCard> = vec![];
+    for (i, nd) in shown.iter().enumerate() {
+        let desc = nd.description.as_deref().unwrap_or("");
         let lines = wrap_desc(desc);
-        let h = if lines.len() > 1 {
-            120.0
-        } else {
-            110.0
-        } + lines.len() as f64 * 10.0;
-        (lines, h)
-    };
-    let grid_h = shown
-        .iter()
-        .map(|(n, _)| card_h(n).1)
-        .fold(0.0_f64, f64::max);
-    let n = shown.len();
-    let cols = n.min(PINS_COLS);
-    let rows_n = n.div_ceil(PINS_COLS);
-    let w = cols as f64 * PIN_W + (cols.saturating_sub(1)) as f64 * PIN_GAP;
-    let h = rows_n as f64 * grid_h + (rows_n.saturating_sub(1)) as f64 * PIN_GAP;
-    let mut rows: Vec<PinRow> = vec![];
-    for (i, (nd, _)) in shown.iter().enumerate() {
-        let (lines, _) = card_h(nd);
+        let h = if lines.len() > 1 { 120.0 } else { 110.0 } + lines.len() as f64 * 10.0;
         let mut d = lines.clone();
         while d.len() < 3 {
             d.push(String::new());
@@ -1123,21 +1127,32 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
         } else {
             nd.name.clone()
         };
+        let slug: String = nd
+            .name
+            .chars()
+            .map(|c| {
+                if c.is_ascii_alphanumeric() {
+                    c.to_ascii_lowercase()
+                } else {
+                    '-'
+                }
+            })
+            .collect();
         let lang = nd.language.as_deref().unwrap_or("Unspecified");
         let stars = k_fmt(nd.stars);
         let forks = k_fmt(nd.forks_count);
         let lang_w = 10.0 + 8.0 + est_w(lang);
         let star_w = 16.0 + 6.0 + est_w(&stars);
-        let col = (i % PINS_COLS) as f64;
-        let row = (i / PINS_COLS) as f64;
-        rows.push(PinRow {
-            x: f1(col * (PIN_W + PIN_GAP)),
-            y: f1(row * (grid_h + PIN_GAP)),
-            h: f1(grid_h),
-            bw: f1(PIN_W - 1.0),
-            bh: f1(grid_h - 1.0),
-            fy: f1(grid_h - 20.0),
-            url: format!("https://github.com/{}", nd.id),
+        let url = format!("https://github.com/{}", nd.id);
+        let dest = format!(
+            "{}/portfolio-graph-pin-{}.svg",
+            jzombie_graph::paths::CHARTS_DIR,
+            slug
+        );
+        cards.push(PinCard {
+            file: format!("pin-{i}.svg"),
+            dest: dest.clone(),
+            url: url.clone(),
             name: xml_escape(&name),
             d1: xml_escape(&d[0]),
             d2: xml_escape(&d[1]),
@@ -1150,28 +1165,56 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
             forks: xml_escape(&forks),
             fx_star: f1(lang_w + 25.0),
             fx_fork: f1(lang_w + 25.0 + star_w + 25.0),
+            w: f1(PIN_W),
+            h: f1(h),
+            bw: f1(PIN_W - 1.0),
+            bh: f1(h - 1.0),
+            fy: f1(h - 20.0),
+        });
+    }
+    // Fragment table: two linked bubbles per row, pairs in rank order.
+    // A short tail leaves the second cell empty rather than a junk row.
+    let mut table_rows: Vec<PinTableRow> = vec![];
+    for pair in cards.chunks(2) {
+        let cell = |c: &PinCard| {
+            format!(
+                "[![{}](charts/{})]({})",
+                c.name,
+                c.dest
+                    .rsplit('/')
+                    .next()
+                    .unwrap_or(&c.dest),
+                c.url
+            )
+        };
+        table_rows.push(PinTableRow {
+            c1: cell(&pair[0]),
+            c2: pair.get(1).map(cell).unwrap_or_default(),
         });
     }
     Ok(PinDoc {
-        header: pins_header(w, h),
-        footer: "</svg>".to_string(),
+        header: String::new(),
+        footer: String::new(),
         empty: false,
         msg: String::new(),
         muted: palette::muted(),
-        w: f1(w),
-        h: f1(h),
-        rows,
+        font: palette::family(),
+        css: pins_card_css(),
+        bg: PIN_BG.to_string(),
+        border: PIN_BORDER.to_string(),
+        icon: PIN_ICON.to_string(),
+        title: "Popular repositories".to_string(),
+        cards,
+        table_rows,
     })
 }
 
-/// Pins chrome: card font classes on the shared Segoe stack, no
-/// animations — the bubbles are static by design.
-fn pins_header(w: f64, h: f64) -> String {
+/// Pins chrome: per-card font classes on the shared Segoe stack, no
+/// animations — the bubbles are static by design. One copy rides every
+/// card file so each SVG stands alone.
+fn pins_card_css() -> String {
     format!(
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{W}\" height=\"{H}\" viewBox=\"0 0 {W} {H}\" role=\"img\" font-family=\"{family}\"><title>Popular repositories</title><style>.pname {{ font: 600 18px 'Segoe UI', Ubuntu, Sans-Serif; fill: {title}; }} .pdesc {{ font: 400 13px 'Segoe UI', Ubuntu, Sans-Serif; fill: {text}; }} .pfoot {{ font: 400 12px 'Segoe UI', Ubuntu, Sans-Serif; fill: {text}; }}</style>",
-        W = f1(w),
-        H = f1(h),
-        family = palette::family(),
+        ".pname {{ font: 600 18px 'Segoe UI', Ubuntu, Sans-Serif; fill: {title}; }} .pdesc {{ font: 400 13px 'Segoe UI', Ubuntu, Sans-Serif; fill: {text}; }} .pfoot {{ font: 400 12px 'Segoe UI', Ubuntu, Sans-Serif; fill: {text}; }}",
         title = PIN_TITLE,
         text = PIN_TEXT,
     )
@@ -1186,47 +1229,72 @@ fn pins(graph_json: String) -> anyhow::Result<Value> {
     )?)?))
 }
 
-/// Render the popular-repositories pins for validated graph JSON. Same
-/// transport as the pie: embedded script emits markup into a temp
-/// workspace.
-pub fn render_pins_svg(graph_json: &str) -> anyhow::Result<String> {
+/// Render the popular-repositories pins family: one SVG per top repo
+/// plus the fragment table that embeds them, each bubble linking to
+/// its own repo. Returns `(committed relpath, bytes)` pairs; the
+/// caller writes the bytes (so output paths stay in one place).
+/// Same transport as the pie: embedded script emits markup into a
+/// temp workspace.
+pub fn render_pins_bundle(graph_json: &str) -> anyhow::Result<Vec<(String, String)>> {
     let engine = engine();
     let arg = transport_in(graph_json);
     let steps: Vec<oxdock_parser::Step> = oxdock! {
-        modules: [CHARTS],
+        modules: [CHARTS, MARKDOWN],
         IMPORT [CHARTS]
         IMPORT [STD]
+        IMPORT [MARKDOWN]
         LET $doc_json: STRING = CHARTS::PINS(#arg)
         WRITE rows.json $doc_json
         LET $doc: MAP<ANY> = LOAD_JSON("rows.json")
-        WRITE out.svg $doc.header
+        MKDIR svg
+        MKDIR frag
         IF $doc.empty {
-            APPEND out.svg "<text x=\"16\" y=\"60\" font-size=\"14\" fill=\"{{ $doc.muted }}\">{{ $doc.msg }}</text>"
+            WRITE frag/pins.md "## Popular repositories\n\n*{{ $doc.msg }}*\n"
         } ELSE {
-            FOR $r: MAP<ANY> IN $doc.rows {
-                APPEND out.svg "<g transform=\"translate({{ $r.x }},{{ $r.y }})\"><rect x=\"0.5\" y=\"0.5\" width=\"{{ $r.bw }}\" height=\"{{ $r.bh }}\" rx=\"4.5\" fill=\"#fffefe\" stroke=\"#e4e2e2\"/><a href=\"{{ $r.url }}\"><g transform=\"translate(25,35)\"><svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"#586069\"><path fill-rule=\"evenodd\" d=\"M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 110-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1V9h-8c-.356 0-.694.074-1 .208V2.5a1 1 0 011-1h8zM5 12.25v3.25a.25.25 0 00.4.2l1.45-1.087a.25.25 0 01.3 0L8.6 15.7a.25.25 0 00.4-.2v-3.25a.25.25 0 00-.25-.25h-3.5a.25.25 0 00-.25.25z\"/></svg><text x=\"41\" y=\"0\" class=\"pname\">{{ $r.name }}</text></g>"
-                APPEND out.svg "<text x=\"25\" y=\"62\" class=\"pdesc\">{{ $r.d1 }}</text>"
-                IF $r.has2 {
-                    APPEND out.svg "<text x=\"25\" y=\"78\" class=\"pdesc\">{{ $r.d2 }}</text>"
+            FOR $c: MAP<ANY> IN $doc.cards {
+                WRITE svg/{{ $c.file }} "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{{ $c.w }}\" height=\"{{ $c.h }}\" viewBox=\"0 0 {{ $c.w }} {{ $c.h }}\" role=\"img\" font-family=\"{{ $doc.font }}\"><title>{{ $c.name }}</title><style>{{ $doc.css }}</style><a href=\"{{ $c.url }}\"><rect x=\"0.5\" y=\"0.5\" width=\"{{ $c.bw }}\" height=\"{{ $c.bh }}\" rx=\"4.5\" fill=\"{{ $doc.bg }}\" stroke=\"{{ $doc.border }}\"/><g transform=\"translate(25,35)\">"
+                APPEND svg/{{ $c.file }} "<svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 110-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1V9h-8c-.356 0-.694.074-1 .208V2.5a1 1 0 011-1h8zM5 12.25v3.25a.25.25 0 00.4.2l1.45-1.087a.25.25 0 01.3 0L8.6 15.7a.25.25 0 00.4-.2v-3.25a.25.25 0 00-.25-.25h-3.5a.25.25 0 00-.25.25z\"/></svg><text x=\"41\" y=\"0\" class=\"pname\">{{ $c.name }}</text></g>"
+                APPEND svg/{{ $c.file }} "<text x=\"25\" y=\"62\" class=\"pdesc\">{{ $c.d1 }}</text>"
+                IF $c.has2 {
+                    APPEND svg/{{ $c.file }} "<text x=\"25\" y=\"78\" class=\"pdesc\">{{ $c.d2 }}</text>"
                 }
-                IF $r.has3 {
-                    APPEND out.svg "<text x=\"25\" y=\"94\" class=\"pdesc\">{{ $r.d3 }}</text>"
+                IF $c.has3 {
+                    APPEND svg/{{ $c.file }} "<text x=\"25\" y=\"94\" class=\"pdesc\">{{ $c.d3 }}</text>"
                 }
-                APPEND out.svg "<g transform=\"translate(30,{{ $r.fy }})\" class=\"pfoot\"><circle cx=\"0\" cy=\"-4\" r=\"5\" fill=\"{{ $r.lang_color }}\"/><text x=\"14\" y=\"0\">{{ $r.lang }}</text><g transform=\"translate({{ $r.fx_star }},0)\"><svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"#586069\"><path fill-rule=\"evenodd\" d=\"M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25zm0 2.445L6.615 5.5a.75.75 0 01-.564.41l-3.097.45 2.24 2.184a.75.75 0 01.216.664l-.528 3.084 2.769-1.456a.75.75 0 01.698 0l2.77 1.456-.53-3.084a.75.75 0 01.216-.664l2.24-2.183-3.096-.45a.75.75 0 01-.564-.41L8 2.694v.001z\"/></svg><text x=\"22\" y=\"0\">{{ $r.stars }}</text></g><g transform=\"translate({{ $r.fx_fork }},0)\"><svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"#586069\"><path fill-rule=\"evenodd\" d=\"M5 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm0 2.122a2.25 2.25 0 10-1.5 0v.878A2.25 2.25 0 005.75 8.5h1.5v2.128a2.251 2.251 0 101.5 0V8.5h1.5a2.25 2.25 0 002.25-2.25v-.878a2.25 2.25 0 10-1.5 0v.878a.75.75 0 01-.75.75h-4.5A.75.75 0 015 6.25v-.878zm3.75 7.378a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm3-8.75a.75.75 0 100-1.5.75.75 0 000 1.5z\"></path></svg><text x=\"22\" y=\"0\">{{ $r.forks }}</text></g></g>"
-                APPEND out.svg "</a></g>"
+                APPEND svg/{{ $c.file }} "<g transform=\"translate(30,{{ $c.fy }})\" class=\"pfoot\"><circle cx=\"0\" cy=\"-4\" r=\"5\" fill=\"{{ $c.lang_color }}\"/><text x=\"14\" y=\"0\">{{ $c.lang }}</text><g transform=\"translate({{ $c.fx_star }},0)\"><svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25zm0 2.445L6.615 5.5a.75.75 0 01-.564.41l-3.097.45 2.24 2.184a.75.75 0 01.216.664l-.528 3.084 2.769-1.456a.75.75 0 01.698 0l2.77 1.456-.53-3.084a.75.75 0 01.216-.664l2.24-2.183-3.096-.45a.75.75 0 01-.564-.41L8 2.694v.001z\"/></svg><text x=\"22\" y=\"0\">{{ $c.stars }}</text></g><g transform=\"translate({{ $c.fx_fork }},0)\"><svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M5 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm0 2.122a2.25 2.25 0 10-1.5 0v.878A2.25 2.25 0 005.75 8.5h1.5v2.128a2.251 2.251 0 101.5 0V8.5h1.5a2.25 2.25 0 002.25-2.25v-.878a2.25 2.25 0 10-1.5 0v.878a.75.75 0 01-.75.75h-4.5A.75.75 0 015 6.25v-.878zm3.75 7.378a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm3-8.75a.75.75 0 100-1.5.75.75 0 000 1.5z\"></path></svg><text x=\"22\" y=\"0\">{{ $c.forks }}</text></g></g>"
+                APPEND svg/{{ $c.file }} "</a></svg>"
             }
+            WRITE frag/pins.md "## Popular repositories\n\nTop 6 by stars — the repos the community reaches for.\n\n"
+            APPEND frag/pins.md "{{ MARKDOWN::MAP_TO_MD_TABLE($doc.table_rows) }}"
         }
-        APPEND out.svg $doc.footer
-        LET $check: STRING = READ out.svg
-        ASSERT_CONTAINS $check "<svg"
-        ASSERT_CONTAINS $check "</svg>"
+        LET $check: STRING = READ frag/pins.md
+        ASSERT_CONTAINS $check "Popular repositories"
     };
     let temp = oxdock::GuardedPath::tempdir().expect("tempdir");
     let root = temp.as_guarded_path().clone();
     engine.run_steps_without_snapshot(&root, &steps)?;
     let resolver = oxdock::PathResolver::new(root.as_path(), root.as_path()).expect("resolver");
-    let out = root.join("out.svg").expect("out path");
-    Ok(resolver.read_to_string(&out).expect("read out"))
+    // Card inventory rides rows.json: deterministic temp names in,
+    // committed relpaths out.
+    let doc_path = root.join("rows.json").expect("doc path");
+    let doc: PinDoc =
+        serde_json::from_str(&resolver.read_to_string(&doc_path).expect("read doc"))?;
+    let mut bundle: Vec<(String, String)> = vec![];
+    for card in &doc.cards {
+        let rel = format!("svg/{}", card.file);
+        let temp_path = root.join(&rel).expect("card path");
+        let svg = resolver.read_to_string(&temp_path).expect("read card");
+        assert!(svg.starts_with("<svg "));
+        assert!(svg.ends_with("</svg>"));
+        bundle.push((card.dest.clone(), svg));
+    }
+    let frag_path = root.join("frag/pins.md").expect("frag path");
+    let frag = resolver.read_to_string(&frag_path).expect("read frag");
+    bundle.push((
+        jzombie_graph::paths::PINS_FRAG_MD.to_string(),
+        frag,
+    ));
+    Ok(bundle)
 }
 
 fn engine() -> Engine {

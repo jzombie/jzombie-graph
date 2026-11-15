@@ -1,4 +1,4 @@
-//! End-to-end: fixture JSON in, pins SVG out, snapshot-pinned.
+//! End-to-end: fixture JSON in, pins family out, snapshots pinned.
 
 use jzombie_graph::graph::{BranchHeat, Graph, Layer, Node};
 
@@ -78,8 +78,7 @@ fn node(
     }
 }
 
-#[test]
-fn pins_top6_by_focus_snapshot() {
+fn seven() -> Vec<Node> {
     let descs = [
         "Async Rust client for SEC EDGAR: fetch filings, fund holdings, XBRL data, and IPO registrations with compliant rate limiting",
         "Nightly map of my GitHub portfolio",
@@ -89,40 +88,67 @@ fn pins_top6_by_focus_snapshot() {
         "Zero-copy access, schema-less, append-only, SIMD-optimized binary storage engine for Rust",
         "Seventh repo that must not render",
     ];
+    // Stars drive the order; r1/r2 tie breaks on forks. Focus scores
+    // run the other way to prove they no longer matter.
+    let stats = [
+        (30u32, 0u32, 0.0f32),
+        (25, 9, 1.0),
+        (25, 3, 2.0),
+        (20, 1, 3.0),
+        (15, 4, 4.0),
+        (10, 2, 5.0),
+        (1, 0, 99.0),
+    ];
     let langs = ["Rust", "Rust", "Rust", "Rust", "Rust", "Rust", "Go"];
     let mut nodes = vec![];
     for (i, name) in ["r0", "r1", "r2", "r3", "r4", "r5", "r6"].iter().enumerate() {
+        let (stars, forks, focus) = stats[i];
         nodes.push(node(
             name,
             Some(descs[i]),
             Some(langs[i]),
-            (i as u32 + 1) * 3,
-            i as u32,
-            Some(6.0 - i as f32),
+            stars,
+            forks,
+            Some(focus),
             (i as u32 + 1) * 5,
         ));
     }
-    let g = jzombie_graph::output::render_json(&Graph::new(nodes, vec![])).unwrap();
-    let svg = charts::render_pins_svg(&g).unwrap();
-    assert!(svg.starts_with("<svg "));
-    assert!(svg.ends_with("</svg>"));
-    // Focus order, hottest first; the seventh repo stays out.
-    let top = svg.find("r0").unwrap();
-    let second = svg.find("r1").unwrap();
-    assert!(top < second, "focus desc");
-    assert!(!svg.contains("r6"), "top-6 cut");
-    assert!(svg.contains("#dea584"), "Rust dot");
-    assert!(svg.contains("https://github.com/me/r0"), "cards link out");
-    // Six bordered cards in a 2-col grid.
-    assert_eq!(svg.matches("rx=\"4.5\"").count(), 6);
-    insta::assert_snapshot!("pins", svg);
+    nodes
+}
+
+#[test]
+fn pins_bundle_one_card_per_repo_each_linking_out() {
+    let g = jzombie_graph::output::render_json(&Graph::new(seven(), vec![])).unwrap();
+    let bundle = charts::render_pins_bundle(&g).unwrap();
+    // Six cards plus the fragment that embeds them.
+    assert_eq!(bundle.len(), 7);
+    let paths: Vec<&str> = bundle.iter().map(|(p, _)| p.as_str()).collect();
+    assert!(paths.contains(&"proof/charts/portfolio-graph-pin-r0.svg"));
+    assert!(paths.contains(&"proof/fragments/pins.md"));
+    assert!(!paths.iter().any(|p| p.contains("r6")), "top-6 cut");
+    // Stars desc, forks break the r1/r2 tie, focus ignored.
+    let first = &bundle[0].1;
+    assert!(first.contains("https://github.com/me/r0"), "top card links out");
+    assert!(first.contains("fill=\"#000000\""), "black card");
+    assert!(first.contains("#dea584"), "Rust dot");
+    let frag = &bundle[6].1;
+    assert!(frag.contains("## Popular repositories"));
+    let r0 = frag.find("me/r0").unwrap();
+    let r1 = frag.find("me/r1").unwrap();
+    let r2 = frag.find("me/r2").unwrap();
+    assert!(r0 < r1 && r1 < r2, "fragment rank order");
+    assert!(!frag.contains("r6"), "tail stays out of the fragment");
+    insta::assert_snapshot!("pins_card", first);
+    insta::assert_snapshot!("pins_frag", frag);
 }
 
 #[test]
 fn pins_empty_when_no_commits() {
     let nodes = vec![node("quiet", None, None, 0, 0, None, 0)];
     let g = jzombie_graph::output::render_json(&Graph::new(nodes, vec![])).unwrap();
-    let svg = charts::render_pins_svg(&g).unwrap();
-    assert!(svg.contains("No commits in trailing 30d"));
-    insta::assert_snapshot!("pins_empty", svg);
+    let bundle = charts::render_pins_bundle(&g).unwrap();
+    assert_eq!(bundle.len(), 1);
+    assert_eq!(bundle[0].0, "proof/fragments/pins.md");
+    assert!(bundle[0].1.contains("No commits in trailing 30d"));
+    insta::assert_snapshot!("pins_empty", bundle[0].1);
 }

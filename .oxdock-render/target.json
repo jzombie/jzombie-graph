@@ -10,13 +10,13 @@
           "proof/fragments/portfolio-graph.md"
         ],
         "sections": [
-          ".oxdock-render/fragments/popular-repos.md",
           ".oxdock-render/fragments/commit-share.md",
           ".oxdock-render/fragments/developer-focus.md",
           ".oxdock-render/fragments/heat-flame.md"
         ],
         "data": [
-          "proof/fragments/commit-data.md"
+          "proof/fragments/commit-data.md",
+          "proof/fragments/pins.md"
         ]
       }
     }

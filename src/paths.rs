@@ -31,14 +31,18 @@ pub const SHARE_SVG: &str = "proof/charts/portfolio-graph-share.svg";
 /// Developer Focus bars SVG.
 pub const DEVELOPER_FOCUS_SVG: &str = "proof/charts/portfolio-graph-developer-focus.svg";
 
-/// Commit activity flame SVG: portfolio → repos → branches → embers, widths pro-rata
-/// 30d share, color + motion from the heat bands.
+/// Commit activity flame SVGs (strip + per-band badges live under
+/// `proof/charts/` and `proof/indicators/`): portfolio → repos → branches
+/// → embers, widths pro-rata 30d share, color + motion from the heat bands.
 pub const FLAME_SVG: &str = "proof/charts/portfolio-graph-flame.svg";
 
-/// Popular repositories pins SVG: top-6 by Developer Focus as
-/// GitHub-style repo cards, so the top of the dashboard reads like a
-/// pinned section.
-pub const PINS_SVG: &str = "proof/charts/portfolio-graph-pins.svg";
+/// Pinned repo cards live one-per-file under this dir, slugged by repo
+/// name: `portfolio-graph-pin-{slug}.svg`.
+pub const CHARTS_DIR: &str = "proof/charts";
+
+/// Popular repositories fragment: the 2-col table embedding the pin
+/// cards, regenerated with the family — never hand-edited.
+pub const PINS_FRAG_MD: &str = "proof/fragments/pins.md";
 
 /// Status-indicator strip SVG. The per-repo badges below are what
 /// tables embed; the strip above is the look-check.
