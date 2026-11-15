@@ -1059,6 +1059,11 @@ struct PinCard {
     lang_color: String,
     stars: String,
     forks: String,
+    /// Forced advances (`textLength`) for the footer texts: right-edge
+    /// anchoring is exact on every viewer font instead of estimated.
+    tl_lang: String,
+    tl_stars: String,
+    tl_forks: String,
     fx_star: String,
     fx_fork: String,
     w: String,
@@ -1165,6 +1170,9 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
         let stars = k_fmt(nd.stars);
         let forks = k_fmt(nd.forks_count);
         let lang_raw = nd.language.as_deref();
+        // Left cluster: language, then stars, then forks. Left-anchored
+        // rows degrade gracefully under font substitution; right-edge
+        // anchoring clipped instead.
         let lang_w = match lang_raw {
             Some(l) => 10.0 + 4.0 + est_w(l),
             None => 0.0,
@@ -1175,6 +1183,7 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
         } else {
             0.0
         };
+        let fx_fork = fx_star + star_w + 12.0;
         let url = format!("https://github.com/{}", nd.id);
         let dest = format!(
             "{}/portfolio-graph-pin-{}.svg",
@@ -1201,8 +1210,11 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
             lang_color: lang_raw.map(lang_color).unwrap_or("").to_string(),
             stars: xml_escape(&stars),
             forks: xml_escape(&forks),
+            tl_lang: f1(est_w(lang_raw.unwrap_or(""))),
+            tl_stars: f1(est_w(&stars)),
+            tl_forks: f1(est_w(&forks)),
             fx_star: f1(fx_star),
-            fx_fork: f1(fx_star + star_w + 12.0),
+            fx_fork: f1(fx_fork),
             w: f1(PIN_W),
             h: f1(h_max),
             bw: f1(PIN_W - 1.0),
@@ -1306,9 +1318,9 @@ pub fn render_pins_bundle(graph_json: &str) -> anyhow::Result<Vec<(String, Strin
                 }
                 APPEND svg/{{ $c.file }} "<g transform=\"translate(15,{{ $c.fy }})\" class=\"pfoot\">"
                 IF $c.has_lang {
-                    APPEND svg/{{ $c.file }} "<circle cx=\"0\" cy=\"-4\" r=\"5\" fill=\"{{ $c.lang_color }}\"/><text x=\"9\" y=\"0\">{{ $c.lang }}</text>"
+                    APPEND svg/{{ $c.file }} "<circle cx=\"0\" cy=\"-4\" r=\"5\" fill=\"{{ $c.lang_color }}\"/><text x=\"9\" y=\"0\" textLength=\"{{ $c.tl_lang }}\" lengthAdjust=\"spacingAndGlyphs\">{{ $c.lang }}</text>"
                 }
-                APPEND svg/{{ $c.file }} "<g transform=\"translate({{ $c.fx_star }},0)\"><svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25zm0 2.445L6.615 5.5a.75.75 0 01-.564.41l-3.097.45 2.24 2.184a.75.75 0 01.216.664l-.528 3.084 2.769-1.456a.75.75 0 01.698 0l2.77 1.456-.53-3.084a.75.75 0 01.216-.664l2.24-2.183-3.096-.45a.75.75 0 01-.564-.41L8 2.694v.001z\"/></svg><text x=\"19\" y=\"0\">{{ $c.stars }}</text></g><g transform=\"translate({{ $c.fx_fork }},0)\"><svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M5 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm0 2.122a2.25 2.25 0 10-1.5 0v.878A2.25 2.25 0 005.75 8.5h1.5v2.128a2.251 2.251 0 101.5 0V8.5h1.5a2.25 2.25 0 002.25-2.25v-.878a2.25 2.25 0 10-1.5 0v.878a.75.75 0 01-.75.75h-4.5A.75.75 0 015 6.25v-.878zm3.75 7.378a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm3-8.75a.75.75 0 100-1.5.75.75 0 000 1.5z\"></path></svg><text x=\"19\" y=\"0\">{{ $c.forks }}</text></g></g>"
+                APPEND svg/{{ $c.file }} "<g transform=\"translate({{ $c.fx_star }},0)\"><svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25zm0 2.445L6.615 5.5a.75.75 0 01-.564.41l-3.097.45 2.24 2.184a.75.75 0 01.216.664l-.528 3.084 2.769-1.456a.75.75 0 01.698 0l2.77 1.456-.53-3.084a.75.75 0 01.216-.664l2.24-2.183-3.096-.45a.75.75 0 01-.564-.41L8 2.694v.001z\"/></svg><text x=\"19\" y=\"0\" textLength=\"{{ $c.tl_stars }}\" lengthAdjust=\"spacingAndGlyphs\">{{ $c.stars }}</text></g><g transform=\"translate({{ $c.fx_fork }},0)\"><svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M5 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm0 2.122a2.25 2.25 0 10-1.5 0v.878A2.25 2.25 0 005.75 8.5h1.5v2.128a2.251 2.251 0 101.5 0V8.5h1.5a2.25 2.25 0 002.25-2.25v-.878a2.25 2.25 0 10-1.5 0v.878a.75.75 0 01-.75.75h-4.5A.75.75 0 015 6.25v-.878zm3.75 7.378a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm3-8.75a.75.75 0 100-1.5.75.75 0 000 1.5z\"></path></svg><text x=\"19\" y=\"0\" textLength=\"{{ $c.tl_forks }}\" lengthAdjust=\"spacingAndGlyphs\">{{ $c.forks }}</text></g></g>"
                 APPEND svg/{{ $c.file }} "</a></svg>"
             }
             WRITE frag/pins.md "## Popular repositories\n\nTop 6 by stars — the repos the community reaches for.\n\n"
