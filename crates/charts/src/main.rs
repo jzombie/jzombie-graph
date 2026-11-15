@@ -41,8 +41,8 @@ enum Chart {
     Languages,
 }
 
-/// Badge files + indicator table. Written atomically with the strip
-/// SVG below: the table embeds the badge files, so splitting them
+/// Badge files for the heat bands. Written atomically with the strip
+/// SVG below: table cells embed the badge files, so splitting them
 /// across invocations risks a half-written family.
 fn write_indicator_badges() -> anyhow::Result<()> {
     for name in charts::indicator_names() {
@@ -50,9 +50,6 @@ fn write_indicator_badges() -> anyhow::Result<()> {
         let dest = jzombie_graph::paths::indicator_badge(&name);
         jzombie_graph::output::write_file(std::path::Path::new(&dest), &svg)?;
     }
-    let md = charts::render_indicators_md()?;
-    let dest = jzombie_graph::paths::proof_indicators_md();
-    jzombie_graph::output::write_file(std::path::Path::new(&dest), &md)?;
     Ok(())
 }
 

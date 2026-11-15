@@ -2182,42 +2182,6 @@ pub fn render_indicator_svg(band: &str) -> anyhow::Result<String> {
     render_indicator_doc(band)
 }
 
-/// Render the indicator table: badge embeds + band + heat, one row per band.
-/// Same doc as the SVGs, markdown template — the committed render proof.
-/// Static header in Rust; only the rows ride the template.
-pub fn render_indicators_md() -> anyhow::Result<String> {
-    let engine = engine();
-    let steps: Vec<oxdock_parser::Step> = oxdock! {
-        modules: [CHARTS],
-        IMPORT [STD, CHARTS]
-        LET $rows_json: STRING = CHARTS::INDICATORS("", "")
-        WRITE rows.json $rows_json
-        LET $doc: MAP<ANY> = LOAD_JSON("rows.json")
-        WRITE md.md """
-            # Indicator preview
-
-            *Regenerate with `oxdock scripts/proof.oxfile`. Badges sit beside this file; the rows come from the same template doc as the SVGs.*
-
-            | badge | band | heat |
-            |---|---|---|
-            """
-        APPEND md.md "\n"
-        FOR $r: MAP<ANY> IN $doc.rows {
-            // TODO: APPEND_LINE adds exactly one LF (verified absent from
-            // engine 0.35.0-alpha) — switch when we track past it.
-            APPEND md.md "| ![{{ $r.band }}]({{ $r.file }}) | {{ $r.band }} | {{ $r.heat }} |\n"
-        }
-        LET $check: STRING = READ md.md
-        ASSERT_CONTAINS $check "| badge |"
-    };
-    let temp = oxdock::GuardedPath::tempdir().expect("tempdir");
-    let root = temp.as_guarded_path().clone();
-    engine.run_steps_without_snapshot(&root, &steps)?;
-    let resolver = oxdock::PathResolver::new(root.as_path(), root.as_path()).expect("resolver");
-    let out = root.join("md.md").expect("md path");
-    Ok(resolver.read_to_string(&out).expect("read md"))
-}
-
 /// Render the machine-readable commit-data table: one row per active
 /// repo (top-10, tail named in a comment), layer-labeled, same rows the
 /// charts draw. Markup comes from the shared MARKDOWN module — Rust
@@ -2717,19 +2681,6 @@ mod tests {
         assert!(svg.contains("portfolio · 240 commits / 30d"));
         assert!(svg.contains(">big</text>"));
         assert!(svg.contains("heating &gt;1.5"));
-    }
-
-    #[test]
-    fn indicators_md_rows_are_newline_separated() {
-        let md = render_indicators_md().unwrap();
-        assert!(md.contains("| badge | band | heat |\n|---|---|---|\n"));
-        for band in ["heating", "steady", "cooling", "dormant"] {
-            assert!(md.contains(&format!(
-                "| ![{band}]({}) | {band} |",
-                jzombie_graph::paths::indicator_url(band)
-            )));
-        }
-        assert!(md.ends_with("|\n"));
     }
 
     #[test]
