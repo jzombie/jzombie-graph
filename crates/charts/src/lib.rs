@@ -920,6 +920,315 @@ pub fn render_flame_svg(graph_json: &str) -> anyhow::Result<String> {
     Ok(resolver.read_to_string(&out).expect("read out"))
 }
 
+/// Pinned-repo cards mimicking GitHub's Popular repositories bubbles:
+/// 400px bordered card, book icon + name header, wrapped description,
+/// language dot + stars + forks footer. Top-6 by Developer Focus in a
+/// 2-column grid, uniform height, so the top of the dashboard reads
+/// like a profile's pinned section.
+const PINS_TOPN: usize = 6;
+const PINS_COLS: usize = 2;
+const PIN_W: f64 = 400.0;
+const PIN_GAP: f64 = 24.0;
+const PIN_NAME_MAX: usize = 35;
+const PIN_DESC_WIDTH: usize = 59;
+const PIN_DESC_MAX_LINES: usize = 3;
+
+/// Card palette: github-readme-stats `default_repocard` theme.
+const PIN_TITLE: &str = "#2f80ed";
+const PIN_ICON: &str = "#586069";
+const PIN_TEXT: &str = "#434d58";
+const PIN_BG: &str = "#fffefe";
+const PIN_BORDER: &str = "#e4e2e2";
+
+/// Linguist language colors for the footer dot; unknown maps to the
+/// same `#333` fallback the reference card uses.
+fn lang_color(lang: &str) -> &'static str {
+    match lang {
+        "Rust" => "#dea584",
+        "TypeScript" => "#3178c6",
+        "JavaScript" => "#f1e05a",
+        "Python" => "#3572A5",
+        "Shell" => "#89e051",
+        "CSS" => "#563d7c",
+        "HTML" => "#e34c26",
+        "Dockerfile" => "#384d54",
+        "Go" => "#00ADD8",
+        "Java" => "#b07219",
+        "Kotlin" => "#A97BFF",
+        "Swift" => "#F05138",
+        "C" => "#555555",
+        "C++" => "#f34b7d",
+        "C#" => "#178600",
+        "Ruby" => "#701516",
+        "PHP" => "#4F5D95",
+        "Lua" => "#000080",
+        "Vim script" => "#199f4b",
+        _ => "#333",
+    }
+}
+
+/// Compact counts like the reference card (`1200` → `1.2k`).
+fn k_fmt(n: u32) -> String {
+    if n >= 1000 {
+        format!("{:.1}k", n as f64 / 1000.0)
+    } else {
+        n.to_string()
+    }
+}
+
+/// Word-wrap a description the way the reference card does: 59 chars
+/// per line, 3 lines max, remainder cut. Empty input names itself.
+fn wrap_desc(s: &str) -> Vec<String> {
+    let flat: String = s.split_whitespace().collect::<Vec<_>>().join(" ");
+    if flat.is_empty() {
+        return vec!["No description provided".to_string()];
+    }
+    let mut lines: Vec<String> = vec![];
+    let mut cur = String::new();
+    for w in flat.split(' ') {
+        if w.is_empty() {
+            continue;
+        }
+        let fits = cur.is_empty() || cur.len() + 1 + w.len() <= PIN_DESC_WIDTH;
+        if !fits {
+            lines.push(std::mem::take(&mut cur));
+            if lines.len() == PIN_DESC_MAX_LINES {
+                return lines;
+            }
+        }
+        if !cur.is_empty() {
+            cur.push(' ');
+        }
+        cur.push_str(w);
+    }
+    if lines.len() < PIN_DESC_MAX_LINES && !cur.is_empty() {
+        lines.push(cur);
+    }
+    if lines.is_empty() {
+        lines.push("No description provided".to_string());
+    }
+    lines
+}
+
+/// Estimated 12px Segoe UI advance, for footer item spacing. The
+/// reference measures real glyphs; estimation keeps Rust side-only.
+fn est_w(s: &str) -> f64 {
+    s.chars().count() as f64 * 6.6
+}
+
+/// One pinned card: precomputed strings, so the template carries no
+/// coordinates — same split as every other chart (Rust shapes, OxDock
+/// emits).
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+struct PinRow {
+    x: String,
+    y: String,
+    h: String,
+    bw: String,
+    bh: String,
+    fy: String,
+    url: String,
+    name: String,
+    d1: String,
+    d2: String,
+    d3: String,
+    has2: bool,
+    has3: bool,
+    lang: String,
+    lang_color: String,
+    stars: String,
+    forks: String,
+    fx_star: String,
+    fx_fork: String,
+}
+
+/// Pins document: static decor prebuilt in Rust, cards interpolated.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+struct PinDoc {
+    header: String,
+    footer: String,
+    empty: bool,
+    msg: String,
+    muted: String,
+    w: String,
+    h: String,
+    rows: Vec<PinRow>,
+}
+
+/// Pins rows: top-6 own-work repos by Developer Focus, ties break on
+/// 30d commits then name. Scoreless repos sink below scored ones.
+fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
+    let graph = jzombie_graph::graph::Graph::from_json(graph_json)?;
+    let now = graph.generated_at;
+    let empty = PinDoc {
+        header: pins_header(824.0, 120.0),
+        footer: "</svg>".to_string(),
+        empty: true,
+        msg: "No commits in trailing 30d".to_string(),
+        muted: palette::muted(),
+        w: f1(824.0),
+        h: f1(120.0),
+        rows: vec![],
+    };
+    let mut repos: Vec<(&jzombie_graph::graph::Node, f32)> = graph
+        .nodes
+        .iter()
+        .filter(|nd| !nd.private && jzombie_graph::graph::is_own_work(nd))
+        .filter(|nd| nd.commits_30d > 0)
+        .map(|nd| {
+            let f = nd.focus.or_else(|| nd.focus(&now)).unwrap_or(f32::MIN);
+            (nd, f)
+        })
+        .collect();
+    if repos.is_empty() {
+        return Ok(empty);
+    }
+    repos.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| b.0.commits_30d.cmp(&a.0.commits_30d))
+            .then_with(|| a.0.name.cmp(&b.0.name))
+    });
+    let shown = &repos[..repos.len().min(PINS_TOPN)];
+    // Card height follows the reference formula; the grid takes the max
+    // so rows stay aligned whatever each description needs.
+    let card_h = |n: &jzombie_graph::graph::Node| -> (Vec<String>, f64) {
+        let desc = n.description.as_deref().unwrap_or("");
+        let lines = wrap_desc(desc);
+        let h = if lines.len() > 1 {
+            120.0
+        } else {
+            110.0
+        } + lines.len() as f64 * 10.0;
+        (lines, h)
+    };
+    let grid_h = shown
+        .iter()
+        .map(|(n, _)| card_h(n).1)
+        .fold(0.0_f64, f64::max);
+    let n = shown.len();
+    let cols = n.min(PINS_COLS);
+    let rows_n = n.div_ceil(PINS_COLS);
+    let w = cols as f64 * PIN_W + (cols.saturating_sub(1)) as f64 * PIN_GAP;
+    let h = rows_n as f64 * grid_h + (rows_n.saturating_sub(1)) as f64 * PIN_GAP;
+    let mut rows: Vec<PinRow> = vec![];
+    for (i, (nd, _)) in shown.iter().enumerate() {
+        let (lines, _) = card_h(nd);
+        let mut d = lines.clone();
+        while d.len() < 3 {
+            d.push(String::new());
+        }
+        let name = if nd.name.chars().count() > PIN_NAME_MAX {
+            nd.name.chars().take(PIN_NAME_MAX - 1).collect::<String>() + "\u{2026}"
+        } else {
+            nd.name.clone()
+        };
+        let lang = nd.language.as_deref().unwrap_or("Unspecified");
+        let stars = k_fmt(nd.stars);
+        let forks = k_fmt(nd.forks_count);
+        let lang_w = 10.0 + 8.0 + est_w(lang);
+        let star_w = 16.0 + 6.0 + est_w(&stars);
+        let col = (i % PINS_COLS) as f64;
+        let row = (i / PINS_COLS) as f64;
+        rows.push(PinRow {
+            x: f1(col * (PIN_W + PIN_GAP)),
+            y: f1(row * (grid_h + PIN_GAP)),
+            h: f1(grid_h),
+            bw: f1(PIN_W - 1.0),
+            bh: f1(grid_h - 1.0),
+            fy: f1(grid_h - 20.0),
+            url: format!("https://github.com/{}", nd.id),
+            name: xml_escape(&name),
+            d1: xml_escape(&d[0]),
+            d2: xml_escape(&d[1]),
+            d3: xml_escape(&d[2]),
+            has2: lines.len() > 1,
+            has3: lines.len() > 2,
+            lang: xml_escape(lang),
+            lang_color: lang_color(lang).to_string(),
+            stars: xml_escape(&stars),
+            forks: xml_escape(&forks),
+            fx_star: f1(lang_w + 25.0),
+            fx_fork: f1(lang_w + 25.0 + star_w + 25.0),
+        });
+    }
+    Ok(PinDoc {
+        header: pins_header(w, h),
+        footer: "</svg>".to_string(),
+        empty: false,
+        msg: String::new(),
+        muted: palette::muted(),
+        w: f1(w),
+        h: f1(h),
+        rows,
+    })
+}
+
+/// Pins chrome: card font classes on the shared Segoe stack, no
+/// animations — the bubbles are static by design.
+fn pins_header(w: f64, h: f64) -> String {
+    format!(
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{W}\" height=\"{H}\" viewBox=\"0 0 {W} {H}\" role=\"img\" font-family=\"{family}\"><title>Popular repositories</title><style>.pname {{ font: 600 18px 'Segoe UI', Ubuntu, Sans-Serif; fill: {title}; }} .pdesc {{ font: 400 13px 'Segoe UI', Ubuntu, Sans-Serif; fill: {text}; }} .pfoot {{ font: 400 12px 'Segoe UI', Ubuntu, Sans-Serif; fill: {text}; }}</style>",
+        W = f1(w),
+        H = f1(h),
+        family = palette::family(),
+        title = PIN_TITLE,
+        text = PIN_TEXT,
+    )
+}
+
+/// Plugin function: validated graph JSON in, pins document out.
+#[oxdock_func(pure, name = "PINS")]
+fn pins(graph_json: String) -> anyhow::Result<Value> {
+    let graph_json = transport_out(&graph_json)?;
+    Ok(Value::string(serde_json::to_string(&pin_rows(
+        &graph_json,
+    )?)?))
+}
+
+/// Render the popular-repositories pins for validated graph JSON. Same
+/// transport as the pie: embedded script emits markup into a temp
+/// workspace.
+pub fn render_pins_svg(graph_json: &str) -> anyhow::Result<String> {
+    let engine = engine();
+    let arg = transport_in(graph_json);
+    let steps: Vec<oxdock_parser::Step> = oxdock! {
+        modules: [CHARTS],
+        IMPORT [CHARTS]
+        IMPORT [STD]
+        LET $doc_json: STRING = CHARTS::PINS(#arg)
+        WRITE rows.json $doc_json
+        LET $doc: MAP<ANY> = LOAD_JSON("rows.json")
+        WRITE out.svg $doc.header
+        IF $doc.empty {
+            APPEND out.svg "<text x=\"16\" y=\"60\" font-size=\"14\" fill=\"{{ $doc.muted }}\">{{ $doc.msg }}</text>"
+        } ELSE {
+            FOR $r: MAP<ANY> IN $doc.rows {
+                APPEND out.svg "<g transform=\"translate({{ $r.x }},{{ $r.y }})\"><rect x=\"0.5\" y=\"0.5\" width=\"{{ $r.bw }}\" height=\"{{ $r.bh }}\" rx=\"4.5\" fill=\"#fffefe\" stroke=\"#e4e2e2\"/><a href=\"{{ $r.url }}\"><g transform=\"translate(25,35)\"><svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"#586069\"><path fill-rule=\"evenodd\" d=\"M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 110-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1V9h-8c-.356 0-.694.074-1 .208V2.5a1 1 0 011-1h8zM5 12.25v3.25a.25.25 0 00.4.2l1.45-1.087a.25.25 0 01.3 0L8.6 15.7a.25.25 0 00.4-.2v-3.25a.25.25 0 00-.25-.25h-3.5a.25.25 0 00-.25.25z\"/></svg><text x=\"41\" y=\"0\" class=\"pname\">{{ $r.name }}</text></g>"
+                APPEND out.svg "<text x=\"25\" y=\"62\" class=\"pdesc\">{{ $r.d1 }}</text>"
+                IF $r.has2 {
+                    APPEND out.svg "<text x=\"25\" y=\"78\" class=\"pdesc\">{{ $r.d2 }}</text>"
+                }
+                IF $r.has3 {
+                    APPEND out.svg "<text x=\"25\" y=\"94\" class=\"pdesc\">{{ $r.d3 }}</text>"
+                }
+                APPEND out.svg "<g transform=\"translate(30,{{ $r.fy }})\" class=\"pfoot\"><circle cx=\"0\" cy=\"-4\" r=\"5\" fill=\"{{ $r.lang_color }}\"/><text x=\"14\" y=\"0\">{{ $r.lang }}</text><g transform=\"translate({{ $r.fx_star }},0)\"><svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"#586069\"><path fill-rule=\"evenodd\" d=\"M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25zm0 2.445L6.615 5.5a.75.75 0 01-.564.41l-3.097.45 2.24 2.184a.75.75 0 01.216.664l-.528 3.084 2.769-1.456a.75.75 0 01.698 0l2.77 1.456-.53-3.084a.75.75 0 01.216-.664l2.24-2.183-3.096-.45a.75.75 0 01-.564-.41L8 2.694v.001z\"/></svg><text x=\"22\" y=\"0\">{{ $r.stars }}</text></g><g transform=\"translate({{ $r.fx_fork }},0)\"><svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"#586069\"><path fill-rule=\"evenodd\" d=\"M5 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm0 2.122a2.25 2.25 0 10-1.5 0v.878A2.25 2.25 0 005.75 8.5h1.5v2.128a2.251 2.251 0 101.5 0V8.5h1.5a2.25 2.25 0 002.25-2.25v-.878a2.25 2.25 0 10-1.5 0v.878a.75.75 0 01-.75.75h-4.5A.75.75 0 015 6.25v-.878zm3.75 7.378a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm3-8.75a.75.75 0 100-1.5.75.75 0 000 1.5z\"></path></svg><text x=\"22\" y=\"0\">{{ $r.forks }}</text></g></g>"
+                APPEND out.svg "</a></g>"
+            }
+        }
+        APPEND out.svg $doc.footer
+        LET $check: STRING = READ out.svg
+        ASSERT_CONTAINS $check "<svg"
+        ASSERT_CONTAINS $check "</svg>"
+    };
+    let temp = oxdock::GuardedPath::tempdir().expect("tempdir");
+    let root = temp.as_guarded_path().clone();
+    engine.run_steps_without_snapshot(&root, &steps)?;
+    let resolver = oxdock::PathResolver::new(root.as_path(), root.as_path()).expect("resolver");
+    let out = root.join("out.svg").expect("out path");
+    Ok(resolver.read_to_string(&out).expect("read out"))
+}
+
 fn engine() -> Engine {
     let mut engine = Engine::new();
     engine.register_module(HostModule {
@@ -931,6 +1240,7 @@ fn engine() -> Engine {
             DataTable::registration(),
             ChartStyleFn::registration(),
             Flame::registration(),
+            Pins::registration(),
         ],
         types: vec![],
         record_schemas: vec![],

@@ -2,6 +2,11 @@
 
 Nightly self-portrait of my GitHub: real dependency edges plus a Developer Focus gauge ranking where attention is going. Rebuilt nightly — counts live in the data. Raw JSON: [`data/portfolio-graph.json`](https://github.com/jzombie/jzombie-graph/blob/main/data/portfolio-graph.json).
 
+## Popular repositories
+
+Top 6 by Developer Focus — the repos getting the attention right now.
+
+[![popular repositories](charts/portfolio-graph-pins.svg)](https://github.com/jzombie?tab=repositories)
 ## Developer Focus
 
 Developer Focus is a heuristic of where the developer's attention is right now.

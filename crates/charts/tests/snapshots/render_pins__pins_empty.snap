@@ -1,0 +1,5 @@
+---
+source: crates/charts/tests/render_pins.rs
+expression: svg
+---
+<svg xmlns="http://www.w3.org/2000/svg" width="824.0" height="120.0" viewBox="0 0 824.0 120.0" role="img" font-family="Helvetica, Arial, sans-serif"><title>Popular repositories</title><style>.pname { font: 600 18px 'Segoe UI', Ubuntu, Sans-Serif; fill: #2f80ed; } .pdesc { font: 400 13px 'Segoe UI', Ubuntu, Sans-Serif; fill: #434d58; } .pfoot { font: 400 12px 'Segoe UI', Ubuntu, Sans-Serif; fill: #434d58; }</style><text x="16" y="60" font-size="14" fill="#767676">No commits in trailing 30d</text></svg>

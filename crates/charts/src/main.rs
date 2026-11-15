@@ -35,6 +35,7 @@ enum Chart {
     Share,
     Focus,
     Flame,
+    Pins,
     Indicators,
     Data,
 }
@@ -106,6 +107,7 @@ fn main() {
         Chart::Share => charts::render_share_svg(&text),
         Chart::Focus => charts::render_focus_svg(&text),
         Chart::Flame => charts::render_flame_svg(&text),
+        Chart::Pins => charts::render_pins_svg(&text),
         Chart::Indicators => charts::render_indicators_svg(),
         Chart::Data => unreachable!("handled by the early return above"),
     };
@@ -119,6 +121,7 @@ fn main() {
     let default = match cli.chart {
         Chart::Focus => jzombie_graph::paths::DEVELOPER_FOCUS_SVG,
         Chart::Flame => jzombie_graph::paths::FLAME_SVG,
+        Chart::Pins => jzombie_graph::paths::PINS_SVG,
         Chart::Indicators => jzombie_graph::paths::INDICATORS_SVG,
         Chart::Share => jzombie_graph::paths::SHARE_SVG,
         Chart::Data => unreachable!("handled by the early return above"),

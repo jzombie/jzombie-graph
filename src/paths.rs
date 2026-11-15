@@ -35,6 +35,11 @@ pub const DEVELOPER_FOCUS_SVG: &str = "proof/charts/portfolio-graph-developer-fo
 /// 30d share, color + motion from the heat bands.
 pub const FLAME_SVG: &str = "proof/charts/portfolio-graph-flame.svg";
 
+/// Popular repositories pins SVG: top-6 by Developer Focus as
+/// GitHub-style repo cards, so the top of the dashboard reads like a
+/// pinned section.
+pub const PINS_SVG: &str = "proof/charts/portfolio-graph-pins.svg";
+
 /// Status-indicator strip SVG. The per-repo badges below are what
 /// tables embed; the strip above is the look-check.
 pub const INDICATORS_SVG: &str = "proof/charts/portfolio-graph-indicators.svg";
