@@ -158,7 +158,7 @@ fn pins_bundle_one_card_per_repo_each_linking_out() {
     // Nine cards plus the fragment that embeds them.
     assert_eq!(bundle.len(), 10);
     let paths: Vec<&str> = bundle.iter().map(|(p, _)| p.as_str()).collect();
-    assert!(paths.contains(&"proof/charts/portfolio-graph-pin-r0.svg"));
+    assert!(paths.contains(&"proof/dashboard/charts/portfolio-graph-pin-r0.svg"));
     assert!(paths.contains(&"proof/fragments/pins.md"));
     // r10 (2 stars) and r6 (1 star) fall outside the top-9 cut.
     assert!(!paths.iter().any(|p| p.contains("r10")), "cut tail");

@@ -6,9 +6,9 @@ Code and data live here together. The collector, renderers, and lanes in this re
 
 ## Where attention is going (rebuilt nightly)
 
-[![Developer focus](proof/charts/portfolio-graph-developer-focus.svg)](proof/README.md)
+[![Developer focus](proof/dashboard/charts/portfolio-graph-developer-focus.svg)](proof/README.md)
 
-[![Commit share](proof/charts/portfolio-graph-share.svg)](proof/README.md)
+[![Commit share](proof/dashboard/charts/portfolio-graph-share.svg)](proof/README.md)
 
 Full proof: [`proof/README.md`](proof/README.md).
 

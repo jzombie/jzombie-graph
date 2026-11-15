@@ -21,9 +21,13 @@ pub const REPOS_URL: &str = "https://github.com/jzombie?tab=repositories";
 /// Directories: the only place a location is spelled out.
 pub const PROOF_DIR: &str = "proof";
 pub const DATA_DIR: &str = "data";
-pub const CHARTS_DIR: &str = "proof/charts";
+/// Single vendored bundle: everything the profile sync copies lives
+/// under here, so the sync wipes and replaces one directory — no
+/// dangling artifacts, no sibling dirs to reason about.
+pub const DASHBOARD_DIR: &str = "proof/dashboard";
+pub const CHARTS_DIR: &str = "proof/dashboard/charts";
 pub const FRAGMENTS_DIR: &str = "proof/fragments";
-pub const INDICATORS_DIR: &str = "proof/indicators";
+pub const INDICATORS_DIR: &str = "proof/dashboard/indicators";
 
 /// File names (no directories): the only place a file name is spelled out.
 pub const GRAPH_FILE: &str = "portfolio-graph.json";
@@ -106,7 +110,7 @@ pub fn languages_fragment() -> String {
 }
 
 /// Commit activity flame strip SVG (per-band badges live under
-/// `proof/indicators/`): portfolio → repos → branches → embers.
+/// `proof/dashboard/indicators/`): portfolio → repos → branches → embers.
 pub fn flame_svg() -> String {
     format!("{CHARTS_DIR}/{FLAME_FILE}")
 }
@@ -163,4 +167,14 @@ pub fn pin_svg_path(slug: &str) -> String {
 pub fn chart_url(file: &str, bust: &str) -> String {
     let prefix = CHARTS_DIR.strip_prefix("proof/").unwrap_or(CHARTS_DIR);
     format!("{prefix}/{file}?v={bust}")
+}
+
+/// Relative badge URL for assembled markdown: same `proof/`-relative
+/// rule as charts, so the vendored profile README resolves it under
+/// its own `dashboard/` copy.
+pub fn indicator_url(name: &str) -> String {
+    let prefix = INDICATORS_DIR
+        .strip_prefix("proof/")
+        .unwrap_or(INDICATORS_DIR);
+    format!("{prefix}/{name}.svg")
 }

@@ -1834,7 +1834,7 @@ fn indicator_rows() -> Vec<IndicatorRow> {
             let norm = (h / 6.0).clamp(0.0, 1.0);
             IndicatorRow {
                 band: name.to_string(),
-                file: format!("indicators/{name}.svg"),
+                file: jzombie_graph::paths::indicator_url(name),
                 label: format!("{name} {h:.2}"),
                 heat: format!("{h:.2}"),
                 color: heat_color(h).to_string(),
@@ -1928,7 +1928,10 @@ const DATA_TOPN: usize = 10;
 /// side they always read offset — stacked and centered instead.
 /// `div align` is the only centering github.com honors in a cell.
 fn heat_cell(band: &str) -> String {
-    format!("<div align=\"center\">![{band}](indicators/{band}.svg)<br><sub>{band}</sub></div>")
+    format!(
+        "<div align=\"center\">![{band}]({})<br><sub>{band}</sub></div>",
+        jzombie_graph::paths::indicator_url(band)
+    )
 }
 
 /// Topic links for an about cell: tiny `#tag` links to a user-scoped repo
@@ -2721,7 +2724,10 @@ mod tests {
         let md = render_indicators_md().unwrap();
         assert!(md.contains("| badge | band | heat |\n|---|---|---|\n"));
         for band in ["heating", "steady", "cooling", "dormant"] {
-            assert!(md.contains(&format!("| ![{band}](indicators/{band}.svg) | {band} |")));
+            assert!(md.contains(&format!(
+                "| ![{band}]({}) | {band} |",
+                jzombie_graph::paths::indicator_url(band)
+            )));
         }
         assert!(md.ends_with("|\n"));
     }
@@ -2788,7 +2794,7 @@ mod tests {
         // Heat cell carries the band badge over its label, centered.
         assert!(
             md.contains(
-                "<div align=\"center\">![steady](indicators/steady.svg)<br><sub>steady</sub></div>"
+                "<div align=\"center\">![steady](dashboard/indicators/steady.svg)<br><sub>steady</sub></div>"
             ),
             "badge + small label in heat cell:\n{md}"
         );
