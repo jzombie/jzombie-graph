@@ -976,8 +976,10 @@ fn k_fmt(n: u32) -> String {
     }
 }
 
-/// Word-wrap a description the way the reference card does: 59 chars
-/// per line, 3 lines max, remainder cut. Empty input names itself.
+/// Word-wrap a description the way the reference card does: 34 chars
+/// per line, 5 lines max. Overflow pushes nothing — the canvas is
+/// fixed — so a cut tail gets an ellipsis instead of vanishing
+/// mid-sentence. Empty input names itself.
 fn wrap_desc(s: &str) -> Vec<String> {
     let flat: String = s.split_whitespace().collect::<Vec<_>>().join(" ");
     if flat.is_empty() {
@@ -985,6 +987,7 @@ fn wrap_desc(s: &str) -> Vec<String> {
     }
     let mut lines: Vec<String> = vec![];
     let mut cur = String::new();
+    let mut truncated = false;
     for w in flat.split(' ') {
         if w.is_empty() {
             continue;
@@ -993,7 +996,8 @@ fn wrap_desc(s: &str) -> Vec<String> {
         if !fits {
             lines.push(std::mem::take(&mut cur));
             if lines.len() == PIN_DESC_MAX_LINES {
-                return lines;
+                truncated = true;
+                break;
             }
         }
         if !cur.is_empty() {
@@ -1001,11 +1005,23 @@ fn wrap_desc(s: &str) -> Vec<String> {
         }
         cur.push_str(w);
     }
-    if lines.len() < PIN_DESC_MAX_LINES && !cur.is_empty() {
-        lines.push(cur);
+    if truncated {
+        // Words were cut: fall through to the ellipsis below.
+    } else if lines.len() < PIN_DESC_MAX_LINES {
+        if !cur.is_empty() {
+            lines.push(cur);
+        }
+    } else if !cur.is_empty() {
+        truncated = true;
     }
     if lines.is_empty() {
         lines.push("No description provided".to_string());
+    } else if truncated {
+        let last = lines.last_mut().expect("wrapped line");
+        while last.chars().count() + 1 > PIN_DESC_WIDTH {
+            last.pop();
+        }
+        last.push('\u{2026}');
     }
     lines
 }
@@ -2125,6 +2141,21 @@ mod tests {
         // Repo names can't contain these, but the emitter must be safe anyway.
         assert_eq!(xml_escape("a&b<c>"), "a&amp;b&lt;c&gt;");
         assert_eq!(f1(12.345), "12.3");
+    }
+
+    #[test]
+    fn wrap_desc_truncates_with_ellipsis() {
+        // Overflow never pushes content off the fixed canvas: the cut
+        // tail gets an ellipsis, and the line count never exceeds the cap.
+        let long = "word ".repeat(200);
+        let lines = wrap_desc(&long);
+        assert_eq!(lines.len(), PIN_DESC_MAX_LINES);
+        assert!(lines.last().unwrap().ends_with('\u{2026}'));
+        assert!(lines.iter().all(|l| l.chars().count() <= PIN_DESC_WIDTH));
+        // Short text passes through untouched, no ellipsis.
+        let short = wrap_desc("hello world");
+        assert_eq!(short, vec!["hello world"]);
+        assert!(wrap_desc("").len() == 1);
     }
 
     fn focus_val(rows: &[FocusRow], label: &str) -> f32 {
