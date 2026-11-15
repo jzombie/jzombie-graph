@@ -219,11 +219,13 @@ fn snapshot_reference_portfolio() {
 /// then copy over `data/portfolio-graph-schema.json`).
 #[test]
 fn schema_matches_committed_asset() {
-    use jzombie_graph::paths::COMMITTED_SCHEMA;
+    use jzombie_graph::paths::schema_json;
     let rendered = jzombie_graph::output::render_schema();
-    let committed = std::fs::read_to_string(COMMITTED_SCHEMA).expect("read committed schema");
+    let committed = std::fs::read_to_string(schema_json()).expect("read committed schema");
     assert_eq!(
-        rendered, committed,
-        "schema drift: regenerate the lane output, then copy it over {COMMITTED_SCHEMA}"
+        rendered,
+        committed,
+        "schema drift: regenerate the lane output, then copy it over {}",
+        schema_json()
     );
 }

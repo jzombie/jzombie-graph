@@ -1,10 +1,8 @@
-# jzombie portfolio cluster
+## jzombie portfolio cluster
 
-jzombie portfolio as a 2D projection — proximity is edge strength. Drawn: 15 repos, 21 dependence edges (+2 runtime-coupling); layers 4 foundation · 5 middleware · 7 application · 1 isolated. Hottest now: term-wm-vt100 (heat 12.67); most depended-upon: rust-line-ending (5).
+Repos are in this chart through interconnectedness: each one builds on, is used by, or documents another repo here.
 
-Generated from the `portfolio-graph` collection (schema v7) — last run 2026-11-15 04:35 UTC. Braille traces show cargo dependence plus docs runtime coupling; every label links to GitHub.
-
-<sub>Diagram: a 2D projection of these repos — closeness means shared dependencies. Screen readers: the block below uses braille characters for lines and is noisy, so it is hidden; the same edges are machine-readable in `graph.json`.</sub>
+<sub>Diagram: closeness means the repos work together. Screen readers: the block below uses braille characters for lines and is noisy, so it is hidden; the table below names every repo in text.</sub>
 
 <pre aria-hidden="true">
                                  [<a href="https://github.com/jzombie/windows-headless">windows-headless</a>]
@@ -34,4 +32,4 @@ Generated from the `portfolio-graph` collection (schema v7) — last run 2026-11
                                           [<a href="https://github.com/jzombie/rust-argtuner">argtuner</a>]
 
 </pre>
-Proximity reflects dependence strength: nodes sharing an edge attract, unconnected nodes repel. Forks appear only when diverged or renamed; repos untouched for over a year are omitted unless something current depends on them.
+Repos quiet for over a year are left out unless something current uses them; forks show up only after diverging or being renamed.

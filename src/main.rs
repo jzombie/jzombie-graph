@@ -48,8 +48,8 @@ struct Cli {
     format: Format,
 
     /// Write to file instead of stdout.
-    /// Default per lane (`paths::*`): json -> GRAPH_JSON,
-    /// schema -> SCHEMA_JSON; dump/dot/focus default to stdout.
+    /// Default per lane (`paths::*`): json -> graph_json,
+    /// schema -> schema_json; dump/dot/focus default to stdout.
     /// Explicit `--output` beats the default; `--stdout` beats both.
     #[arg(long)]
     output: Option<PathBuf>,
@@ -90,10 +90,11 @@ async fn main() -> Result<()> {
     // is byte-identical to the copy the drift test guards (see
     // json/portfolio-graph-schema.json).
     if cli.format == Format::Schema {
+        let schema = paths::schema_json();
         return write_out(
             &output::render_schema(),
             cli.output.as_deref(),
-            Some(paths::SCHEMA_JSON),
+            Some(schema.as_str()),
             cli.stdout,
         );
     }
@@ -133,10 +134,10 @@ async fn main() -> Result<()> {
     } else {
         // No selector, no --input: offline re-render of the default file.
         // `cargo run -- --format focus` just works after one ingest.
-        let text = std::fs::read_to_string(paths::GRAPH_JSON).with_context(|| {
+        let text = std::fs::read_to_string(paths::graph_json()).with_context(|| {
             format!(
                 "reading {} (run a live collect first: --user/--org/--repos)",
-                paths::GRAPH_JSON
+                paths::graph_json()
             )
         })?;
         jzombie_graph::graph::Graph::from_json(&text)?
@@ -155,10 +156,11 @@ async fn main() -> Result<()> {
         // Handled by the early return above; stated as a real branch rather
         // than `unreachable!()` so the lane stays correct if that moves.
         Format::Schema => {
+            let schema = paths::schema_json();
             return write_out(
                 &output::render_schema(),
                 cli.output.as_deref(),
-                Some(paths::SCHEMA_JSON),
+                Some(schema.as_str()),
                 cli.stdout,
             );
         }
@@ -168,17 +170,19 @@ async fn main() -> Result<()> {
     // The schema rides with json: one ingest refreshes both data copies,
     // so the data tree never holds a stale contract. Explicit --output or
     // --stdout means "exactly what I asked" — no side effects.
+    let graph_path = paths::graph_json();
+    let schema_path = paths::schema_json();
     let default = match cli.format {
-        Format::Json => Some(paths::GRAPH_JSON),
+        Format::Json => Some(graph_path.as_str()),
         Format::Dump | Format::Dot | Format::Focus => None,
-        Format::Schema => Some(paths::SCHEMA_JSON),
+        Format::Schema => Some(schema_path.as_str()),
     };
     if cli.format == Format::Json && !cli.stdout && cli.output.is_none() {
         output::write_file(
-            std::path::Path::new(paths::SCHEMA_JSON),
+            std::path::Path::new(schema_path.as_str()),
             &output::render_schema(),
         )?;
-        eprintln!("schema: refreshed {}", paths::SCHEMA_JSON);
+        eprintln!("schema: refreshed {schema_path}");
     }
     write_out(&text, cli.output.as_deref(), default, cli.stdout)
 }

@@ -1,16 +1,16 @@
 # jzombie-graph
 
-Nightly self-portrait of my GitHub portfolio: real dependency edges (manifest, workflow, docs) plus a self-normalized Developer Focus gauge ranking where attention is going. Counts live in the data, not in this prose: every rebuild refreshes the proof page under `proof/` with repo and edge totals, 30d commits and comments, open and closed threads touched, and top languages. Nothing here is hand-counted.
+Nightly generated map of jzombie's open-source systems portfolio, independent systems interconnected where they build on one another: what's active, what's used, and where development and planning focus is going. Counts live in the data, not in this prose: every rebuild refreshes the proof page under `proof/` with repo and edge totals, 30d commits and comments, open and closed threads touched, and top languages. Nothing here is hand-counted.
 
 Code and data live here together. The collector, renderers, and lanes in this repo are the program; `proof/` is its latest output, committed back by the nightly run. Reading this repo at HEAD is reading the freshest sweep: the code that produced the data sits next to the data it produced.
 
 ## Where attention is going (rebuilt nightly)
 
-[![Developer Focus](proof/charts/portfolio-graph-developer-focus.svg)](proof/README.md)
+[![Developer focus](proof/dashboard/charts/portfolio-graph-developer-focus.svg)](proof/README.md)
 
-[![Commit share](proof/charts/portfolio-graph-share.svg)](proof/README.md)
+[![Commit share](proof/dashboard/charts/portfolio-graph-share.svg)](proof/README.md)
 
-Full proof with map, flame, table, and machine-readable data: [`proof/README.md`](proof/README.md). Raw JSON: [`data/portfolio-graph.json`](data/portfolio-graph.json).
+Full proof: [`proof/README.md`](proof/README.md).
 
 Own repo, personal scope. `publish = false` — internal tool, never published to crates.io. Private repos are stripped from default output, so the committed files are safe to publish; `--include-private` is local-briefing only and never committed.
 
@@ -51,7 +51,7 @@ cargo run -p jzombie-graph-charts -- --chart focus
 
 Local only, no API calls. Each `--chart` selection writes its fixed artifact path(s) under `proof/` (share pie by default; `focus` bars, `flame`, `indicators` + badges + table, `data` table fragment). The `BUILD_PROOF_INPUTS` lane runs all five. Colors come from the shared `charts::palette` module so every chart reads as one family; bytes pinned by snapshot tests.
 
-## Developer Focus (offline, no API calls)
+## Developer focus (offline, no API calls)
 
 ```bash
 cargo run -- --format focus

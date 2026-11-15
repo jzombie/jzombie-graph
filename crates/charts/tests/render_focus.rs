@@ -79,9 +79,9 @@ fn focus_bars_diverging_snapshot() {
     assert!(svg.starts_with("<svg "));
     assert!(svg.ends_with("</svg>"));
     // Six scored rows render; the unknown one is excluded from the scale.
-    // Each row draws one bar rect plus one clip rect (two-pass ink).
-    assert_eq!(svg.matches("<clipPath ").count(), 6);
-    assert_eq!(svg.matches("<rect ").count(), 12);
+    // One text layer per row, no clipped duplicates: bar rects only.
+    assert_eq!(svg.matches("<clipPath ").count(), 0);
+    assert_eq!(svg.matches("<rect ").count(), 6);
     insta::assert_snapshot!("focus_bars", svg);
 }
 

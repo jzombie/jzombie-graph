@@ -3,6 +3,11 @@ on:
   push:
   pull_request:
   workflow_dispatch: {}
+# Ensure only one run per branch or PR at a time. If new commits are
+# pushed, older jobs cancel automatically.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   render:
     runs-on: ubuntu-latest
