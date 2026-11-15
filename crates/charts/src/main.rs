@@ -90,11 +90,24 @@ fn main() {
             eprintln!("writing {dest}: {e:#}");
             std::process::exit(1);
         }
+        let foot = match charts::render_footer_md(&text) {
+            Ok(m) => m,
+            Err(e) => {
+                eprintln!("render error: {e:#}");
+                std::process::exit(1);
+            }
+        };
+        let foot_dest = jzombie_graph::paths::footer_fragment();
+        if let Err(e) = jzombie_graph::output::write_file(std::path::Path::new(&foot_dest), &foot)
+        {
+            eprintln!("writing {foot_dest}: {e:#}");
+            std::process::exit(1);
+        }
         return;
     }
     // Pins emit a file family — one SVG per repo plus the fragment
     // table that embeds them. Fixed layout: no --stdout/--output.
-    // Stale cards from a previous top-6 never linger: the lane owns the
+    // Stale cards from a previous top-9 never linger: the lane owns the
     // whole `portfolio-graph-pin-*` set, so it clears before writing.
     if cli.chart == Chart::Pins {
         if cli.stdout || cli.output.is_some() {

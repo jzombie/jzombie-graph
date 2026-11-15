@@ -31,6 +31,7 @@ pub const GRAPH_FILE: &str = "portfolio-graph.json";
 pub const SCHEMA_FILE: &str = "portfolio-graph-schema.json";
 pub const MAP_FRAG_FILE: &str = "portfolio-graph.md";
 pub const DATA_FRAG_FILE: &str = "commit-data.md";
+pub const FOOTER_FRAG_FILE: &str = "footer.md";
 pub const SHARE_FILE: &str = "portfolio-graph-share.svg";
 pub const SHARE_FRAG_FILE: &str = "commit-share.md";
 pub const FOCUS_FILE: &str = "portfolio-graph-developer-focus.svg";
@@ -67,6 +68,12 @@ pub fn map_fragment() -> String {
 /// assembled by `oxdock-render` — never hand-edited.
 pub fn commit_data_fragment() -> String {
     format!("{FRAGMENTS_DIR}/{DATA_FRAG_FILE}")
+}
+
+/// Footer fragment: render credit plus the sweep timestamp, so the
+/// bottom of the page always says when the dashboard was rebuilt.
+pub fn footer_fragment() -> String {
+    format!("{FRAGMENTS_DIR}/{FOOTER_FRAG_FILE}")
 }
 
 /// Commit-share pie SVG.
