@@ -1,6 +1,6 @@
 # jzombie — portfolio dashboard
 
-Nightly map of jzombie's open-source Rust portfolio for hiring managers and collaborators: what's active, what's used, and where attention is going.
+Nightly map of jzombie's open-source Rust portfolio: what's active, what's used, and where attention is going.
 
 [![flame](charts/portfolio-graph-flame.svg)](https://github.com/jzombie?tab=repositories)
 
