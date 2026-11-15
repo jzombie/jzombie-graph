@@ -2,8 +2,6 @@
 
 Nightly self-portrait of my GitHub: real dependency edges plus a Developer Focus gauge ranking where attention is going. Rebuilt nightly — counts live in the data. Raw JSON: [`data/portfolio-graph.json`](https://github.com/jzombie/jzombie-graph/blob/main/data/portfolio-graph.json).
 
-## Commit activity
-
 [![flame](charts/portfolio-graph-flame.svg)](https://github.com/jzombie?tab=repositories)
 
 ## Popular repositories
