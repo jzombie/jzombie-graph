@@ -78,8 +78,7 @@ fn node(
     }
 }
 
-fn seven() -> Vec<Node> {
-    let descs = [
+fn seven() -> Vec<Node> {    let descs = [
         "Async Rust client for SEC EDGAR: fetch filings, fund holdings, XBRL data, and IPO registrations with compliant rate limiting",
         "Nightly map of my GitHub portfolio",
         "Composable data sampling primitives",
@@ -121,7 +120,11 @@ fn seven() -> Vec<Node> {
 
 #[test]
 fn pins_bundle_one_card_per_repo_each_linking_out() {
-    let g = jzombie_graph::output::render_json(&Graph::new(seven(), vec![])).unwrap();
+    let mut graph = Graph::new(seven(), vec![]);
+    // Pin the sweep timestamp: asset URLs carry it as the cache-bust
+    // token, so the fragment snapshot stays deterministic.
+    graph.generated_at = "2026-11-14T23:03:00Z".parse().expect("fixed time");
+    let g = jzombie_graph::output::render_json(&graph).unwrap();
     let bundle = charts::render_pins_bundle(&g).unwrap();
     // Six cards plus the fragment that embeds them.
     assert_eq!(bundle.len(), 7);

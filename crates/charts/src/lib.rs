@@ -1101,6 +1101,11 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
             .then_with(|| a.name.cmp(&b.name))
     });
     let shown = &repos[..repos.len().min(PINS_TOPN)];
+    // Cache-bust token: the sweep timestamp, compact. Bytes change
+    // nightly under stable filenames, and GitHub's image proxy caches
+    // by URL — so every rendered asset URL carries the build it came
+    // from. Same data, same token; new sweep, fresh fetch.
+    let bust = graph.generated_at.format("%Y%m%d%H%M").to_string();
     // Card height follows the reference formula per card, then the
     // tallest wins for the whole family: uniform files, so the profile
     // grid reads as one set instead of six odd sizes.
@@ -1177,9 +1182,10 @@ fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
     for trio in cards.chunks(PINS_PER_ROW) {
         let cell = |c: &PinCard| {
             format!(
-                "[![{}](charts/{})]({})",
+                "[![{}](charts/{}?v={})]({})",
                 c.name,
                 c.dest.rsplit('/').next().unwrap_or(&c.dest),
+                bust,
                 c.url
             )
         };
