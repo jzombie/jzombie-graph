@@ -10,7 +10,7 @@ Nightly self-portrait of my GitHub: real dependency edges plus a Developer Focus
 
 [![sshfs-mac-docker](charts/portfolio-graph-pin-sshfs-mac-docker.svg?v=202611142303)](https://github.com/jzombie/sshfs-mac-docker) [![term-wm](charts/portfolio-graph-pin-term-wm.svg?v=202611142303)](https://github.com/jzombie/term-wm) [![rust-line-ending](charts/portfolio-graph-pin-rust-line-ending.svg?v=202611142303)](https://github.com/jzombie/rust-line-ending)
 
-# jzombie portfolio cluster
+## jzombie portfolio cluster
 
 jzombie portfolio as a 2D projection — proximity is edge strength. Drawn: 15 repos, 21 dependence edges (+2 runtime-coupling); layers 4 foundation · 5 middleware · 7 application · 1 isolated. Hottest now: rust-sec-fetcher (heat 4.00); most depended-upon: rust-line-ending (5).
 

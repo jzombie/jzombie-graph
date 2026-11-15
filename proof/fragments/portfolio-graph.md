@@ -1,4 +1,4 @@
-# jzombie portfolio cluster
+## jzombie portfolio cluster
 
 jzombie portfolio as a 2D projection — proximity is edge strength. Drawn: 15 repos, 21 dependence edges (+2 runtime-coupling); layers 4 foundation · 5 middleware · 7 application · 1 isolated. Hottest now: rust-sec-fetcher (heat 4.00); most depended-upon: rust-line-ending (5).
 

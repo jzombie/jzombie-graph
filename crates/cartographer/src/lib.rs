@@ -41,7 +41,7 @@ const STALE_DAYS: i64 = 365;
 pub fn render_cartographer(graph: &Graph) -> String {
     let Some(draw) = select_cluster(graph) else {
         let mut s = String::new();
-        s.push_str("# portfolio cluster\n\n(no connected cluster)\n");
+        s.push_str("## portfolio cluster\n\n(no connected cluster)\n");
         return s;
     };
     let owner = cluster_owner(graph, &draw);
@@ -56,7 +56,7 @@ pub fn render_cartographer(graph: &Graph) -> String {
     } else {
         format!("{found} foundation · {mid} middleware · {app} application · {iso} isolated")
     };
-    let _ = writeln!(s, "# {owner} portfolio cluster\n");
+    let _ = writeln!(s, "## {owner} portfolio cluster\n");
     let _ = writeln!(
         s,
         "{owner} portfolio as a 2D projection — proximity is edge strength. Drawn: {n} repos, {dep} dependence edges (+{weak} runtime-coupling); layers {layers}.{live}\n",
