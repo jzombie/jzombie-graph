@@ -26,7 +26,7 @@ pub const DATA_DIR: &str = "data";
 /// dangling artifacts, no sibling dirs to reason about.
 pub const DASHBOARD_DIR: &str = "proof/dashboard";
 pub const CHARTS_DIR: &str = "proof/dashboard/charts";
-pub const FRAGMENTS_DIR: &str = "proof/fragments";
+pub const FRAGMENTS_DIR: &str = "proof/dashboard/fragments";
 pub const INDICATORS_DIR: &str = "proof/dashboard/indicators";
 
 /// File names (no directories): the only place a file name is spelled out.

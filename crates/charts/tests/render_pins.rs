@@ -159,7 +159,7 @@ fn pins_bundle_one_card_per_repo_each_linking_out() {
     assert_eq!(bundle.len(), 10);
     let paths: Vec<&str> = bundle.iter().map(|(p, _)| p.as_str()).collect();
     assert!(paths.contains(&"proof/dashboard/charts/portfolio-graph-pin-r0.svg"));
-    assert!(paths.contains(&"proof/fragments/pins.md"));
+    assert!(paths.contains(&"proof/dashboard/fragments/pins.md"));
     // r10 (2 stars) and r6 (1 star) fall outside the top-9 cut.
     assert!(!paths.iter().any(|p| p.contains("r10")), "cut tail");
     assert!(!paths.iter().any(|p| p.contains("pin-r6")), "cut tail");
@@ -198,7 +198,7 @@ fn pins_empty_when_no_commits() {
     let json = jzombie_graph::output::render_json(&g).unwrap();
     let bundle = charts::render_pins_bundle(&json).unwrap();
     assert_eq!(bundle.len(), 1);
-    assert_eq!(bundle[0].0, "proof/fragments/pins.md");
+    assert_eq!(bundle[0].0, "proof/dashboard/fragments/pins.md");
     assert!(bundle[0].1.contains("No commits in trailing 30d"));
     insta::assert_snapshot!("pins_empty", bundle[0].1);
 }

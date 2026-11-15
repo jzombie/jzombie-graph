@@ -19,7 +19,7 @@ Own repo, personal scope. `publish = false` — internal tool, never published t
 ```bash
 export JZOMBIE_GRAPH_TOKEN=ghp_...
 cargo run -- --user jzombie                              # sweep: data/portfolio-graph.json + schema
-cargo run -p jzombie-graph-cartographer                  # map fragment: proof/fragments/portfolio-graph.md
+cargo run -p jzombie-graph-cartographer                  # map fragment: proof/dashboard/fragments/portfolio-graph.md
 cargo run -p jzombie-graph-charts                        # share pie; add --chart focus | flame | indicators | data
 cargo run -- --format focus                              # offline focus ranking, no API calls
 oxdock scripts/proof.oxfile                              # proof inputs; oxdock-render assembles proof/README.md
@@ -40,7 +40,7 @@ Defaults to `--format json` into `data/portfolio-graph.json` (see `src/paths.rs`
 cargo run -p jzombie-graph-cartographer
 ```
 
-Local only, no API calls. Reads `data/portfolio-graph.json`, writes the clickable `<pre>` fragment to `proof/fragments/portfolio-graph.md`. Piped stdin still wins when present; `--stdout` prints instead.
+Local only, no API calls. Reads `data/portfolio-graph.json`, writes the clickable `<pre>` fragment to `proof/dashboard/fragments/portfolio-graph.md`. Piped stdin still wins when present; `--stdout` prints instead.
 
 ## Regenerate the charts
 

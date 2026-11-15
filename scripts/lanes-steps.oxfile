@@ -14,7 +14,7 @@ FUNC COLLECT_GRAPH(): VOID {
 # RenderMapFragment: staged JSON to the map fragment.
 FUNC RENDER_MAP_FRAGMENT(): VOID {
     WORKSPACE LOCAL
-    ECHO "lanes: render proof/fragments/portfolio-graph.md"
+    ECHO "lanes: render proof/dashboard/fragments/portfolio-graph.md"
     RUN ["cargo", "run", "--release", "-p", "jzombie-graph-cartographer"]
 }
 
