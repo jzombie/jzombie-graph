@@ -1,6 +1,6 @@
 # jzombie-graph
 
-Nightly map of jzombie's open-source systems portfolio: what's active, what's used, and where attention is going. Counts live in the data, not in this prose: every rebuild refreshes the proof page under `proof/` with repo and edge totals, 30d commits and comments, open and closed threads touched, and top languages. Nothing here is hand-counted.
+Nightly map of jzombie's open-source systems portfolio: what's active, what's used, and where development and planning focus is going. Counts live in the data, not in this prose: every rebuild refreshes the proof page under `proof/` with repo and edge totals, 30d commits and comments, open and closed threads touched, and top languages. Nothing here is hand-counted.
 
 Code and data live here together. The collector, renderers, and lanes in this repo are the program; `proof/` is its latest output, committed back by the nightly run. Reading this repo at HEAD is reading the freshest sweep: the code that produced the data sits next to the data it produced.
 
