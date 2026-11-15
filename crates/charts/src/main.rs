@@ -98,8 +98,7 @@ fn main() {
             }
         };
         let foot_dest = jzombie_graph::paths::footer_fragment();
-        if let Err(e) = jzombie_graph::output::write_file(std::path::Path::new(&foot_dest), &foot)
-        {
+        if let Err(e) = jzombie_graph::output::write_file(std::path::Path::new(&foot_dest), &foot) {
             eprintln!("writing {foot_dest}: {e:#}");
             std::process::exit(1);
         }
