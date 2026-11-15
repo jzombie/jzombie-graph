@@ -1689,34 +1689,11 @@ fn data_rows(graph_json: &str) -> anyhow::Result<DataDoc> {
             .then_with(|| a.name.cmp(&b.name))
     });
     let total: u32 = repos.iter().map(|n| n.commits_30d).sum();
-    let mut found = 0;
-    let mut mid = 0;
-    let mut app = 0;
-    let mut iso = 0;
-    for n in &repos {
-        let t = &n.layer;
-        if t.contains(&jzombie_graph::graph::Layer::Foundation) {
-            found += 1;
-        }
-        if t.contains(&jzombie_graph::graph::Layer::Middleware) {
-            mid += 1;
-        }
-        if t.contains(&jzombie_graph::graph::Layer::Application) {
-            app += 1;
-        }
-        if t.contains(&jzombie_graph::graph::Layer::Isolated) {
-            iso += 1;
-        }
-    }
     let summary = format!(
-        "{} repos, {} commits in the last 30 days — {} foundation · {} middleware · {} application · {} isolated. Updated {} UTC. Full data: [`{}`]({}/{}) ([`{}`]({}/{})).",
+        "Updated {} UTC — {} repos, {} commits in the last 30 days. Full data: [`{}`]({}/{}) ([`{}`]({}/{})).",
+        graph.generated_at.format("%Y-%m-%d %H:%M"),
         repos.len(),
         total,
-        found,
-        mid,
-        app,
-        iso,
-        graph.generated_at.format("%Y-%m-%d %H:%M"),
         jzombie_graph::paths::GRAPH_JSON,
         jzombie_graph::paths::BLOB_BASE,
         jzombie_graph::paths::GRAPH_JSON,
@@ -2686,7 +2663,7 @@ mod tests {
             md.contains("[quot](https://github.com/me/quot)"),
             "repo linked"
         );
-        assert!(md.contains("foundation"), "layer column");
+        assert!(md.contains("isolated"), "layer column");
         // Pipes ride the formatter's escaping, not a Rust rewrite.
         assert!(
             md.contains("does \"things\" \\| pipes and lines"),
