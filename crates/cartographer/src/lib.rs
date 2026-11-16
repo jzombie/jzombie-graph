@@ -304,8 +304,7 @@ fn select_cluster(graph: &Graph) -> Option<Cluster> {
         }
         // A docs pair that already has a cargo edge pulls with the cargo
         // edge; drawing it again only over-inks the same cells.
-        if !strong_set.contains(&(a.clone(), b.clone()))
-            && !weak.contains(&(a.clone(), b.clone()))
+        if !strong_set.contains(&(a.clone(), b.clone())) && !weak.contains(&(a.clone(), b.clone()))
         {
             weak.push((a.clone(), b.clone()));
         }

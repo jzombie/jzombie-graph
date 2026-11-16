@@ -397,7 +397,11 @@ fn profile_repo_with_docs_to_everything_stays_out() {
         language: Some("Go Template".into()),
         ..node("me/me", false, false)
     };
-    let mut nodes = vec![node("me/a", false, false), node("me/b", false, false), profile];
+    let mut nodes = vec![
+        node("me/a", false, false),
+        node("me/b", false, false),
+        profile,
+    ];
     let edges = vec![
         edge("me/a", "me/b", EdgeKind::Manifest),
         edge("me/me", "me/a", EdgeKind::Docs),
@@ -488,7 +492,12 @@ fn satellite_cannot_anchor_another_satellite() {
         language: Some("Shell".into()),
         ..node("me/zebra", false, false)
     };
-    let mut nodes = vec![node("me/a", false, false), node("me/b", false, false), mid, zebra];
+    let mut nodes = vec![
+        node("me/a", false, false),
+        node("me/b", false, false),
+        mid,
+        zebra,
+    ];
     let edges = vec![
         edge("me/a", "me/b", EdgeKind::Manifest),
         edge("me/mid", "me/a", EdgeKind::Docs),
