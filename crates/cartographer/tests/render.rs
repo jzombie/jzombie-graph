@@ -387,3 +387,119 @@ fn empty_graph_renders() {
     assert!(md.contains("portfolio cluster"));
     assert!(md.contains("(no connected cluster)"));
 }
+
+#[test]
+fn profile_repo_with_docs_to_everything_stays_out() {
+    // `me/me` is the GitHub profile README: it documents the portfolio but
+    // is never a project node, even with detected language and docs edges
+    // to the core.
+    let profile = Node {
+        language: Some("Go Template".into()),
+        ..node("me/me", false, false)
+    };
+    let mut nodes = vec![node("me/a", false, false), node("me/b", false, false), profile];
+    let edges = vec![
+        edge("me/a", "me/b", EdgeKind::Manifest),
+        edge("me/me", "me/a", EdgeKind::Docs),
+        edge("me/me", "me/b", EdgeKind::Docs),
+    ];
+    graph::apply_visibility(&mut nodes, &edges);
+    graph::apply_layers(&mut nodes, &edges);
+    let md = render_cartographer(&Graph::new(nodes, edges));
+    assert!(md.contains(">a</a>"), "core kept");
+    assert!(
+        !md.contains("github.com/me/me"),
+        "profile README excluded:\n{md}"
+    );
+}
+
+#[test]
+fn profile_repo_cannot_drag_isolated_nodes_in() {
+    // Isolated `lonely` documents nothing but the profile hub: with the hub
+    // excluded there is no anchor left, so it stays out too (no cascade).
+    let profile = Node {
+        language: Some("Go Template".into()),
+        ..node("me/me", false, false)
+    };
+    let lonely = Node {
+        language: Some("Rust".into()),
+        ..node("me/lonely", false, false)
+    };
+    let mut nodes = vec![
+        node("me/a", false, false),
+        node("me/b", false, false),
+        profile,
+        lonely,
+    ];
+    let edges = vec![
+        edge("me/a", "me/b", EdgeKind::Manifest),
+        edge("me/me", "me/a", EdgeKind::Docs),
+        edge("me/lonely", "me/me", EdgeKind::Docs),
+    ];
+    graph::apply_visibility(&mut nodes, &edges);
+    graph::apply_layers(&mut nodes, &edges);
+    let md = render_cartographer(&Graph::new(nodes, edges));
+    assert!(
+        !md.contains("github.com/me/lonely"),
+        "satellite of an excluded hub stays out:\n{md}"
+    );
+}
+
+#[test]
+fn docs_hub_with_many_edges_stays_out() {
+    // A documentation index (many docs edges) is not runtime coupling,
+    // even when it has detected language and touches the core.
+    let mut nodes = vec![node("me/a", false, false), node("me/b", false, false)];
+    let hub = Node {
+        language: Some("Rust".into()),
+        ..node("me/hub", false, false)
+    };
+    nodes.push(hub);
+    for i in 0..9 {
+        nodes.push(node(&format!("me/dummy{i}"), false, false));
+    }
+    let mut edges = vec![
+        edge("me/a", "me/b", EdgeKind::Manifest),
+        edge("me/hub", "me/a", EdgeKind::Docs),
+    ];
+    for i in 0..9 {
+        edges.push(edge("me/hub", &format!("me/dummy{i}"), EdgeKind::Docs));
+    }
+    graph::apply_visibility(&mut nodes, &edges);
+    graph::apply_layers(&mut nodes, &edges);
+    let md = render_cartographer(&Graph::new(nodes, edges));
+    assert!(
+        !md.contains("github.com/me/hub"),
+        "docs hub excluded:\n{md}"
+    );
+    assert!(md.contains(">a</a>"), "core kept");
+}
+
+#[test]
+fn satellite_cannot_anchor_another_satellite() {
+    // `mid` attaches to the core via docs; `zebra` only documents `mid`.
+    // Edge sort order would have chained them under a mutating core, so
+    // this pins the snapshot-anchor behavior.
+    let mid = Node {
+        language: Some("Shell".into()),
+        ..node("me/mid", false, false)
+    };
+    let zebra = Node {
+        language: Some("Shell".into()),
+        ..node("me/zebra", false, false)
+    };
+    let mut nodes = vec![node("me/a", false, false), node("me/b", false, false), mid, zebra];
+    let edges = vec![
+        edge("me/a", "me/b", EdgeKind::Manifest),
+        edge("me/mid", "me/a", EdgeKind::Docs),
+        edge("me/zebra", "me/mid", EdgeKind::Docs),
+    ];
+    graph::apply_visibility(&mut nodes, &edges);
+    graph::apply_layers(&mut nodes, &edges);
+    let md = render_cartographer(&Graph::new(nodes, edges));
+    assert!(md.contains("mid"), "direct satellite kept");
+    assert!(
+        !md.contains("zebra"),
+        "satellite of a satellite stays out:\n{md}"
+    );
+}

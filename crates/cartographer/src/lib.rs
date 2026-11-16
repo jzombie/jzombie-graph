@@ -34,6 +34,18 @@ const WIDTH: usize = 78;
 const HEIGHT: usize = 26;
 /// Staleness cutoff: pushes older than this before generation are omitted.
 const STALE_DAYS: i64 = 365;
+/// Docs incidence above this marks a documentation index, not runtime
+/// coupling: it stays out of the cluster even with detected language.
+const HUB_DOCS_EDGES: usize = 8;
+
+/// GitHub profile README repo (`owner` equals `name`, case-insensitive):
+/// a whole-portfolio documentation index, never a project node.
+fn is_profile_repo(id: &str) -> bool {
+    let Some((owner, name)) = id.split_once('/') else {
+        return false;
+    };
+    owner.eq_ignore_ascii_case(name)
+}
 
 /// Render the cluster doc for a collected graph. Title and inclusion
 /// sentence derive from the drawn cluster — no brand strings, no repo
@@ -102,6 +114,13 @@ fn select_cluster(graph: &Graph) -> Option<Cluster> {
     let mut fresh: BTreeSet<&str> = BTreeSet::new();
     for n in &graph.nodes {
         if n.private {
+            continue;
+        }
+        if is_profile_repo(n.id.as_str()) {
+            // GitHub profile README (`owner/owner`): a documentation index
+            // for the whole portfolio, never a project node. It would attach
+            // to every core node via docs edges and drag isolated repos in
+            // behind it (see below), collapsing the projection.
             continue;
         }
         if n.fork && !is_own_work(n) {
@@ -200,6 +219,25 @@ fn select_cluster(graph: &Graph) -> Option<Cluster> {
     // satellite must contain code (detected `language`) — prose alone
     // never qualifies, so an asset bucket stays out even if it gains a
     // readme blurb later. Workflow stays out as tooling.
+    //
+    // Two guards keep a documentation index from collapsing the drawing:
+    // - the anchor is the dependence core snapshotted before this loop, so
+    //   a newly added satellite can never anchor another satellite
+    //   (single pass over `anchor`, never the mutating `core` — otherwise
+    //   a hub drags its whole index in behind it, order-dependently);
+    // - a node with many docs edges is an index, not runtime coupling, and
+    //   stays out regardless of language.
+    let anchor: BTreeSet<String> = core.clone();
+    let mut docs_degree: BTreeMap<&str, usize> = BTreeMap::new();
+    for e in &graph.edges {
+        if e.kind != EdgeKind::Docs {
+            continue;
+        }
+        if eligible.contains(e.source.as_str()) && eligible.contains(e.target.as_str()) {
+            *docs_degree.entry(e.source.as_str()).or_default() += 1;
+            *docs_degree.entry(e.target.as_str()).or_default() += 1;
+        }
+    }
     for e in &graph.edges {
         if e.kind != EdgeKind::Docs {
             continue;
@@ -208,14 +246,20 @@ fn select_cluster(graph: &Graph) -> Option<Cluster> {
         if !eligible.contains(s) || !eligible.contains(t) {
             continue;
         }
-        let other = if core.contains(s) && fresh.contains(t) {
+        let other = if anchor.contains(s) && fresh.contains(t) {
             Some(t)
-        } else if core.contains(t) && fresh.contains(s) {
+        } else if anchor.contains(t) && fresh.contains(s) {
             Some(s)
         } else {
             None
         };
         if let Some(id) = other {
+            if is_profile_repo(id) {
+                continue;
+            }
+            if docs_degree.get(id).copied().unwrap_or(0) > HUB_DOCS_EDGES {
+                continue;
+            }
             let is_code = graph
                 .nodes
                 .iter()
@@ -238,6 +282,7 @@ fn select_cluster(graph: &Graph) -> Option<Cluster> {
     }
     edges.sort();
     let mut weak: Vec<(String, String)> = Vec::new();
+    let strong_set: BTreeSet<(String, String)> = edges.iter().cloned().collect();
     for e in &graph.edges {
         if e.kind != EdgeKind::Docs {
             continue;
@@ -246,10 +291,22 @@ fn select_cluster(graph: &Graph) -> Option<Cluster> {
         if !in_core(&a) || !in_core(&b) {
             continue;
         }
+        if is_profile_repo(&a) || is_profile_repo(&b) {
+            continue;
+        }
+        // Satellite edges only: at least one endpoint anchors in the
+        // dependence core. Satellite–satellite index links stay out.
+        if !anchor.contains(&a) && !anchor.contains(&b) {
+            continue;
+        }
         if a > b {
             std::mem::swap(&mut a, &mut b);
         }
-        if !weak.contains(&(a.clone(), b.clone())) {
+        // A docs pair that already has a cargo edge pulls with the cargo
+        // edge; drawing it again only over-inks the same cells.
+        if !strong_set.contains(&(a.clone(), b.clone()))
+            && !weak.contains(&(a.clone(), b.clone()))
+        {
             weak.push((a.clone(), b.clone()));
         }
         // Each directed docs edge adds pull; a mutual pair (both
