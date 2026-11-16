@@ -1588,7 +1588,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
- "syn 2.0.119",
+ "syn 3.0.9",
  "tempfile",
  "tokio",
  "toml 0.8.23",
