@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-11-17T02:40:35.721094924Z",
+  "generated_at": "2026-11-17T04:35:54.535038133Z",
   "velocity_scope": "all",
   "velocity_owner": "jzombie",
   "nodes": [
@@ -1849,7 +1849,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -57.5,
+      "focus": -57.533333,
       "branch_heat": [
         {
           "branch": "BrianMouncer-CG-fix",
@@ -2592,7 +2592,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -28.033333,
+      "focus": -28.066668,
       "last_commit_at": "2024-07-28T02:34:31Z",
       "branch_heat": [
         {
@@ -3970,7 +3970,7 @@
       "stars": 0,
       "forks_count": 0,
       "open_issues": 2,
-      "size_kb": 71,
+      "size_kb": 75,
       "has_readme": true,
       "commits_1d": 0,
       "commits_5d": 14,
@@ -4050,7 +4050,7 @@
       "private": false,
       "upstream": null,
       "ahead_by": null,
-      "pushed_at": "2026-11-17T02:18:21Z",
+      "pushed_at": "2026-11-17T02:40:47Z",
       "description": "Nightly map of my GitHub portfolio: real dependency edges plus a self-normalized Developer Focus gauge ranking where attention is going.",
       "topics": [
         "automation",
@@ -4071,7 +4071,7 @@
       "forks_count": 0,
       "open_issues": 3,
       "license": "Apache-2.0",
-      "size_kb": 793,
+      "size_kb": 801,
       "has_readme": true,
       "has_license_file": true,
       "commits_1d": 3,
@@ -5414,7 +5414,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -51.766666,
+      "focus": -51.8,
       "branch_heat": [
         {
           "branch": "master",
@@ -6710,7 +6710,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -21.166666,
+      "focus": -21.2,
       "last_commit_at": "2025-02-19T04:19:11Z",
       "branch_heat": [
         {
@@ -6854,7 +6854,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -21.033333,
+      "focus": -21.066668,
       "last_commit_at": "2025-02-23T03:58:04Z",
       "branch_heat": [
         {
@@ -7812,7 +7812,7 @@
       "private": false,
       "upstream": null,
       "ahead_by": null,
-      "pushed_at": "2026-11-16T21:33:14Z",
+      "pushed_at": "2026-11-17T03:06:25Z",
       "description": "An experimental DSL used for building embeddable artifacts and orchestrating pipelines.",
       "topics": [
         "build-tools",
@@ -7829,14 +7829,14 @@
       "forks_count": 0,
       "open_issues": 69,
       "license": "Apache-2.0",
-      "size_kb": 6607,
+      "size_kb": 4794,
       "has_readme": true,
       "has_agents_md": true,
       "has_license_file": true,
-      "commits_1d": 9,
-      "commits_5d": 22,
-      "commits_15d": 27,
-      "commits_30d": 36,
+      "commits_1d": 10,
+      "commits_5d": 23,
+      "commits_15d": 28,
+      "commits_30d": 37,
       "issues_open_1d": 0,
       "issues_open_5d": 7,
       "issues_open_15d": 15,
@@ -7856,17 +7856,17 @@
         "needs research": 3
       },
       "issue_heat": 2.1212122,
-      "commit_heat": 4.222222,
-      "focus": 3.1717172,
-      "last_commit_at": "2026-11-17T02:34:00Z",
+      "commit_heat": 4.4504504,
+      "focus": 3.2858315,
+      "last_commit_at": "2026-11-17T03:06:22Z",
       "branch_heat": [
         {
           "branch": "303-bug-script-scope-let-visible-to-echo-template-but-not-to-run-args-inside-func",
           "is_default": false,
-          "commits_1d": 9,
-          "commits_5d": 19,
-          "commits_15d": 22,
-          "commits_30d": 31
+          "commits_1d": 10,
+          "commits_5d": 20,
+          "commits_15d": 23,
+          "commits_30d": 32
         },
         {
           "branch": "main",
@@ -9974,7 +9974,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -67.666664,
+      "focus": -67.7,
       "last_commit_at": "2021-04-26T02:54:59Z",
       "branch_heat": [
         {
@@ -10786,7 +10786,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -35.633335,
+      "focus": -35.666668,
       "branch_heat": [
         {
           "branch": "master",
@@ -10911,7 +10911,7 @@
       "commits_30d": 20,
       "issues_open_1d": 0,
       "issues_open_5d": 2,
-      "issues_open_15d": 5,
+      "issues_open_15d": 4,
       "issues_open_30d": 6,
       "issues_closed_1d": 0,
       "issues_closed_5d": 0,
@@ -10919,7 +10919,7 @@
       "issues_closed_30d": 5,
       "issue_comments_1d": 0,
       "issue_comments_5d": 2,
-      "issue_comments_15d": 8,
+      "issue_comments_15d": 7,
       "issue_comments_30d": 9,
       "issue_labels": {
         "bug": 4,
@@ -10927,9 +10927,9 @@
         "needs research": 3,
         "rust": 1
       },
-      "issue_heat": 1.037037,
+      "issue_heat": 0.9629629,
       "commit_heat": 1.3666667,
-      "focus": 1.1351851,
+      "focus": 1.0981481,
       "last_commit_at": "2026-11-15T01:34:48Z",
       "branch_heat": [
         {
@@ -11448,7 +11448,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -10.8,
+      "focus": -10.833333,
       "last_commit_at": "2025-12-27T03:57:25Z",
       "branch_heat": [
         {
@@ -11647,7 +11647,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -11.633333,
+      "focus": -11.666667,
       "branch_heat": [
         {
           "branch": "main",
@@ -11700,7 +11700,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -109.066666,
+      "focus": -109.1,
       "last_commit_at": "2017-12-01T03:01:14Z",
       "branch_heat": [
         {
@@ -12036,7 +12036,7 @@
       "stars": 0,
       "forks_count": 0,
       "open_issues": 3,
-      "size_kb": 1066,
+      "size_kb": 1063,
       "has_readme": true,
       "has_agents_md": true,
       "commits_1d": 6,
@@ -12223,17 +12223,17 @@
       "homepage": "https://zenosmosis.com",
       "stars": 0,
       "forks_count": 0,
-      "open_issues": 3,
+      "open_issues": 4,
       "size_kb": 1175,
       "has_readme": true,
       "commits_1d": 2,
       "commits_5d": 11,
       "commits_15d": 11,
       "commits_30d": 12,
-      "issues_open_1d": 2,
-      "issues_open_5d": 2,
-      "issues_open_15d": 3,
-      "issues_open_30d": 3,
+      "issues_open_1d": 3,
+      "issues_open_5d": 3,
+      "issues_open_15d": 4,
+      "issues_open_30d": 4,
       "issues_closed_1d": 1,
       "issues_closed_5d": 1,
       "issues_closed_15d": 1,
@@ -12244,7 +12244,8 @@
       "issue_comments_30d": 3,
       "issue_labels": {
         "documentation": 2,
-        "enhancement": 1
+        "enhancement": 1,
+        "needs-research": 1
       },
       "issue_heat": 8.666667,
       "commit_heat": 4.111111,
@@ -12383,6 +12384,15 @@
         }
       ],
       "recent_issues": [
+        {
+          "number": 27,
+          "title": "Needs research: MCP discovery & autonomous connection surface for the zenOSmosis portfolio",
+          "state": "OPEN",
+          "labels": [
+            "needs-research"
+          ],
+          "comments": 0
+        },
         {
           "number": 1,
           "title": "Create stats cache for aggregate API usage",
@@ -12654,7 +12664,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-17T02:18:21Z",
+      "recency": "2026-11-17T02:40:47Z",
       "version": "0.39.0-alpha"
     },
     {
@@ -12684,7 +12694,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-17T02:18:21Z",
+      "recency": "2026-11-17T02:40:47Z",
       "version": "0.13.5-alpha.1"
     },
     {
@@ -12774,7 +12784,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-16T21:33:14Z",
+      "recency": "2026-11-17T03:06:25Z",
       "version": "1.6.0"
     },
     {
@@ -12784,7 +12794,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-16T21:33:14Z",
+      "recency": "2026-11-17T03:06:25Z",
       "version": "0.17.0-alpha"
     },
     {

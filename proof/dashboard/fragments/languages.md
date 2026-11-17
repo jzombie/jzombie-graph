@@ -1,5 +1,5 @@
 ## Top languages
 
-[![languages](dashboard/charts/portfolio-graph-languages.svg?v=202611170240)](https://github.com/jzombie?tab=repositories)
+[![languages](dashboard/charts/portfolio-graph-languages.svg?v=202611170435)](https://github.com/jzombie?tab=repositories)
 
 <sub>Share of portfolio repos by detected language; repos without one stay out.</sub>
