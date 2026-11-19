@@ -1574,6 +1574,7 @@ dependencies = [
  "base64",
  "chrono",
  "clap",
+ "indoc",
  "insta",
  "regex",
  "reqwest",
