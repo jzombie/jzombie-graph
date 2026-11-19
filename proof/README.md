@@ -1,17 +1,8 @@
 # jzombie — portfolio dashboard
 
+**Systems engineer specializing in Rust, CLI/TUI desktop environments, and high-performance middleware for Rust-native ingestion and scoring pipelines.**
+
 This is a nightly generated map of jzombie's open-source systems portfolio, for anyone deciding whether to build on these tools or work with the person building them; the story starts at [blog.zenosmosis.com](https://blog.zenosmosis.com).
-
-[![flame](dashboard/charts/portfolio-graph-flame.svg?v=202611190437)](https://github.com/jzombie?tab=repositories)
-
-## Popular repositories
-
-<div align="center">
-
-[![rust-muxio](dashboard/charts/portfolio-graph-pin-rust-muxio.svg?v=202611190437)](https://github.com/jzombie/rust-muxio) [![docker-mqtt-mosquitto…](dashboard/charts/portfolio-graph-pin-docker-mqtt-mosquitto-cloudflare-tunnel.svg?v=202611190437)](https://github.com/jzombie/docker-mqtt-mosquitto-cloudflare-tunnel) [![rust-simd-r-drive](dashboard/charts/portfolio-graph-pin-rust-simd-r-drive.svg?v=202611190437)](https://github.com/jzombie/rust-simd-r-drive) [![sshfs-mac-docker](dashboard/charts/portfolio-graph-pin-sshfs-mac-docker.svg?v=202611190437)](https://github.com/jzombie/sshfs-mac-docker) [![term-wm](dashboard/charts/portfolio-graph-pin-term-wm.svg?v=202611190437)](https://github.com/jzombie/term-wm) [![rust-line-ending](dashboard/charts/portfolio-graph-pin-rust-line-ending.svg?v=202611190437)](https://github.com/jzombie/rust-line-ending) [![deepwiki-to-mdbook](dashboard/charts/portfolio-graph-pin-deepwiki-to-mdbook.svg?v=202611190437)](https://github.com/jzombie/deepwiki-to-mdbook) [![term-wm-vt100](dashboard/charts/portfolio-graph-pin-term-wm-vt100.svg?v=202611190437)](https://github.com/jzombie/term-wm-vt100) [![lab-qemu-portable](dashboard/charts/portfolio-graph-pin-lab-qemu-portable.svg?v=202611190437)](https://github.com/jzombie/lab-qemu-portable)
-
-</div>
-
 
 ## jzombie portfolio cluster
 
@@ -48,6 +39,17 @@ Repos are in this chart through interconnectedness: each one builds on, is used 
 
 </pre>
 Repos quiet for over a year are left out unless something current uses them; forks show up only after diverging or being renamed.
+
+## Popular repositories
+
+<div align="center">
+
+[![rust-muxio](dashboard/charts/portfolio-graph-pin-rust-muxio.svg?v=202611190437)](https://github.com/jzombie/rust-muxio) [![docker-mqtt-mosquitto…](dashboard/charts/portfolio-graph-pin-docker-mqtt-mosquitto-cloudflare-tunnel.svg?v=202611190437)](https://github.com/jzombie/docker-mqtt-mosquitto-cloudflare-tunnel) [![rust-simd-r-drive](dashboard/charts/portfolio-graph-pin-rust-simd-r-drive.svg?v=202611190437)](https://github.com/jzombie/rust-simd-r-drive) [![sshfs-mac-docker](dashboard/charts/portfolio-graph-pin-sshfs-mac-docker.svg?v=202611190437)](https://github.com/jzombie/sshfs-mac-docker) [![term-wm](dashboard/charts/portfolio-graph-pin-term-wm.svg?v=202611190437)](https://github.com/jzombie/term-wm) [![rust-line-ending](dashboard/charts/portfolio-graph-pin-rust-line-ending.svg?v=202611190437)](https://github.com/jzombie/rust-line-ending) [![deepwiki-to-mdbook](dashboard/charts/portfolio-graph-pin-deepwiki-to-mdbook.svg?v=202611190437)](https://github.com/jzombie/deepwiki-to-mdbook) [![term-wm-vt100](dashboard/charts/portfolio-graph-pin-term-wm-vt100.svg?v=202611190437)](https://github.com/jzombie/term-wm-vt100) [![lab-qemu-portable](dashboard/charts/portfolio-graph-pin-lab-qemu-portable.svg?v=202611190437)](https://github.com/jzombie/lab-qemu-portable)
+
+</div>
+
+
+[![flame](dashboard/charts/portfolio-graph-flame.svg?v=202611190437)](https://github.com/jzombie?tab=repositories)
 
 ## Developer focus
 
