@@ -1040,26 +1040,79 @@ pub fn render_flame_svg(graph_json: &str) -> anyhow::Result<String> {
 const SELECTED_TOPN: usize = 9;
 
 /// One list row: everything the fragment prints, shaped in Rust so the
-/// renderer below carries no graph access.
+/// renderer below carries no graph access. Every displayable fact the
+/// JSON carries for a repo rides along — this is the "show me everything"
+/// pass, so the list is deliberately dense; prune in the renderer, never
+/// at collection.
 #[derive(Debug, Clone, PartialEq)]
 struct SelectedRow {
+    /// Repo URL and display name.
     url: String,
     name: String,
     /// Empty when the repo has none — the description line drops out
     /// rather than printing a placeholder.
     desc: String,
-    /// Heat band word; doubles as the badge file name.
-    band: &'static str,
-    commits_30d: u32,
-    stars: u32,
-    /// Portfolio repos that depend on this one (dependence edges only).
-    fan_in: u32,
     /// Owner login: the topic search links are user-scoped, never baked.
     owner: String,
     /// Repo topics, all of them, each linked to a user-scoped search.
     topics: Vec<String>,
     /// Repo homepage (site or crate page); `None` when unset or blank.
     homepage: Option<String>,
+    /// `fork of owner/parent (+N own commits)` when the row is a
+    /// diverged fork; `None` for original work.
+    fork_note: Option<String>,
+    /// Heat band word; doubles as the badge file name.
+    band: &'static str,
+    /// Velocity and pull: trailing-30d commits, stars, forks, backlog.
+    commits_30d: u32,
+    stars: u32,
+    forks: u32,
+    open_issues: u32,
+    /// Dependence edges both ways — who leans on this repo, what it
+    /// leans on. Associations (docs, workflows) never count.
+    fan_in: u32,
+    fan_out: u32,
+    /// Positional tags (`middleware · application`) plus identity facts.
+    layer: String,
+    language: Option<String>,
+    license: Option<String>,
+    focus: Option<f32>,
+    last_commit: Option<String>,
+    branches: usize,
+    size_kb: u32,
+    /// Agent-parseability audit from the default-branch tree: which of
+    /// readme / license / llms.txt / agents.md exist.
+    surfaces: Vec<&'static str>,
+    /// Thread traffic in the trailing 30d, the issue gauge, and the
+    /// label census over the sampled threads (bugs vs enhancements).
+    issues_open_30d: u32,
+    issues_closed_30d: u32,
+    issue_comments_30d: u32,
+    issue_heat: Option<f32>,
+    labels: Vec<(String, u32)>,
+    /// Recent PRs: captured total, counts per state, a title sample.
+    prs_total: usize,
+    prs_states: Vec<(String, usize)>,
+    prs_sample: Vec<String>,
+    /// Sampled planning threads: captured total, state counts, and a
+    /// rendered `#n "title" (state, N comments)` sample.
+    issues_total: usize,
+    issues_states: Vec<(String, usize)>,
+    issues_sample: Vec<String>,
+}
+
+/// Titles kept per thread list before the `+N more` rollup, and how
+/// long each may run — a roadmap line, not a changelog.
+const THREAD_SAMPLE: usize = 3;
+const TITLE_MAX: usize = 60;
+
+/// Repo size as the API reports it (KB) in the units a reader expects.
+fn size_label(size_kb: u32) -> String {
+    if size_kb >= 1024 {
+        format!("{:.1} MB", size_kb as f64 / 1024.0)
+    } else {
+        format!("{size_kb} KB")
+    }
 }
 
 /// Flagship score: load-bearing reuse first — one portfolio dependent
@@ -1130,30 +1183,136 @@ fn selected_rows(graph_json: &str) -> anyhow::Result<Vec<SelectedRow>> {
             .then_with(|| a.1.name.cmp(&b.1.name))
     });
     scored.truncate(SELECTED_TOPN);
+    let fan_out = graph.node_fan_out();
     Ok(scored
         .into_iter()
-        .map(|(_, nd)| SelectedRow {
-            url: format!("https://github.com/{}", nd.id),
-            name: nd.name.clone(),
-            desc: nd.description.clone().unwrap_or_default(),
-            band: heat_band(nd.commit_heat.or_else(|| nd.commit_heat())),
-            commits_30d: nd.commits_30d,
-            stars: nd.stars,
-            fan_in: fan_in.get(&nd.id).copied().unwrap_or(0),
-            owner: nd.owner.clone(),
-            topics: nd.topics.clone(),
-            homepage: nd
-                .homepage
-                .as_deref()
-                .map(str::trim)
-                .filter(|h| !h.is_empty())
-                .map(str::to_string),
+        .map(|(_, nd)| {
+            let mut surfaces = vec![];
+            if nd.has_readme {
+                surfaces.push("readme");
+            }
+            if nd.has_license_file {
+                surfaces.push("license");
+            }
+            if nd.has_llms_txt {
+                surfaces.push("llms.txt");
+            }
+            if nd.has_agents_md {
+                surfaces.push("agents.md");
+            }
+            let mut labels: Vec<(String, u32)> = nd
+                .issue_labels
+                .iter()
+                .map(|(k, v)| (k.clone(), *v))
+                .collect();
+            // Loudest label first, name breaks ties: one order, every run.
+            labels.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+            let counts = |states: &[&str], hit: &dyn Fn(&str) -> usize| -> Vec<(String, usize)> {
+                states.iter().map(|s| ((*s).to_string(), hit(s))).collect()
+            };
+            let prs_total = nd.recent_prs.len();
+            let prs_states = counts(&["merged", "open", "closed"], &|s| {
+                nd.recent_prs
+                    .iter()
+                    .filter(|p| p.state.eq_ignore_ascii_case(s))
+                    .count()
+            });
+            let prs_sample = nd
+                .recent_prs
+                .iter()
+                .take(THREAD_SAMPLE)
+                // Quotes live with the title: the issue sample carries
+                // its own `#n "…" (…)` wrapper, and `thread_line` joins
+                // samples verbatim so nothing nests.
+                .map(|p| format!("\"{}\"", cell_text(&p.title, TITLE_MAX)))
+                .collect();
+            let issues_total = nd.recent_issues.len();
+            let issues_states = counts(&["open", "closed"], &|s| {
+                nd.recent_issues
+                    .iter()
+                    .filter(|i| i.state.eq_ignore_ascii_case(s))
+                    .count()
+            });
+            let issues_sample = nd
+                .recent_issues
+                .iter()
+                .take(THREAD_SAMPLE)
+                .map(|i| {
+                    let mut meta = format!(
+                        "{} \u{b7} {} comment{}",
+                        i.state.to_lowercase(),
+                        i.comments,
+                        if i.comments == 1 { "" } else { "s" }
+                    );
+                    if !i.labels.is_empty() {
+                        meta.push_str(&format!(" \u{b7} {}", i.labels.join(", ")));
+                    }
+                    format!(
+                        "#{} \"{}\" ({})",
+                        i.number,
+                        cell_text(&i.title, TITLE_MAX),
+                        meta
+                    )
+                })
+                .collect();
+            let fork_note = if nd.fork {
+                Some(match (nd.upstream.as_deref(), nd.ahead_by) {
+                    (Some(up), Some(ahead)) if ahead > 0 => {
+                        format!("fork of {up} (+{ahead} own commits)")
+                    }
+                    (Some(up), _) => format!("fork of {up}"),
+                    (None, _) => "fork".to_string(),
+                })
+            } else {
+                None
+            };
+            SelectedRow {
+                url: format!("https://github.com/{}", nd.id),
+                name: nd.name.clone(),
+                desc: nd.description.clone().unwrap_or_default(),
+                band: heat_band(nd.commit_heat.or_else(|| nd.commit_heat())),
+                commits_30d: nd.commits_30d,
+                stars: nd.stars,
+                forks: nd.forks_count,
+                open_issues: nd.open_issues,
+                fan_in: fan_in.get(&nd.id).copied().unwrap_or(0),
+                fan_out: fan_out.get(&nd.id).copied().unwrap_or(0),
+                owner: nd.owner.clone(),
+                topics: nd.topics.clone(),
+                homepage: nd
+                    .homepage
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|h| !h.is_empty())
+                    .map(str::to_string),
+                fork_note,
+                layer: jzombie_graph::graph::Graph::layer_string(&nd.layer),
+                language: nd.language.clone(),
+                license: nd.license.clone(),
+                focus: nd.focus,
+                last_commit: nd.last_commit_at.map(|t| t.format("%Y-%m-%d").to_string()),
+                branches: nd.branch_heat.len(),
+                size_kb: nd.size_kb,
+                surfaces,
+                issues_open_30d: nd.issues_open_30d,
+                issues_closed_30d: nd.issues_closed_30d,
+                issue_comments_30d: nd.issue_comments_30d,
+                issue_heat: nd.issue_heat,
+                labels,
+                prs_total,
+                prs_states,
+                prs_sample,
+                issues_total,
+                issues_states,
+                issues_sample,
+            }
         })
         .collect())
 }
 
 /// Render the selected-work fragment: heading, the sentence that states
-/// what the order measures, then one bullet per row. Plain markdown — no
+/// what the order measures, then one bullet per row — description,
+/// topics, classification, proof, thread traffic. Plain markdown — no
 /// cache-bust token, because text re-renders with the commit instead of
 /// being proxied as an image.
 pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
@@ -1172,40 +1331,124 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
             let desc = row.desc.split_whitespace().collect::<Vec<_>>().join(" ");
             format!("**{link}** \u{2014} {desc}")
         };
-        let commits = if row.commits_30d == 1 {
-            "1 commit in 30d".to_string()
-        } else {
-            format!("{} commits in 30d", row.commits_30d)
-        };
-        // The badge file carries its own 44px design size; inline here
-        // it asks for 24 so the meta line stays a text line. Markdown's
-        // `![]()` cannot carry a width, and GitHub keeps `width` on a
-        // raw `<img>`.
-        let mut meta = format!(
-            "<img src=\"{badge}\" width=\"24\" alt=\"\"> {band} \u{b7} {commits} \u{b7} \u{2605}{stars}",
-            badge = jzombie_graph::paths::indicator_url(row.band),
-            band = row.band,
-            commits = commits,
-            stars = row.stars,
-        );
-        if row.fan_in > 0 {
-            meta.push_str(&format!(" \u{b7} used by {}", row.fan_in));
-        }
-        if let Some(home) = &row.homepage {
-            meta.push_str(&format!(" \u{b7} [{}]({})", host_label(home), home));
-        }
-        // Description, then identity (topics), then proof — the order the
-        // commit-data table reads in, without its columns.
-        items.push_str(&format!("- {head}<br>"));
+        // One fact group per `<sub>` line: pruning is deleting a line,
+        // never rewording a sentence.
+        let mut lines: Vec<String> = vec![format!("- {head}")];
+
         if !row.topics.is_empty() {
             let tags: Vec<String> = row
                 .topics
                 .iter()
                 .map(|t| topic_link(&row.owner, t))
                 .collect();
-            items.push_str(&format!("<sub>{}</sub><br>", tags.join(" ")));
+            lines.push(format!("<sub>{}</sub>", tags.join(" ")));
         }
-        items.push_str(&format!("<sub>{meta}</sub>\n"));
+
+        // Positional tags, identity, and the tree audit. The layer value
+        // wears backticks because it carries its own middle dots.
+        let mut class: Vec<String> = vec![format!("layer: `{}`", row.layer)];
+        if let Some(lang) = &row.language {
+            class.push(lang.clone());
+        }
+        if let Some(lic) = &row.license {
+            class.push(lic.clone());
+        }
+        if let Some(note) = &row.fork_note {
+            class.push(note.clone());
+        }
+        if let Some(f) = row.focus {
+            class.push(format!("focus {f:+.2}"));
+        }
+        if let Some(d) = &row.last_commit {
+            class.push(format!("last commit {d}"));
+        }
+        class.push(if row.branches == 1 {
+            "1 branch".to_string()
+        } else {
+            format!("{} branches", row.branches)
+        });
+        if row.size_kb > 0 {
+            class.push(size_label(row.size_kb));
+        }
+        if !row.surfaces.is_empty() {
+            class.push(format!("docs: {}", row.surfaces.join(", ")));
+        }
+        lines.push(format!("<sub>{}</sub>", class.join(" \u{b7} ")));
+
+        // The proof line: gauge, volume, pull, structure, and the site —
+        // the full URL, never a truncated host. The badge file carries
+        // its own 44px design size; inline here it asks for 24 and
+        // centers on the text with the legacy `align` attribute, which
+        // is the only vertical alignment GitHub's sanitizer keeps
+        // (`style` is stripped).
+        let commits = if row.commits_30d == 1 {
+            "1 commit in 30d".to_string()
+        } else {
+            format!("{} commits in 30d", row.commits_30d)
+        };
+        let mut proof = format!(
+            "<img src=\"{badge}\" width=\"24\" align=\"middle\" alt=\"\"> {band} \u{b7} {commits} \u{b7} \u{2605}{stars} \u{b7} \u{2442}{forks} \u{b7} {open} open issues \u{b7} used by {fan_in} \u{b7} uses {fan_out}",
+            badge = jzombie_graph::paths::indicator_url(row.band),
+            band = row.band,
+            commits = commits,
+            stars = row.stars,
+            forks = row.forks,
+            open = row.open_issues,
+            fan_in = row.fan_in,
+            fan_out = row.fan_out,
+        );
+        if let Some(home) = &row.homepage {
+            proof.push_str(&format!(" \u{b7} [{home}]({home})"));
+        }
+        lines.push(format!("<sub>{proof}</sub>"));
+
+        // Thread traffic: what moved in the window, the issue gauge, and
+        // how the sampled threads are labelled.
+        let mut activity = vec![format!(
+            "issues 30d: {} opened \u{b7} {} closed \u{b7} {} comments",
+            row.issues_open_30d, row.issues_closed_30d, row.issue_comments_30d
+        )];
+        if let Some(h) = row.issue_heat {
+            activity.push(format!("issue heat {h:.2}"));
+        }
+        if !row.labels.is_empty() {
+            let census: Vec<String> = row
+                .labels
+                .iter()
+                .map(|(l, c)| format!("{l}\u{d7}{c}"))
+                .collect();
+            activity.push(format!("label census: {}", census.join(", ")));
+        }
+        lines.push(format!("<sub>{}</sub>", activity.join(" \u{b7} ")));
+
+        // The threads themselves: counts by state, then a short sample.
+        if row.prs_total > 0 {
+            lines.push(format!(
+                "<sub>{}</sub>",
+                thread_line(
+                    &format!("PRs ({})", row.prs_total),
+                    &row.prs_states,
+                    &row.prs_sample,
+                    row.prs_total,
+                )
+            ));
+        }
+        if row.issues_total > 0 {
+            lines.push(format!(
+                "<sub>{}</sub>",
+                thread_line(
+                    &format!("issues ({})", row.issues_total),
+                    &row.issues_states,
+                    &row.issues_sample,
+                    row.issues_total,
+                )
+            ));
+        }
+
+        // Join with literal `<br>`: markdown needs a hard break inside a
+        // list item, and GitHub keeps raw HTML tags.
+        items.push_str(&lines.join("<br>"));
+        items.push('\n');
     }
     Ok(formatdoc! {r#"
         ## Selected work
@@ -1213,6 +1456,23 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
         Ordered by load-bearing reuse first — how many portfolio repos depend on a repo — then external pull (stars and forks), then recent activity, with product repos and documented ones nudged up. It’s a ranking of signal, not a tally of volume: exact counts, layers, and reuse ride the commit data table below.
 
         {items}"#})
+}
+
+/// `label: 17 merged · 1 open · 2 closed — title · title · +17`,
+/// shared by the PR and issue lines so both read the same way. Samples
+/// arrive already rendered — the issue sample carries its own wrapper,
+/// so nothing nests.
+fn thread_line(label: &str, states: &[(String, usize)], sample: &[String], total: usize) -> String {
+    let counts: Vec<String> = states.iter().map(|(s, c)| format!("{c} {s}")).collect();
+    let mut out = format!("{label}: {}", counts.join(" \u{b7} "));
+    if !sample.is_empty() {
+        let mut titles: Vec<String> = sample.to_vec();
+        if total > sample.len() {
+            titles.push(format!("+{}", total - sample.len()));
+        }
+        out.push_str(&format!(" \u{2014} {}", titles.join(" \u{b7} ")));
+    }
+    out
 }
 
 /// Linguist language colors for a language dot; unknown maps to the
@@ -1715,24 +1975,6 @@ fn topic_links(owner: &str, topics: &[String]) -> String {
         tags.push(format!("+{}", topics.len() - MAX));
     }
     tags.join(" ")
-}
-
-/// Display label for a homepage link: host only — no scheme, no path, no
-/// leading `www.` — so `crates.io/crates/term-wm` reads as `crates.io`.
-/// Truncated so one long docs host can't swallow the meta line; the href
-/// keeps the full URL.
-fn host_label(url: &str) -> String {
-    let after_scheme = url.split_once("://").map(|(_, rest)| rest).unwrap_or(url);
-    let host = after_scheme
-        .split(['/', '?', '#'])
-        .next()
-        .unwrap_or(after_scheme);
-    let host = host.strip_prefix("www.").unwrap_or(host);
-    if host.chars().count() > 40 {
-        host.chars().take(39).collect::<String>() + "\u{2026}"
-    } else {
-        host.to_string()
-    }
 }
 
 /// One line of prose for a markdown table cell. The MARKDOWN module owns
