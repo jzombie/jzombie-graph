@@ -2,7 +2,7 @@
 
 **Systems engineer specializing in Rust, CLI/TUI desktop environments, and high-performance middleware for Rust-native ingestion and scoring pipelines.**
 
-This is a nightly generated map of jzombie's open-source systems portfolio, for anyone deciding whether to build on these tools or work with the person building them; the story starts at [blog.zenosmosis.com](https://blog.zenosmosis.com).
+Automatically generated from a [nightly graph build](https://github.com/jzombie/jzombie-graph/blob/main/data/portfolio-graph.json) of my GitHub profile — Rust collector, [OxDock](https://github.com/jzombie/rust-oxdock) DSL, and whatever else is on the bench. For anyone deciding whether to build on these tools or work with the person building them; story starts at [blog.zenosmosis.com](https://blog.zenosmosis.com).
 
 ## jzombie portfolio cluster
 
