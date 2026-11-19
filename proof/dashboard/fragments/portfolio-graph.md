@@ -1,4 +1,4 @@
-## jzombie portfolio cluster
+## Portfolio cluster
 
 Repos are in this chart through interconnectedness: each one builds on, is used by, or documents another repo here.
 

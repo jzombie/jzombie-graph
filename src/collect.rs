@@ -882,14 +882,26 @@ cc = "1"
         // Cargo: explicit targets either shape; autobins is a tree
         // question, so only the opt-out lives here.
         assert!(cargo_has_bin_target(
-            "[[bin]]\nname = \"t\"\npath = \"src/main.rs\"\n"
+            r#"
+[[bin]]
+name = "t"
+path = "src/main.rs"
+"#
         ));
         assert!(cargo_has_bin_target(
-            "[bin]\nname = \"t\"\npath = \"src/main.rs\"\n"
+            r#"
+[bin]
+name = "t"
+path = "src/main.rs"
+"#
         ));
         assert!(!cargo_has_bin_target("[package]\nname = \"lib\"\n"));
         assert!(cargo_autobins_disabled(
-            "[package]\nname = \"t\"\nautobins = false\n"
+            r#"
+[package]
+name = "t"
+autobins = false
+"#
         ));
         assert!(!cargo_autobins_disabled("[package]\nname = \"t\"\n"));
         // npm: string or map, empty means no binary.
@@ -900,54 +912,131 @@ cc = "1"
         // Python: project scripts or Poetry scripts, non-empty.
         assert!(pyproject_has_scripts("[project.scripts]\nt = \"t:main\"\n"));
         assert!(pyproject_has_scripts(
-            "[project.gui-scripts]\nt = \"t:main\"\n"
+            r#"
+[project.gui-scripts]
+t = "t:main"
+"#
         ));
         assert!(pyproject_has_scripts(
-            "[tool.poetry.scripts]\nt = \"t:main\"\n"
+            r#"
+[tool.poetry.scripts]
+t = "t:main"
+"#
         ));
         assert!(!pyproject_has_scripts("[project.scripts]\n"));
         assert!(!pyproject_has_scripts("[project]\nname = \"t\"\n"));
         // Go: line-anchored `package main`, word boundary held.
-        assert!(go_has_main("package main\n\nimport \"fmt\"\n"));
+        assert!(go_has_main(
+            r#"
+package main
+
+import "fmt"
+"#
+        ));
         assert!(go_has_main("\tpackage main // entry\n"));
         assert!(!go_has_main("package mainfoo\n"));
-        assert!(!go_has_main("// package main in a comment\npackage lib\n"));
+        assert!(!go_has_main(
+            r#"
+// package main in a comment
+package lib
+"#
+        ));
     }
 
     #[test]
     fn cargo_primary_vs_helper_bins() {
         // Pure binary package: any explicit bin counts, no lib anywhere.
-        let pure = "[package]\nname = \"tool\"\n[[bin]]\nname = \"tool-a\"\npath = \"src/bin/tool-a.rs\"\n";
+        let pure = r#"
+[package]
+name = "tool"
+[[bin]]
+name = "tool-a"
+path = "src/bin/tool-a.rs"
+"#;
         assert!(cargo_explicit_primary_bin(pure, false));
         // Lib + namesake bin: primary.
-        let lib_primary = "[package]\nname = \"mylib\"\n[lib]\n[[bin]]\nname = \"mylib\"\npath = \"src/main.rs\"\n";
+        let lib_primary = r#"
+[package]
+name = "mylib"
+[lib]
+[[bin]]
+name = "mylib"
+path = "src/main.rs"
+"#;
         assert!(cargo_explicit_primary_bin(lib_primary, true));
         assert!(cargo_explicit_primary_bin(lib_primary, false)); // [lib] suffices
         // Lib + helper-only bin: never primary.
-        let helper =
-            "[package]\nname = \"mylib\"\n[[bin]]\nname = \"xtask\"\npath = \"tools/xtask.rs\"\n";
+        let helper = r#"
+[package]
+name = "mylib"
+[[bin]]
+name = "xtask"
+path = "tools/xtask.rs"
+"#;
         assert!(!cargo_explicit_primary_bin(helper, true));
         // Lib, no lib file, no [lib] table, helper name: without lib
         // evidence it looks like a pure bin package — counts. The tree
         // probe (src/lib.rs) is what separates this from the case above.
         assert!(cargo_explicit_primary_bin(helper, false));
         // default-run names the primary among several.
-        let multi = "[package]\nname = \"mylib\"\ndefault-run = \"real\"\n[lib]\n[[bin]]\nname = \"xtask\"\npath = \"tools/x.rs\"\n[[bin]]\nname = \"real\"\npath = \"src/bin/real.rs\"\n";
+        let multi = r#"
+[package]
+name = "mylib"
+default-run = "real"
+[lib]
+[[bin]]
+name = "xtask"
+path = "tools/x.rs"
+[[bin]]
+name = "real"
+path = "src/bin/real.rs"
+"#;
         assert!(cargo_explicit_primary_bin(multi, true));
-        let helper_only = "[package]\nname = \"mylib\"\ndefault-run = \"real\"\n[lib]\n[[bin]]\nname = \"xtask\"\npath = \"tools/x.rs\"\n";
+        let helper_only = r#"
+[package]
+name = "mylib"
+default-run = "real"
+[lib]
+[[bin]]
+name = "xtask"
+path = "tools/x.rs"
+"#;
         assert!(!cargo_explicit_primary_bin(helper_only, true));
         // Virtual manifest: no package, no primary.
         assert!(!cargo_explicit_primary_bin(
-            "[workspace]\nmembers = [\"a\"]\n[[bin]]\nname = \"t\"\npath = \"src/main.rs\"\n",
+            r#"
+[workspace]
+members = ["a"]
+[[bin]]
+name = "t"
+path = "src/main.rs"
+"#,
             false
         ));
         // `required-features` does NOT disqualify: the repo still ships
         // the binary (`--features gpu` builds it) — capability, not
         // bare-`cargo build` output.
-        let gated = "[package]\nname = \"tool\"\n[features]\ndefault = []\ngpu = []\n[[bin]]\nname = \"tool\"\nrequired-features = [\"gpu\"]\n";
+        let gated = r#"
+[package]
+name = "tool"
+[features]
+default = []
+gpu = []
+[[bin]]
+name = "tool"
+required-features = ["gpu"]
+"#;
         assert!(cargo_explicit_primary_bin(gated, false));
         // Workspace-inherited default-run resolves via the root value.
-        let member = "[package]\nname = \"mylib\"\ndefault-run.workspace = true\n[lib]\n[[bin]]\nname = \"real\"\npath = \"src/bin/real.rs\"\n";
+        let member = r#"
+[package]
+name = "mylib"
+default-run.workspace = true
+[lib]
+[[bin]]
+name = "real"
+path = "src/bin/real.rs"
+"#;
         let mv = cargo_value(member);
         assert!(cargo_default_run_from_value(&mv).is_none());
         assert_eq!(
@@ -1027,7 +1116,11 @@ serde = "1"
 
     #[test]
     fn workflow_and_docs_scans() {
-        let wf = "steps:\n - uses: actions/checkout@v4\n - uses: me/reusable/.github/workflows/x.yml@v1\n";
+        let wf = r#"
+steps:
+ - uses: actions/checkout@v4
+ - uses: me/reusable/.github/workflows/x.yml@v1
+"#;
         let uses = scan_workflow_uses(wf);
         assert!(uses.contains(&"actions/checkout".to_string()));
         let docs = "see https://github.com/me/sibling for details";
@@ -1145,17 +1238,35 @@ serde = "1"
 
     #[test]
     fn registry_package_names() {
-        let cargo = "[package]\nname = \"reqwest-drive\"\nversion = \"0.1.0\"\n";
+        let cargo = r#"
+[package]
+name = "reqwest-drive"
+version = "0.1.0"
+"#;
         assert_eq!(cargo_package_name(cargo).as_deref(), Some("reqwest-drive"));
-        let ws = "[workspace]\nmembers = [\"crates/a\"]\n";
+        let ws = r#"
+[workspace]
+members = ["crates/a"]
+"#;
         assert_eq!(cargo_package_name(ws), None);
         let npm = r#"{"name": "@scope/pkg", "version": "1.0.0"}"#;
         assert_eq!(package_json_name(npm).as_deref(), Some("@scope/pkg"));
-        let py = "[project]\nname = \"my-pkg\"\nversion = \"1\"\n";
+        let py = r#"
+[project]
+name = "my-pkg"
+version = "1"
+"#;
         assert_eq!(pyproject_name(py).as_deref(), Some("my-pkg"));
-        let poetry = "[tool.poetry]\nname = \"poetry-pkg\"\n";
+        let poetry = r#"
+[tool.poetry]
+name = "poetry-pkg"
+"#;
         assert_eq!(pyproject_name(poetry).as_deref(), Some("poetry-pkg"));
-        let go = "module github.com/me/my-mod\n\ngo 1.21\n";
+        let go = r#"
+module github.com/me/my-mod
+
+go 1.21
+"#;
         assert_eq!(go_mod_name(go).as_deref(), Some("my-mod"));
         let go_single = "module my-tool\n";
         assert_eq!(go_mod_name(go_single).as_deref(), Some("my-tool"));
@@ -1164,22 +1275,45 @@ serde = "1"
     #[test]
     fn cargo_workspace_inheritance_counts_once() {
         // Pin + `.workspace = true` use in one manifest: one relationship.
-        let text = "[package]\nname = \"demo\"\n[workspace.dependencies]\nfoo = \"1\"\n[dependencies]\nfoo.workspace = true\n";
+        let text = r#"
+[package]
+name = "demo"
+[workspace.dependencies]
+foo = "1"
+[dependencies]
+foo.workspace = true
+"#;
         let m = parse_cargo_manifest(text).unwrap();
         assert!(m.deps.contains_key("foo"));
         // Same package in [dependencies] + [build-dependencies]: still one.
-        let text2 = "[package]\nname = \"demo\"\n[dependencies]\nfoo = \"1\"\n[build-dependencies]\nfoo = \"1\"\n";
+        let text2 = r#"
+[package]
+name = "demo"
+[dependencies]
+foo = "1"
+[build-dependencies]
+foo = "1"
+"#;
         let m2 = parse_cargo_manifest(text2).unwrap();
         assert!(m2.deps.contains_key("foo"));
         // Pins alone (never used by this manifest): zero, not one.
-        let pins = "[workspace]\nmembers = [\"a\"]\n[workspace.dependencies]\nfoo = \"1\"\n";
+        let pins = r#"
+[workspace]
+members = ["a"]
+[workspace.dependencies]
+foo = "1"
+"#;
         let m3 = parse_cargo_manifest(pins).unwrap();
         assert!(!m3.deps.contains_key("foo"));
     }
 
     #[test]
     fn lockfile_parsers() {
-        let cargo = "[[package]]\nname = \"serde\"\nversion = \"1.0.0\"\n";
+        let cargo = r#"
+[[package]]
+name = "serde"
+version = "1.0.0"
+"#;
         let (set, versions) = parse_lockfile_names("Cargo.lock", cargo).unwrap();
         assert!(set.contains("serde"));
         assert_eq!(versions.get("serde").map(String::as_str), Some("1.0.0"));

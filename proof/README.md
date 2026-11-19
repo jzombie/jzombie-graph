@@ -12,7 +12,7 @@ Additional info at [blog.zenosmosis.com](https://blog.zenosmosis.com).
 
 <sub>Share of portfolio repos by detected language; repos without one stay out.</sub>
 
-## jzombie portfolio cluster
+## Portfolio cluster
 
 Repos are in this chart through interconnectedness: each one builds on, is used by, or documents another repo here.
 
@@ -52,9 +52,13 @@ Repos are in this chart through interconnectedness: each one builds on, is used 
 
 Developer focus is a heuristic of what's being planned and developed right now. Scores blend recent commit and issue-comment activity against a trailing 30-day baseline, then discount idle months. A signal with no baseline sits out.
 
+It's a relative measure, not a tally of volume: each repo is scored against its own trailing-month pace, so heavy output that is simply normal for that project reads as steady. What climbs is a repo doing more than it usually does; what pulls it back down is having gone quiet.
+
 [![developer focus](dashboard/charts/portfolio-graph-developer-focus.svg?v=202611190437)](https://github.com/jzombie?tab=repositories)
 
 ## Commit share
+
+Each slice is a repo's share of every commit pushed in the trailing five days, across my own public repos — a fork only counts once it has diverged. Repos with nothing in that window drop out; the busiest are named and the rest roll into Other.
 
 [![share](dashboard/charts/portfolio-graph-share.svg?v=202611190437)](https://github.com/jzombie?tab=repositories)
 
@@ -71,7 +75,7 @@ Developer focus is a heuristic of what's being planned and developed right now. 
 
 ## Commit data
 
-Updated 2026-11-19 04:37 UTC — 18 repos, 434 commits in the last 30 days.
+Updated 2026-11-19 04:37 UTC — 18 repos, 434 commits in the last 30 days across all branches; a commit on more than one branch counts once.
 
 |  repo                                                                                 | about                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | commits/30d                                 | heat                                                                                         | layer                    | reuse (portfolio)                                                                                                                                                                                                                                                                                                                                |
 | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

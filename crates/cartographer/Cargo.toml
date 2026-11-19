@@ -15,6 +15,7 @@ path = "src/lib.rs"
 
 [dependencies]
 clap.workspace = true
+indoc.workspace = true
 jzombie-graph = { path = "../.." }
 
 [dev-dependencies]

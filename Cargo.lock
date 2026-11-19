@@ -1594,6 +1594,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "clap",
+ "indoc",
  "jzombie-graph",
 ]
 
@@ -1605,6 +1606,7 @@ dependencies = [
  "base64",
  "chrono",
  "clap",
+ "indoc",
  "insta",
  "jzombie-graph",
  "oxdock",

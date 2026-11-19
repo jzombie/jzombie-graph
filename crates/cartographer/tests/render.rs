@@ -94,8 +94,7 @@ fn fixture() -> Graph {
 #[test]
 fn cluster_draws_linked_nodes_with_braille_traces() {
     let md = render_cartographer(&fixture());
-    // Header derives from data: owner title, never brand strings.
-    assert!(md.contains("me portfolio cluster"), "data-driven title");
+    assert!(md.contains("## Portfolio cluster"), "fixed title");
     assert!(
         md.contains("Repos are in this chart through interconnectedness"),
         "inclusion sentence, no counts"
@@ -384,7 +383,7 @@ fn header_sentence_states_inclusion_with_no_details() {
 fn empty_graph_renders() {
     let g = Graph::new(vec![], vec![]);
     let md = render_cartographer(&g);
-    assert!(md.contains("portfolio cluster"));
+    assert!(md.contains("## Portfolio cluster"));
     assert!(md.contains("(no connected cluster)"));
 }
 
