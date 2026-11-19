@@ -1,10 +1,16 @@
 # jzombie — portfolio dashboard
 
-**Systems engineer specializing in Rust, [CLI/TUI desktop environments](https://github.com/jzombie/term-wm), and high-performance middleware for Rust-native ingestion and scoring pipelines.**
+**Systems engineer specializing in Rust, [CLI/TUI desktop environments](https://github.com/jzombie/term-wm), and high-performance ingestion and scoring pipelines.**
 
 The following info is generated automatically from a [nightly graph build](https://github.com/jzombie/jzombie-graph/blob/main/data/portfolio-graph.json) of my GitHub profile. The pipeline and charts are built with [OxDock](https://github.com/jzombie/rust-oxdock), my custom DSL for building pipelines, with Rust handling collection.
 
 Additional info at [blog.zenosmosis.com](https://blog.zenosmosis.com).
+
+## Top languages
+
+[![languages](dashboard/charts/portfolio-graph-languages.svg?v=202611190437)](https://github.com/jzombie?tab=repositories)
+
+<sub>Share of portfolio repos by detected language; repos without one stay out.</sub>
 
 ## jzombie portfolio cluster
 
@@ -49,12 +55,6 @@ Developer focus is a heuristic of what's being planned and developed right now.
 [![developer focus](dashboard/charts/portfolio-graph-developer-focus.svg?v=202611190437)](https://github.com/jzombie?tab=repositories)
 
 <sub>Each score blends commit heat (recent commit rates vs the trailing 30d baseline) with issue comment heat (owner authored comment volume, same comparison), then discounts idle months. A signal with no baseline sits out: triage free repos rank on commits alone, commit free weeks on comments alone.</sub>
-
-## Top languages
-
-[![languages](dashboard/charts/portfolio-graph-languages.svg?v=202611190437)](https://github.com/jzombie?tab=repositories)
-
-<sub>Share of portfolio repos by detected language; repos without one stay out.</sub>
 
 ## Commit share
 
