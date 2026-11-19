@@ -25,6 +25,7 @@ anyhow = "1"
 base64 = "0.23"
 chrono = { version = "0.4", features = ["serde", "clock"] }
 clap = { version = "4", features = ["derive", "env"] }
+indoc = "2"
 insta = { version = "1", features = ["json"] }
 oxdock = "=0.39.0-alpha"
 oxdock-core = "=0.39.0-alpha"
@@ -46,6 +47,7 @@ anyhow.workspace = true
 base64.workspace = true
 chrono.workspace = true
 clap.workspace = true
+indoc.workspace = true
 regex.workspace = true
 reqwest.workspace = true
 reqwest-drive.workspace = true

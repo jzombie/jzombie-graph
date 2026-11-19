@@ -1,4 +1,4 @@
-## jzombie portfolio cluster
+## Portfolio cluster
 
 Repos are in this chart through interconnectedness: each one builds on, is used by, or documents another repo here.
 
@@ -32,4 +32,4 @@ Repos are in this chart through interconnectedness: each one builds on, is used 
                                         [<a href="https://github.com/jzombie/rust-argtuner">argtuner</a>]
 
 </pre>
-Repos quiet for over a year are left out unless something current uses them; forks show up only after diverging or being renamed.
+<sub>Repos quiet for over a year are left out unless something current uses them; forks show up only after diverging or being renamed.</sub>

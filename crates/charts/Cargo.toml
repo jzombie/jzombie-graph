@@ -17,6 +17,7 @@ path = "src/lib.rs"
 anyhow.workspace = true
 base64.workspace = true
 clap.workspace = true
+indoc.workspace = true
 jzombie-graph = { path = "../.." }
 oxdock.workspace = true
 oxdock-core.workspace = true

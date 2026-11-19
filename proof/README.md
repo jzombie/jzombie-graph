@@ -1,19 +1,18 @@
 # jzombie — portfolio dashboard
 
-This is a nightly generated map of jzombie's open-source systems portfolio, for anyone deciding whether to build on these tools or work with the person building them; the story starts at [blog.zenosmosis.com](https://blog.zenosmosis.com).
+**Systems engineer specializing in Rust, [CLI/TUI desktop environments](https://github.com/jzombie/term-wm), and high-performance ingestion and scoring pipelines.**
 
-[![flame](dashboard/charts/portfolio-graph-flame.svg?v=202611190437)](https://github.com/jzombie?tab=repositories)
+The following info is generated automatically from a [nightly graph build](https://github.com/jzombie/jzombie-graph/blob/main/data/portfolio-graph.json) of my GitHub profile. The pipeline and charts are built with [OxDock](https://github.com/jzombie/rust-oxdock), my custom DSL for building pipelines, with Rust handling collection.
 
-## Popular repositories
+Additional info at [blog.zenosmosis.com](https://blog.zenosmosis.com).
 
-<div align="center">
+## Top languages
 
-[![rust-muxio](dashboard/charts/portfolio-graph-pin-rust-muxio.svg?v=202611190437)](https://github.com/jzombie/rust-muxio) [![docker-mqtt-mosquitto…](dashboard/charts/portfolio-graph-pin-docker-mqtt-mosquitto-cloudflare-tunnel.svg?v=202611190437)](https://github.com/jzombie/docker-mqtt-mosquitto-cloudflare-tunnel) [![rust-simd-r-drive](dashboard/charts/portfolio-graph-pin-rust-simd-r-drive.svg?v=202611190437)](https://github.com/jzombie/rust-simd-r-drive) [![sshfs-mac-docker](dashboard/charts/portfolio-graph-pin-sshfs-mac-docker.svg?v=202611190437)](https://github.com/jzombie/sshfs-mac-docker) [![term-wm](dashboard/charts/portfolio-graph-pin-term-wm.svg?v=202611190437)](https://github.com/jzombie/term-wm) [![rust-line-ending](dashboard/charts/portfolio-graph-pin-rust-line-ending.svg?v=202611190437)](https://github.com/jzombie/rust-line-ending) [![deepwiki-to-mdbook](dashboard/charts/portfolio-graph-pin-deepwiki-to-mdbook.svg?v=202611190437)](https://github.com/jzombie/deepwiki-to-mdbook) [![term-wm-vt100](dashboard/charts/portfolio-graph-pin-term-wm-vt100.svg?v=202611190437)](https://github.com/jzombie/term-wm-vt100) [![lab-qemu-portable](dashboard/charts/portfolio-graph-pin-lab-qemu-portable.svg?v=202611190437)](https://github.com/jzombie/lab-qemu-portable)
+[![languages](dashboard/charts/portfolio-graph-languages.svg?v=202611190437)](https://github.com/jzombie?tab=repositories)
 
-</div>
+<sub>Share of portfolio repos by detected language; repos without one stay out.</sub>
 
-
-## jzombie portfolio cluster
+## Portfolio cluster
 
 Repos are in this chart through interconnectedness: each one builds on, is used by, or documents another repo here.
 
@@ -47,23 +46,36 @@ Repos are in this chart through interconnectedness: each one builds on, is used 
                                         [<a href="https://github.com/jzombie/rust-argtuner">argtuner</a>]
 
 </pre>
-Repos quiet for over a year are left out unless something current uses them; forks show up only after diverging or being renamed.
+<sub>Repos quiet for over a year are left out unless something current uses them; forks show up only after diverging or being renamed.</sub>
 
 ## Developer focus
 
-Developer focus is a heuristic of what's being planned and developed right now.
+Developer focus is a heuristic of what's being planned and developed right now. Scores blend recent commit and issue-comment activity against a trailing 30-day baseline, then discount idle months. A signal with no baseline sits out.
+
+It's a relative measure, not a tally of volume: each repo is scored against its own trailing-month pace, so heavy output that is simply normal for that project reads as steady. What climbs is a repo doing more than it usually does; what pulls it back down is having gone quiet.
 
 [![developer focus](dashboard/charts/portfolio-graph-developer-focus.svg?v=202611190437)](https://github.com/jzombie?tab=repositories)
 
-<sub>Each score blends commit heat (recent commit rates vs the trailing 30d baseline) with issue comment heat (owner authored comment volume, same comparison), then discounts idle months. A signal with no baseline sits out: triage free repos rank on commits alone, commit free weeks on comments alone.</sub>
-
 ## Commit share
+
+Each slice is a repo's share of every commit pushed in the trailing five days, across my own public repos — a fork only counts once it has diverged. Repos with nothing in that window drop out; the busiest are named and the rest roll into Other.
 
 [![share](dashboard/charts/portfolio-graph-share.svg?v=202611190437)](https://github.com/jzombie?tab=repositories)
 
+## Popular repositories
+
+<div align="center">
+
+[![rust-muxio](dashboard/charts/portfolio-graph-pin-rust-muxio.svg?v=202611190437)](https://github.com/jzombie/rust-muxio) [![docker-mqtt-mosquitto…](dashboard/charts/portfolio-graph-pin-docker-mqtt-mosquitto-cloudflare-tunnel.svg?v=202611190437)](https://github.com/jzombie/docker-mqtt-mosquitto-cloudflare-tunnel) [![rust-simd-r-drive](dashboard/charts/portfolio-graph-pin-rust-simd-r-drive.svg?v=202611190437)](https://github.com/jzombie/rust-simd-r-drive) [![sshfs-mac-docker](dashboard/charts/portfolio-graph-pin-sshfs-mac-docker.svg?v=202611190437)](https://github.com/jzombie/sshfs-mac-docker) [![term-wm](dashboard/charts/portfolio-graph-pin-term-wm.svg?v=202611190437)](https://github.com/jzombie/term-wm) [![rust-line-ending](dashboard/charts/portfolio-graph-pin-rust-line-ending.svg?v=202611190437)](https://github.com/jzombie/rust-line-ending) [![deepwiki-to-mdbook](dashboard/charts/portfolio-graph-pin-deepwiki-to-mdbook.svg?v=202611190437)](https://github.com/jzombie/deepwiki-to-mdbook) [![term-wm-vt100](dashboard/charts/portfolio-graph-pin-term-wm-vt100.svg?v=202611190437)](https://github.com/jzombie/term-wm-vt100) [![lab-qemu-portable](dashboard/charts/portfolio-graph-pin-lab-qemu-portable.svg?v=202611190437)](https://github.com/jzombie/lab-qemu-portable)
+
+</div>
+
+
+[![flame](dashboard/charts/portfolio-graph-flame.svg?v=202611190437)](https://github.com/jzombie?tab=repositories)
+
 ## Commit data
 
-Updated 2026-11-19 04:37 UTC — 18 repos, 434 commits in the last 30 days.
+Updated 2026-11-19 04:37 UTC — 18 repos, 434 commits in the last 30 days across all branches; a commit on more than one branch counts once.
 
 |  repo                                                                                 | about                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | commits/30d                                 | heat                                                                                         | layer                    | reuse (portfolio)                                                                                                                                                                                                                                                                                                                                |
 | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -79,11 +91,5 @@ Updated 2026-11-19 04:37 UTC — 18 repos, 434 commits in the last 30 days.
 | [rust-argtuner](https://github.com/jzombie/rust-argtuner)<br><sub>★ 0</sub>           | A language-agnostic CLI tool for black-box hyperparameter optimization. <sub>[#black-box-optimization](https://github.com/search?q=user%3Ajzombie+topic%3Ablack-box-optimization&type=repositories) [#cli](https://github.com/search?q=user%3Ajzombie+topic%3Acli&type=repositories) [#hyperparameter-optimization](https://github.com/search?q=user%3Ajzombie+topic%3Ahyperparameter-optimization&type=repositories) [#particle-swarm-optimization](https://github.com/search?q=user%3Ajzombie+topic%3Aparticle-swarm-optimization&type=repositories) +3</sub> | 9<br><sub>deduped across 9 branches</sub>   | <div align="center">![cooling](dashboard/indicators/cooling.svg)<br><sub>cooling</sub></div> | application              | <sub>uses</sub><br>[rust-line-ending](https://github.com/jzombie/rust-line-ending), [term-wm](https://github.com/jzombie/term-wm)                                                                                                                                                                                                                |
 
 <!-- +8 more below top-10 (13 commits/30d combined): lab-qemu-portable, rust-simd-r-drive, deepwiki-to-mdbook, docker-mqtt-mosquitto-cloudflare-tunnel, rust-line-ending, rust-muxio, sshfs-mac-docker, term-wm-vt100 -->
-
-## Top languages
-
-[![languages](dashboard/charts/portfolio-graph-languages.svg?v=202611190437)](https://github.com/jzombie?tab=repositories)
-
-<sub>Share of portfolio repos by detected language; repos without one stay out.</sub>
 
 <sub>Charts rendered with [OxDock](https://github.com/jzombie/rust-oxdock); data generated by [jzombie-graph](https://github.com/jzombie/jzombie-graph) · updated 2026-11-19T04:37Z.</sub>

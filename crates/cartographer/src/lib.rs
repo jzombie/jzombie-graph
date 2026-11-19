@@ -24,9 +24,9 @@
 //! - only the largest connected component over dependence edges is drawn,
 //!   so detached scraps never appear as footnote lists.
 
+use indoc::indoc;
 use jzombie_graph::graph::{EdgeKind, Graph, is_own_work};
 use std::collections::{BTreeMap, BTreeSet};
-use std::fmt::Write as _;
 
 /// Grid size for the projection.
 const WIDTH: usize = 78;
@@ -47,49 +47,32 @@ fn is_profile_repo(id: &str) -> bool {
     owner.eq_ignore_ascii_case(name)
 }
 
-/// Render the cluster doc for a collected graph. Title and inclusion
-/// sentence derive from the drawn cluster — no brand strings, no repo
-/// names, no counts baked in.
+/// Render the cluster doc for a collected graph. Fixed title, static
+/// inclusion sentence — no brand strings, no repo names, no counts
+/// baked in.
 pub fn render_cartographer(graph: &Graph) -> String {
     let Some(draw) = select_cluster(graph) else {
-        let mut s = String::new();
-        s.push_str("## portfolio cluster\n\n(no connected cluster)\n");
-        return s;
-    };
-    let owner = cluster_owner(graph, &draw);
-    let mut s = String::new();
-    let _ = writeln!(s, "## {owner} portfolio cluster\n");
-    let _ = writeln!(
-        s,
-        "Repos are in this chart through interconnectedness: each one builds on, is used by, or documents another repo here.\n",
-    );
-    s.push_str(
-        "<sub>Diagram: closeness means the repos work together. \
-Screen readers: the block below uses braille characters for lines and is noisy, so it is hidden; \
-the table below names every repo in text.</sub>\n\n",
-    );
-    s.push_str(&render_pre(graph, &draw));
-    s.push_str(
-        "Repos quiet for over a year are left out unless something current uses them; \
-forks show up only after diverging or being renamed.\n",
-    );
-    s
-}
+        return indoc! {r#"
+            ## Portfolio cluster
 
-/// Mode owner among drawn nodes (ties break lexicographically).
-fn cluster_owner(graph: &Graph, draw: &Cluster) -> String {
-    use std::collections::BTreeMap;
-    let mut counts: BTreeMap<&str, usize> = BTreeMap::new();
-    for id in &draw.nodes {
-        if let Some(n) = graph.nodes.iter().find(|n| &n.id == id) {
-            *counts.entry(n.owner.as_str()).or_default() += 1;
-        }
-    }
-    counts
-        .into_iter()
-        .max_by(|a, b| a.1.cmp(&b.1).then_with(|| b.0.cmp(a.0)))
-        .map(|(o, _)| o.to_string())
-        .unwrap_or_else(|| "portfolio".to_string())
+            (no connected cluster)
+            "#}
+        .to_string();
+    };
+    let mut s = indoc! {r#"
+        ## Portfolio cluster
+
+        Repos are in this chart through interconnectedness: each one builds on, is used by, or documents another repo here.
+
+        <sub>Diagram: closeness means the repos work together. Screen readers: the block below uses braille characters for lines and is noisy, so it is hidden; the table below names every repo in text.</sub>
+
+        "#}
+    .to_string();
+    s.push_str(&render_pre(graph, &draw));
+    s.push_str(indoc! {r#"
+        <sub>Repos quiet for over a year are left out unless something current uses them; forks show up only after diverging or being renamed.</sub>
+        "#});
+    s
 }
 
 /// Nodes + edges selected for the drawing. Strong edges are cargo-level
