@@ -70,8 +70,8 @@ the table below names every repo in text.</sub>\n\n",
     );
     s.push_str(&render_pre(graph, &draw));
     s.push_str(
-        "Repos quiet for over a year are left out unless something current uses them; \
-forks show up only after diverging or being renamed.\n",
+        "<sub>Repos quiet for over a year are left out unless something current uses them; \
+forks show up only after diverging or being renamed.</sub>\n",
     );
     s
 }

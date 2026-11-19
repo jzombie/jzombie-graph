@@ -1582,7 +1582,7 @@ pub fn render_share_md(graph_json: &str) -> anyhow::Result<String> {
 pub fn render_focus_md(graph_json: &str) -> anyhow::Result<String> {
     let bust = bust_token(graph_json)?;
     Ok(format!(
-        "## Developer focus\n\nDeveloper focus is a heuristic of what's being planned and developed right now.\n\n[![developer focus]({})]({})\n\n<sub>Each score blends commit heat (recent commit rates vs the trailing 30d baseline) with issue comment heat (owner authored comment volume, same comparison), then discounts idle months. A signal with no baseline sits out: triage free repos rank on commits alone, commit free weeks on comments alone.</sub>\n",
+        "## Developer focus\n\nDeveloper focus is a heuristic of what's being planned and developed right now. Scores blend recent commit and issue-comment activity against a trailing 30-day baseline, then discount idle months. A signal with no baseline sits out.\n\n[![developer focus]({})]({})\n",
         jzombie_graph::paths::chart_url(jzombie_graph::paths::FOCUS_FILE, &bust),
         jzombie_graph::paths::REPOS_URL,
     ))

@@ -46,15 +46,13 @@ Repos are in this chart through interconnectedness: each one builds on, is used 
                                         [<a href="https://github.com/jzombie/rust-argtuner">argtuner</a>]
 
 </pre>
-Repos quiet for over a year are left out unless something current uses them; forks show up only after diverging or being renamed.
+<sub>Repos quiet for over a year are left out unless something current uses them; forks show up only after diverging or being renamed.</sub>
 
 ## Developer focus
 
-Developer focus is a heuristic of what's being planned and developed right now.
+Developer focus is a heuristic of what's being planned and developed right now. Scores blend recent commit and issue-comment activity against a trailing 30-day baseline, then discount idle months. A signal with no baseline sits out.
 
 [![developer focus](dashboard/charts/portfolio-graph-developer-focus.svg?v=202611190437)](https://github.com/jzombie?tab=repositories)
-
-<sub>Each score blends commit heat (recent commit rates vs the trailing 30d baseline) with issue comment heat (owner authored comment volume, same comparison), then discounts idle months. A signal with no baseline sits out: triage free repos rank on commits alone, commit free weeks on comments alone.</sub>
 
 ## Commit share
 
