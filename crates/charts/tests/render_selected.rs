@@ -145,6 +145,12 @@ fn eleven() -> Vec<Node> {
             5,
         ));
     }
+    // Identity data rides the graph too: `r0` carries topics plus a
+    // homepage, `r1` topics only, `r2` neither — so every branch of the
+    // render (topic line, host label, line dropped) is covered.
+    nodes[0].topics = vec!["core".into(), "zero-copy".into()];
+    nodes[0].homepage = Some("https://crates.io/crates/r0".into());
+    nodes[1].topics = vec!["popular".into()];
     nodes
 }
 
@@ -201,6 +207,22 @@ fn selected_fragment_ranks_by_score_not_stars() {
         md.contains("dashboard/indicators/"),
         "badge rides the shared indicator family"
     );
+    // Topics render as user-scoped search links; the homepage renders as
+    // its host, linked to the full URL.
+    assert!(
+        md.contains(
+            "[#core](https://github.com/search?q=user%3Ame+topic%3Acore&type=repositories)"
+        ),
+        "topic linked to a user-scoped search"
+    );
+    assert!(
+        md.contains("[crates.io](https://crates.io/crates/r0)"),
+        "homepage host, linked"
+    );
+    // `r2` carries neither: no topic line, no host in its meta.
+    let r2_item = &md[pos("me/r2")..pos("me/r1")];
+    assert!(!r2_item.contains("topic%3A"), "no topics, no topic line");
+    assert!(!r2_item.contains("crates.io"), "no homepage, no host");
     insta::assert_snapshot!("selected_frag", md);
 }
 

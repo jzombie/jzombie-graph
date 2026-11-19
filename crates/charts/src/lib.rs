@@ -1033,9 +1033,10 @@ pub fn render_flame_svg(graph_json: &str) -> anyhow::Result<String> {
 
 /// Selected-work list: top-`SELECTED_TOPN` own-work repos by
 /// `selected_score`, emitted as one markdown list — name plus
-/// description first, proof numbers on a shrunk second line. Markdown
-/// rather than cards: it reflows at any width, reads in light and dark
-/// themes, and screen readers get text instead of an image's `<desc>`.
+/// description first, then topics, then proof numbers (heat, commits,
+/// stars, dependents, homepage) on a shrunk line. Markdown rather than
+/// cards: it reflows at any width, reads in light and dark themes, and
+/// screen readers get text instead of an image's `<desc>`.
 const SELECTED_TOPN: usize = 9;
 
 /// One list row: everything the fragment prints, shaped in Rust so the
@@ -1053,6 +1054,12 @@ struct SelectedRow {
     stars: u32,
     /// Portfolio repos that depend on this one (dependence edges only).
     fan_in: u32,
+    /// Owner login: the topic search links are user-scoped, never baked.
+    owner: String,
+    /// Repo topics, all of them, each linked to a user-scoped search.
+    topics: Vec<String>,
+    /// Repo homepage (site or crate page); `None` when unset or blank.
+    homepage: Option<String>,
 }
 
 /// Flagship score: load-bearing reuse first — one portfolio dependent
@@ -1133,6 +1140,14 @@ fn selected_rows(graph_json: &str) -> anyhow::Result<Vec<SelectedRow>> {
             commits_30d: nd.commits_30d,
             stars: nd.stars,
             fan_in: fan_in.get(&nd.id).copied().unwrap_or(0),
+            owner: nd.owner.clone(),
+            topics: nd.topics.clone(),
+            homepage: nd
+                .homepage
+                .as_deref()
+                .map(str::trim)
+                .filter(|h| !h.is_empty())
+                .map(str::to_string),
         })
         .collect())
 }
@@ -1162,17 +1177,35 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
         } else {
             format!("{} commits in 30d", row.commits_30d)
         };
+        // The badge file carries its own 44px design size; inline here
+        // it asks for 24 so the meta line stays a text line. Markdown's
+        // `![]()` cannot carry a width, and GitHub keeps `width` on a
+        // raw `<img>`.
         let mut meta = format!(
-            "![{band}]({badge}) {band} \u{b7} {commits} \u{b7} \u{2605}{stars}",
-            band = row.band,
+            "<img src=\"{badge}\" width=\"24\" alt=\"\"> {band} \u{b7} {commits} \u{b7} \u{2605}{stars}",
             badge = jzombie_graph::paths::indicator_url(row.band),
+            band = row.band,
             commits = commits,
             stars = row.stars,
         );
         if row.fan_in > 0 {
             meta.push_str(&format!(" \u{b7} used by {}", row.fan_in));
         }
-        items.push_str(&format!("- {head}<br><sub>{meta}</sub>\n"));
+        if let Some(home) = &row.homepage {
+            meta.push_str(&format!(" \u{b7} [{}]({})", host_label(home), home));
+        }
+        // Description, then identity (topics), then proof — the order the
+        // commit-data table reads in, without its columns.
+        items.push_str(&format!("- {head}<br>"));
+        if !row.topics.is_empty() {
+            let tags: Vec<String> = row
+                .topics
+                .iter()
+                .map(|t| topic_link(&row.owner, t))
+                .collect();
+            items.push_str(&format!("<sub>{}</sub><br>", tags.join(" ")));
+        }
+        items.push_str(&format!("<sub>{meta}</sub>\n"));
     }
     Ok(formatdoc! {r#"
         ## Selected work
@@ -1578,10 +1611,16 @@ fn indicators(graph_json: String, only: String) -> anyhow::Result<Value> {
     for (i, r) in doc.rows.iter_mut().enumerate() {
         r.cx = f1(i as f64 * INDICATOR_CELL + INDICATOR_CELL / 2.0);
     }
+    // Explicit width/height, not just a viewBox: a viewBox alone gives
+    // the image no intrinsic size, so every renderer falls back to its
+    // own default — browsers ratio-fit into 300x150, which turned a
+    // 44px badge into a 150px block inside a text line. Pinning the
+    // design size in the file makes it render the same everywhere,
+    // including opened directly in a tab.
+    let w = f1(doc.rows.len() as f64 * INDICATOR_CELL);
+    let h = f1(INDICATOR_CELL);
     doc.header = format!(
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"{family}\"><title>Status indicators</title>",
-        f1(doc.rows.len() as f64 * INDICATOR_CELL),
-        f1(INDICATOR_CELL),
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{w}\" height=\"{h}\" viewBox=\"0 0 {w} {h}\" role=\"img\" font-family=\"{family}\"><title>Status indicators</title>",
         family = palette::family(),
     );
     Ok(Value::string(serde_json::to_string(&doc)?))
@@ -1645,34 +1684,55 @@ fn heat_cell(band: &str) -> String {
     )
 }
 
+/// One `#topic` link to a user-scoped repo search. Owner rides the node —
+/// never a baked-in login.
+fn topic_link(owner: &str, topic: &str) -> String {
+    let enc: String = topic
+        .chars()
+        .flat_map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' {
+                vec![c]
+            } else {
+                format!("%{0:02X}", c as u32).chars().collect::<Vec<_>>()
+            }
+        })
+        .collect();
+    format!(
+        "[#{topic}](https://github.com/search?q=user%3A{owner}+topic%3A{enc}&type=repositories)"
+    )
+}
+
 /// Topic links for an about cell: tiny `#tag` links to a user-scoped repo
-/// search, capped so one repo can't flood the table. Owner rides the
-/// node — never a baked-in login.
+/// search, capped so one repo can't flood the table.
 fn topic_links(owner: &str, topics: &[String]) -> String {
     const MAX: usize = 4;
     let mut tags: Vec<String> = topics
         .iter()
         .take(MAX)
-        .map(|t| {
-            let enc: String = t
-                .chars()
-                .flat_map(|c| {
-                    if c.is_ascii_alphanumeric() || c == '-' {
-                        vec![c]
-                    } else {
-                        format!("%{0:02X}", c as u32).chars().collect::<Vec<_>>()
-                    }
-                })
-                .collect();
-            format!(
-                "[#{t}](https://github.com/search?q=user%3A{owner}+topic%3A{enc}&type=repositories)"
-            )
-        })
+        .map(|t| topic_link(owner, t))
         .collect();
     if topics.len() > MAX {
         tags.push(format!("+{}", topics.len() - MAX));
     }
     tags.join(" ")
+}
+
+/// Display label for a homepage link: host only — no scheme, no path, no
+/// leading `www.` — so `crates.io/crates/term-wm` reads as `crates.io`.
+/// Truncated so one long docs host can't swallow the meta line; the href
+/// keeps the full URL.
+fn host_label(url: &str) -> String {
+    let after_scheme = url.split_once("://").map(|(_, rest)| rest).unwrap_or(url);
+    let host = after_scheme
+        .split(['/', '?', '#'])
+        .next()
+        .unwrap_or(after_scheme);
+    let host = host.strip_prefix("www.").unwrap_or(host);
+    if host.chars().count() > 40 {
+        host.chars().take(39).collect::<String>() + "\u{2026}"
+    } else {
+        host.to_string()
+    }
 }
 
 /// One line of prose for a markdown table cell. The MARKDOWN module owns
@@ -2934,6 +2994,12 @@ mod tests {
         // Ring + core, one 44px cell, tooltip kept, unknown bands error.
         assert_eq!(one.matches("<circle").count(), 2);
         assert!(one.contains("viewBox=\"0 0 44.0 44.0\""));
+        // Intrinsic size pinned: without it a renderer falls back to its
+        // own default (browsers: 300x150 ratio-fit → a 150px block).
+        assert!(
+            one.contains("width=\"44.0\" height=\"44.0\""),
+            "design size on the root:\n{one}"
+        );
         assert!(one.contains("steady 1.00"));
         assert!(render_indicator_svg("volcanic").is_err());
     }
