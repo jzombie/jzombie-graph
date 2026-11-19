@@ -35,7 +35,7 @@ enum Chart {
     Share,
     Focus,
     Flame,
-    Pins,
+    Selected,
     Indicators,
     Data,
     Languages,
@@ -101,36 +101,25 @@ fn main() {
         }
         return;
     }
-    // Pins emit a file family — one SVG per repo plus the fragment
-    // table that embeds them. Fixed layout: no --stdout/--output.
-    // Stale cards from a previous top-9 never linger: the lane owns the
-    // whole `portfolio-graph-pin-*` set, so it clears before writing.
-    if cli.chart == Chart::Pins {
+    // Selected work emits one markdown fragment — no SVG family, so no
+    // stale files to clear: text re-renders with the commit. Fixed
+    // layout: no --stdout/--output.
+    if cli.chart == Chart::Selected {
         if cli.stdout || cli.output.is_some() {
-            eprintln!("--chart pins writes the fixed family paths; no --stdout/--output");
+            eprintln!("--chart selected writes the fixed fragment path; no --stdout/--output");
             std::process::exit(1);
         }
-        let bundle = match charts::render_pins_bundle(&text) {
-            Ok(b) => b,
+        let md = match charts::render_selected_md(&text) {
+            Ok(m) => m,
             Err(e) => {
                 eprintln!("render error: {e:#}");
                 std::process::exit(1);
             }
         };
-        let dir = std::path::Path::new(jzombie_graph::paths::CHARTS_DIR);
-        if let Ok(entries) = std::fs::read_dir(dir) {
-            for entry in entries.flatten() {
-                let name = entry.file_name().to_string_lossy().into_owned();
-                if name.starts_with("portfolio-graph-pin-") && name.ends_with(".svg") {
-                    let _ = std::fs::remove_file(entry.path());
-                }
-            }
-        }
-        for (rel, content) in &bundle {
-            if let Err(e) = jzombie_graph::output::write_file(std::path::Path::new(rel), content) {
-                eprintln!("writing {rel}: {e:#}");
-                std::process::exit(1);
-            }
+        let dest = jzombie_graph::paths::selected_fragment();
+        if let Err(e) = jzombie_graph::output::write_file(std::path::Path::new(&dest), &md) {
+            eprintln!("writing {dest}: {e:#}");
+            std::process::exit(1);
         }
         return;
     }
@@ -148,7 +137,7 @@ fn main() {
         Chart::Share => charts::render_share_svg(&text),
         Chart::Focus => charts::render_focus_svg(&text),
         Chart::Flame => charts::render_flame_svg(&text),
-        Chart::Pins => unreachable!("handled by the family return above"),
+        Chart::Selected => unreachable!("handled by the early return above"),
         Chart::Indicators => charts::render_indicators_svg(),
         Chart::Data => unreachable!("handled by the early return above"),
         Chart::Languages => charts::render_languages_svg(&text),
@@ -163,7 +152,7 @@ fn main() {
     let default = match cli.chart {
         Chart::Focus => jzombie_graph::paths::developer_focus_svg(),
         Chart::Flame => jzombie_graph::paths::flame_svg(),
-        Chart::Pins => unreachable!("handled by the family return above"),
+        Chart::Selected => unreachable!("handled by the early return above"),
         Chart::Indicators => jzombie_graph::paths::indicators_svg(),
         Chart::Share => jzombie_graph::paths::share_svg(),
         Chart::Data => unreachable!("handled by the early return above"),
@@ -178,7 +167,7 @@ fn main() {
         eprintln!("writing {}: {e:#}", dest.display());
         std::process::exit(1);
     }
-    // Section fragments carry the same bust token as pins, so the
+    // Section fragments carry the same bust token as the charts, so the
     // assembled page refetches these SVGs after every nightly rebuild.
     // Fixed layout: no --stdout/--output.
     let frag: Option<(String, anyhow::Result<String>)> = match cli.chart {

@@ -17,7 +17,7 @@
         ],
         "data": [
           "proof/dashboard/fragments/commit-data.md",
-          "proof/dashboard/fragments/pins.md",
+          "proof/dashboard/fragments/selected.md",
           "proof/dashboard/fragments/footer.md"
         ]
       }

@@ -29,7 +29,7 @@ FUNC BUILD_PROOF_INPUTS(): VOID {
         "share",
         "focus",
         "flame",
-        "pins",
+        "selected",
         "indicators",
         "data",
         "languages"

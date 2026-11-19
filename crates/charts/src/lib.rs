@@ -1031,26 +1031,159 @@ pub fn render_flame_svg(graph_json: &str) -> anyhow::Result<String> {
     Ok(resolver.read_to_string(&out).expect("read out"))
 }
 
-/// Pinned-repo cards: bordered card, book icon + name header, wrapped
-/// description, language dot + stars + forks footer, plus a heat band
-/// and proof footer. Top-9 by stars, uniform height, emitted as one
-/// flowing paragraph so the viewport wraps them as it wishes.
-const PINS_TOPN: usize = 9;
-const PIN_W: f64 = 280.0;
-const PIN_NAME_MAX: usize = 22;
-const PIN_DESC_WIDTH: usize = 34;
-const PIN_DESC_MAX_LINES: usize = 4;
+/// Selected-work list: top-`SELECTED_TOPN` own-work repos by
+/// `selected_score`, emitted as one markdown list — name plus
+/// description first, proof numbers on a shrunk second line. Markdown
+/// rather than cards: it reflows at any width, reads in light and dark
+/// themes, and screen readers get text instead of an image's `<desc>`.
+const SELECTED_TOPN: usize = 9;
 
-/// Card palette: GitHub dark-mode bubbles — black card, dark link blue,
-/// secondary gray type. Language dots keep linguist colors.
-const PIN_TITLE: &str = "#4493f8";
-const PIN_ICON: &str = "#9198a1";
-const PIN_TEXT: &str = "#9198a1";
-const PIN_BG: &str = "#000000";
-const PIN_BORDER: &str = "#30363d";
+/// One list row: everything the fragment prints, shaped in Rust so the
+/// renderer below carries no graph access.
+#[derive(Debug, Clone, PartialEq)]
+struct SelectedRow {
+    url: String,
+    name: String,
+    /// Empty when the repo has none — the description line drops out
+    /// rather than printing a placeholder.
+    desc: String,
+    /// Heat band word; doubles as the badge file name.
+    band: &'static str,
+    commits_30d: u32,
+    stars: u32,
+    /// Portfolio repos that depend on this one (dependence edges only).
+    fan_in: u32,
+}
 
-/// Linguist language colors for the footer dot; unknown maps to the
-/// same `#333` fallback the reference card uses.
+/// Flagship score: load-bearing reuse first — one portfolio dependent
+/// outweighs any star — then external pull, then product-ness and recent
+/// shipping. Diverged forks pay for being forks: original work reads as
+/// the flagship. Pure ranking: no units, no meaning beyond the order it
+/// produces, which is why the section prose states the measure.
+fn selected_score(
+    fan_in: u32,
+    stars: u32,
+    forks: u32,
+    application: bool,
+    has_readme: bool,
+    commits_30d: u32,
+    fork: bool,
+) -> f64 {
+    2.5 * f64::from(fan_in)
+        + 1.5 * (1.0 + f64::from(stars)).ln()
+        + 0.5 * (1.0 + f64::from(forks)).ln()
+        + if application { 2.0 } else { 0.0 }
+        + if has_readme { 0.5 } else { 0.0 }
+        + 0.5 * (1.0 + f64::from(commits_30d)).ln()
+        - if fork { 1.0 } else { 0.0 }
+}
+
+/// GitHub profile README repo (`owner` equals `name`, case-insensitive):
+/// a whole-portfolio documentation index, never selected work. Same rule
+/// the cartographer uses to keep it out of the cluster.
+fn is_profile_repo(id: &str) -> bool {
+    let Some((owner, name)) = id.split_once('/') else {
+        return false;
+    };
+    owner.eq_ignore_ascii_case(name)
+}
+
+/// Selected rows: public own-work repos with commits in the trailing 30d
+/// — the pool the pins drew from — scored, sorted, cut to the top. Ties
+/// break on name, so the order is a pure function of the JSON.
+fn selected_rows(graph_json: &str) -> anyhow::Result<Vec<SelectedRow>> {
+    let graph = jzombie_graph::graph::Graph::from_json(graph_json)?;
+    let fan_in = graph.node_fan_in();
+    let mut scored: Vec<(f64, &jzombie_graph::graph::Node)> = graph
+        .nodes
+        .iter()
+        .filter(|nd| {
+            !nd.private
+                && jzombie_graph::graph::is_own_work(nd)
+                && nd.commits_30d > 0
+                && !is_profile_repo(&nd.id)
+        })
+        .map(|nd| {
+            let fi = fan_in.get(&nd.id).copied().unwrap_or(0);
+            let score = selected_score(
+                fi,
+                nd.stars,
+                nd.forks_count,
+                nd.layer.contains(&jzombie_graph::graph::Layer::Application),
+                nd.has_readme,
+                nd.commits_30d,
+                nd.fork,
+            );
+            (score, nd)
+        })
+        .collect();
+    scored.sort_by(|a, b| {
+        b.0.partial_cmp(&a.0)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.1.name.cmp(&b.1.name))
+    });
+    scored.truncate(SELECTED_TOPN);
+    Ok(scored
+        .into_iter()
+        .map(|(_, nd)| SelectedRow {
+            url: format!("https://github.com/{}", nd.id),
+            name: nd.name.clone(),
+            desc: nd.description.clone().unwrap_or_default(),
+            band: heat_band(nd.commit_heat.or_else(|| nd.commit_heat())),
+            commits_30d: nd.commits_30d,
+            stars: nd.stars,
+            fan_in: fan_in.get(&nd.id).copied().unwrap_or(0),
+        })
+        .collect())
+}
+
+/// Render the selected-work fragment: heading, the sentence that states
+/// what the order measures, then one bullet per row. Plain markdown — no
+/// cache-bust token, because text re-renders with the commit instead of
+/// being proxied as an image.
+pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
+    let rows = selected_rows(graph_json)?;
+    if rows.is_empty() {
+        return Ok("## Selected work\n\n*No commits in trailing 30d*\n".to_string());
+    }
+    let mut items = String::new();
+    for row in &rows {
+        let link = format!("[{}]({})", row.name, row.url);
+        let head = if row.desc.is_empty() {
+            format!("**{link}**")
+        } else {
+            // Descriptions are single-line on GitHub; flatten anyway so
+            // one stray newline cannot break the list.
+            let desc = row.desc.split_whitespace().collect::<Vec<_>>().join(" ");
+            format!("**{link}** \u{2014} {desc}")
+        };
+        let commits = if row.commits_30d == 1 {
+            "1 commit in 30d".to_string()
+        } else {
+            format!("{} commits in 30d", row.commits_30d)
+        };
+        let mut meta = format!(
+            "![{band}]({badge}) {band} \u{b7} {commits} \u{b7} \u{2605}{stars}",
+            band = row.band,
+            badge = jzombie_graph::paths::indicator_url(row.band),
+            commits = commits,
+            stars = row.stars,
+        );
+        if row.fan_in > 0 {
+            meta.push_str(&format!(" \u{b7} used by {}", row.fan_in));
+        }
+        items.push_str(&format!("- {head}<br><sub>{meta}</sub>\n"));
+    }
+    Ok(formatdoc! {r#"
+        ## Selected work
+
+        Ordered by load-bearing reuse first — how many portfolio repos depend on a repo — then external pull (stars and forks), then recent activity, with product repos and documented ones nudged up. It’s a ranking of signal, not a tally of volume: exact counts, layers, and reuse ride the commit data table below.
+
+        {items}"#})
+}
+
+/// Linguist language colors for a language dot; unknown maps to the
+/// same `#333` fallback the reference uses.
 fn lang_color(lang: &str) -> &'static str {
     match lang {
         "Rust" => "#dea584",
@@ -1078,456 +1211,10 @@ fn lang_color(lang: &str) -> &'static str {
     }
 }
 
-/// Compact counts like the reference card (`1200` → `1.2k`).
-fn k_fmt(n: u32) -> String {
-    if n >= 1000 {
-        format!("{:.1}k", n as f64 / 1000.0)
-    } else {
-        n.to_string()
-    }
-}
-
-/// Word-wrap a description for the card: 34 chars per line, 4 lines
-/// max, left-aligned. Overflow pushes nothing — the canvas is fixed —
-/// so a cut tail gets an ellipsis instead of vanishing mid-sentence.
-/// Empty input names itself.
-fn wrap_desc(s: &str) -> Vec<String> {
-    let flat: String = s.split_whitespace().collect::<Vec<_>>().join(" ");
-    if flat.is_empty() {
-        return vec!["No description provided".to_string()];
-    }
-    let mut lines: Vec<String> = vec![];
-    let mut cur = String::new();
-    let mut truncated = false;
-    for w in flat.split(' ') {
-        if w.is_empty() {
-            continue;
-        }
-        let fits = cur.is_empty() || cur.len() + 1 + w.len() <= PIN_DESC_WIDTH;
-        if !fits {
-            lines.push(std::mem::take(&mut cur));
-            if lines.len() == PIN_DESC_MAX_LINES {
-                truncated = true;
-                break;
-            }
-        }
-        if !cur.is_empty() {
-            cur.push(' ');
-        }
-        cur.push_str(w);
-    }
-    if truncated {
-        // Words were cut: fall through to the ellipsis below.
-    } else if lines.len() < PIN_DESC_MAX_LINES {
-        if !cur.is_empty() {
-            lines.push(cur);
-        }
-    } else if !cur.is_empty() {
-        truncated = true;
-    }
-    if lines.is_empty() {
-        lines.push("No description provided".to_string());
-    } else if truncated {
-        let last = lines.last_mut().expect("wrapped line");
-        while last.chars().count() + 1 > PIN_DESC_WIDTH {
-            last.pop();
-        }
-        last.push('\u{2026}');
-    }
-    lines
-}
-
 /// Estimated 12px Segoe UI advance, for footer item spacing. The
 /// reference measures real glyphs; estimation keeps Rust side-only.
 fn est_w(s: &str) -> f64 {
     s.chars().count() as f64 * 6.6
-}
-
-/// One pinned card: precomputed strings, so the template carries no
-/// coordinates — same split as every other chart (Rust shapes, OxDock
-/// emits). Each card renders to its own SVG file, so every bubble
-/// links to its own repo.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-struct PinCard {
-    /// Temp workspace filename (`pin-{i}.svg`); the committed file name
-    /// rides `fname`, the committed path `dest`.
-    file: String,
-    /// Committed file name, built once from the slug — the fragment URL
-    /// derives from this, never by re-splitting the path.
-    fname: String,
-    /// Final committed path.
-    dest: String,
-    url: String,
-    name: String,
-    fullname: String,
-    d1: String,
-    d2: String,
-    d3: String,
-    d4: String,
-    has2: bool,
-    has3: bool,
-    has4: bool,
-    /// Heat-band color: left strip + footer dot, so the card carries
-    /// proof data (30d heat) GitHub's pinned cards don't show.
-    band: String,
-    /// Breathe class for the heat markers (`pulse`, `pulse slow`, or
-    /// empty): heating breathes fast, steady slow, cooling/dormant static.
-    pulse: String,
-    /// Footer readout, e.g. `steady · 19 commits in 30d`: heat band
-    /// spelled out next to the count, on its own footer line under the
-    /// GitHub-like language/stars/forks row. Visible text, not a hover —
-    /// README `<img>` embeds are non-interactive, so tooltips don't fire.
-    heat: String,
-    /// Plain-language summary for `<desc>`: what the card is plus the
-    /// numbers, for direct-file readers (screen readers, agents, indexers).
-    meta: String,
-    has_lang: bool,
-    lang: String,
-    lang_color: String,
-    stars: String,
-    forks: String,
-    fx_star: String,
-    fx_fork: String,
-    w: String,
-    h: String,
-    bw: String,
-    bh: String,
-    fy: String,
-    fy2: String,
-}
-
-/// Pins document: static decor prebuilt in Rust, cards + fragment
-/// interpolated. One oxdock run writes the whole family.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-struct PinDoc {
-    header: String,
-    footer: String,
-    empty: bool,
-    msg: String,
-    muted: String,
-    font: String,
-    css: String,
-    bg: String,
-    border: String,
-    icon: String,
-    title: String,
-    cards: Vec<PinCard>,
-    frag_flow: String,
-}
-
-/// Pins rows: top-6 own-work repos by stars, ties break on forks
-/// then name — the same popularity order GitHub's own section uses.
-fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
-    let graph = jzombie_graph::graph::Graph::from_json(graph_json)?;
-    let empty = PinDoc {
-        header: String::new(),
-        footer: String::new(),
-        empty: true,
-        msg: "No commits in trailing 30d".to_string(),
-        muted: palette::muted(),
-        font: palette::family(),
-        css: pins_card_css()?,
-        bg: PIN_BG.to_string(),
-        border: PIN_BORDER.to_string(),
-        icon: PIN_ICON.to_string(),
-        title: "Popular repositories".to_string(),
-        cards: vec![],
-        frag_flow: String::new(),
-    };
-    let mut repos: Vec<&jzombie_graph::graph::Node> = graph
-        .nodes
-        .iter()
-        .filter(|nd| !nd.private && jzombie_graph::graph::is_own_work(nd))
-        .filter(|nd| nd.commits_30d > 0)
-        .collect();
-    if repos.is_empty() {
-        return Ok(empty);
-    }
-    repos.sort_by(|a, b| {
-        b.stars
-            .cmp(&a.stars)
-            .then_with(|| b.forks_count.cmp(&a.forks_count))
-            .then_with(|| a.name.cmp(&b.name))
-    });
-    let shown = &repos[..repos.len().min(PINS_TOPN)];
-    // Cache-bust token: the sweep timestamp, compact. Bytes change
-    // nightly under stable filenames, and GitHub's image proxy caches
-    // by URL — so every rendered asset URL carries the build it came
-    // from. Same data, same token; new sweep, fresh fetch.
-    let bust = graph.generated_at.format("%Y%m%d%H%M").to_string();
-    // Card height follows the reference formula per card, then the
-    // tallest wins for the whole family: uniform files, so the profile
-    // grid reads as one set instead of six odd sizes.
-    let mut line_sets: Vec<Vec<String>> = vec![];
-    let mut h_max = 0.0_f64;
-    for nd in shown.iter() {
-        let desc = nd.description.as_deref().unwrap_or("");
-        let lines = wrap_desc(desc);
-        let h = if lines.len() > 1 { 100.0 } else { 90.0 } + lines.len() as f64 * 10.0 + 16.0;
-        h_max = h_max.max(h);
-        line_sets.push(lines);
-    }
-    let mut cards: Vec<PinCard> = vec![];
-    for (i, nd) in shown.iter().enumerate() {
-        let lines = &line_sets[i];
-        let mut d = lines.clone();
-        while d.len() < 4 {
-            d.push(String::new());
-        }
-        let name = if nd.name.chars().count() > PIN_NAME_MAX {
-            nd.name.chars().take(PIN_NAME_MAX - 1).collect::<String>() + "\u{2026}"
-        } else {
-            nd.name.clone()
-        };
-        let slug: String = nd
-            .name
-            .chars()
-            .map(|c| {
-                if c.is_ascii_alphanumeric() {
-                    c.to_ascii_lowercase()
-                } else {
-                    '-'
-                }
-            })
-            .collect();
-        let stars = k_fmt(nd.stars);
-        let forks = k_fmt(nd.forks_count);
-        let lang_raw = nd.language.as_deref();
-        // Left cluster: language, then stars, then forks. Left-anchored
-        // rows degrade gracefully under font substitution; right-edge
-        // anchoring clipped instead.
-        let lang_w = match lang_raw {
-            Some(l) => 10.0 + 4.0 + est_w(l),
-            None => 0.0,
-        };
-        let star_w = 16.0 + 3.0 + est_w(&stars);
-        let fx_star = if lang_raw.is_some() {
-            lang_w + 12.0
-        } else {
-            0.0
-        };
-        let fx_fork = fx_star + star_w + 12.0;
-        let heat = nd.commit_heat.or_else(|| nd.commit_heat());
-        let (band, pulse) = match heat_band(heat) {
-            "heating" => (palette::heating(), "pulse"),
-            "steady" => (palette::steady(), "pulse slow"),
-            "cooling" => (palette::cooling(), ""),
-            _ => (palette::dormant(), ""),
-        };
-        let url = format!("https://github.com/{}", nd.id);
-        let fname = jzombie_graph::paths::pin_file_name(&slug);
-        let dest = format!("{}/{fname}", jzombie_graph::paths::CHARTS_DIR);
-        cards.push(PinCard {
-            file: format!("pin-{i}.svg"),
-            fname: fname.clone(),
-            dest: dest.clone(),
-            url: url.clone(),
-            name: xml_escape(&name),
-            fullname: xml_escape(&nd.name),
-            d1: xml_escape(&d[0]),
-            d2: xml_escape(&d[1]),
-            d3: xml_escape(&d[2]),
-            d4: xml_escape(&d[3]),
-            has2: lines.len() > 1,
-            has3: lines.len() > 2,
-            has4: lines.len() > 3,
-            band,
-            pulse: pulse.to_string(),
-            heat: format!(
-                "{} · {} {} in 30d",
-                heat_band(heat),
-                nd.commits_30d,
-                if nd.commits_30d == 1 {
-                    "commit"
-                } else {
-                    "commits"
-                }
-            ),
-            meta: xml_escape(&format!(
-                "{}: {}. {} {}, {} {}, {} {} in the last 30 days.",
-                nd.name,
-                lines.join(" "),
-                nd.stars,
-                if nd.stars == 1 { "star" } else { "stars" },
-                nd.forks_count,
-                if nd.forks_count == 1 { "fork" } else { "forks" },
-                nd.commits_30d,
-                if nd.commits_30d == 1 {
-                    "commit"
-                } else {
-                    "commits"
-                }
-            )),
-            has_lang: lang_raw.is_some(),
-            lang: xml_escape(lang_raw.unwrap_or("")),
-            lang_color: lang_raw.map(lang_color).unwrap_or("").to_string(),
-            stars: xml_escape(&stars),
-            forks: xml_escape(&forks),
-            fx_star: f1(fx_star),
-            fx_fork: f1(fx_fork),
-            w: f1(PIN_W),
-            h: f1(h_max),
-            bw: f1(PIN_W - 1.0),
-            bh: f1(h_max - 1.0),
-            fy: f1(h_max - 26.0),
-            fy2: f1(h_max - 10.0),
-        });
-    }
-    // Fragment: one flowing paragraph, rank order left to right. No
-    // fixed trios — the viewport wraps the bubbles as it wishes, and the
-    // centered wrapper balances each visual line.
-    let mut cells: Vec<String> = vec![];
-    for c in cards.iter() {
-        cells.push(format!(
-            "[![{}]({})]({})",
-            c.name,
-            jzombie_graph::paths::chart_url(&c.fname, &bust),
-            c.url
-        ));
-    }
-    let frag_flow = cells.join(" ");
-    Ok(PinDoc {
-        header: String::new(),
-        footer: String::new(),
-        empty: false,
-        msg: String::new(),
-        muted: palette::muted(),
-        font: palette::family(),
-        css: pins_card_css()?,
-        bg: PIN_BG.to_string(),
-        border: PIN_BORDER.to_string(),
-        icon: PIN_ICON.to_string(),
-        title: "Popular repositories".to_string(),
-        cards,
-        frag_flow,
-    })
-}
-
-/// Shared motion rules, extracted from the single-sourced chart style —
-/// no second copy of the breathe timing to drift. Fails loudly if the
-/// shared stylesheet ever stops carrying these rules.
-fn chart_pulse_css() -> anyhow::Result<String> {
-    let css = chart_style()?;
-    fn block<'a>(css: &'a str, pat: &str) -> anyhow::Result<&'a str> {
-        let start = css
-            .find(pat)
-            .ok_or_else(|| anyhow::anyhow!("{pat} missing in shared style"))?;
-        let mut depth = 0;
-        for (i, c) in css[start..].char_indices() {
-            if c == '{' {
-                depth += 1;
-            }
-            if c == '}' {
-                depth -= 1;
-                if depth == 0 {
-                    return Ok(css[start..start + i + 1].trim());
-                }
-            }
-        }
-        Err(anyhow::anyhow!("{pat} unterminated in shared style"))
-    }
-    Ok([
-        block(&css, ".pulse {")?,
-        block(&css, ".slow {")?,
-        block(&css, "@keyframes breathe")?,
-        block(&css, "@media (prefers-reduced-motion: reduce)")?,
-    ]
-    .join("\n"))
-}
-
-/// Pins chrome: per-card font classes on the shared Segoe stack, plus the
-/// family's breathe rules lifted from the shared template above.
-/// Heating breathes fast, steady slow, cooling/dormant stay static —
-/// same thresholds as the flame and indicator bands. One copy rides every
-/// card file so each SVG stands alone.
-fn pins_card_css() -> anyhow::Result<String> {
-    Ok(format!(
-        ".pname {{ font: 600 18px 'Segoe UI', Ubuntu, Sans-Serif; fill: {title}; }} .pdesc {{ font: 400 12px 'Segoe UI', Ubuntu, Sans-Serif; fill: {text}; }} .pfoot {{ font: 400 12px 'Segoe UI', Ubuntu, Sans-Serif; fill: {text}; }} {pulse}",
-        title = PIN_TITLE,
-        text = PIN_TEXT,
-        pulse = chart_pulse_css()?,
-    ))
-}
-
-/// Plugin function: validated graph JSON in, pins document out.
-#[oxdock_func(pure, name = "PINS")]
-fn pins(graph_json: String) -> anyhow::Result<Value> {
-    let graph_json = transport_out(&graph_json)?;
-    Ok(Value::string(serde_json::to_string(&pin_rows(
-        &graph_json,
-    )?)?))
-}
-
-/// Render the popular-repositories pins family: one SVG per top repo
-/// plus the fragment table that embeds them, each bubble linking to
-/// its own repo. Returns `(committed relpath, bytes)` pairs; the
-/// caller writes the bytes (so output paths stay in one place).
-/// Same transport as the pie: embedded script emits markup into a
-/// temp workspace.
-pub fn render_pins_bundle(graph_json: &str) -> anyhow::Result<Vec<(String, String)>> {
-    let engine = engine();
-    let arg = transport_in(graph_json);
-    let steps: Vec<oxdock_parser::Step> = oxdock! {
-        modules: [CHARTS],
-        IMPORT [CHARTS]
-        IMPORT [STD]
-        LET $doc_json: STRING = CHARTS::PINS(#arg)
-        WRITE rows.json $doc_json
-        LET $doc: MAP<ANY> = LOAD_JSON("rows.json")
-        MKDIR svg
-        MKDIR frag
-        IF $doc.empty {
-            WRITE frag/pins.md "## Popular repositories\n\n*{{ $doc.msg }}*\n"
-        } ELSE {
-            FOR $c: MAP<ANY> IN $doc.cards {
-                WRITE svg/{{ $c.file }} "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{{ $c.w }}\" height=\"{{ $c.h }}\" viewBox=\"0 0 {{ $c.w }} {{ $c.h }}\" role=\"img\" font-family=\"{{ $doc.font }}\"><title>{{ $c.fullname }}</title><desc>{{ $c.meta }}</desc><style>{{ $doc.css }}</style><a href=\"{{ $c.url }}\"><rect x=\"0.5\" y=\"0.5\" width=\"{{ $c.bw }}\" height=\"{{ $c.bh }}\" rx=\"4.5\" fill=\"{{ $doc.bg }}\" stroke=\"{{ $doc.border }}\"/><rect x=\"0.5\" y=\"0.5\" width=\"5\" height=\"{{ $c.bh }}\" rx=\"2\" fill=\"{{ $c.band }}\" class=\"{{ $c.pulse }}\"/><g transform=\"translate(12,30)\">"
-                APPEND svg/{{ $c.file }} "<svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 110-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1V9h-8c-.356 0-.694.074-1 .208V2.5a1 1 0 011-1h8zM5 12.25v3.25a.25.25 0 00.4.2l1.45-1.087a.25.25 0 01.3 0L8.6 15.7a.25.25 0 00.4-.2v-3.25a.25.25 0 00-.25-.25h-3.5a.25.25 0 00-.25.25z\"/></svg><text x=\"28\" y=\"0\" class=\"pname\">{{ $c.name }}</text></g>"
-                APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"54\" class=\"pdesc\">{{ $c.d1 }}</text>"
-                IF $c.has2 {
-                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"70\" class=\"pdesc\">{{ $c.d2 }}</text>"
-                }
-                IF $c.has3 {
-                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"86\" class=\"pdesc\">{{ $c.d3 }}</text>"
-                }
-                IF $c.has4 {
-                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"102\" class=\"pdesc\">{{ $c.d4 }}</text>"
-                }
-                APPEND svg/{{ $c.file }} "<g transform=\"translate(15,{{ $c.fy }})\" class=\"pfoot\">"
-                IF $c.has_lang {
-                    APPEND svg/{{ $c.file }} "<circle cx=\"0\" cy=\"-4\" r=\"5\" fill=\"{{ $c.lang_color }}\"/><text x=\"9\" y=\"0\">{{ $c.lang }}</text>"
-                }
-                APPEND svg/{{ $c.file }} "<g transform=\"translate({{ $c.fx_star }},0)\"><svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25zm0 2.445L6.615 5.5a.75.75 0 01-.564.41l-3.097.45 2.24 2.184a.75.75 0 01.216.664l-.528 3.084 2.769-1.456a.75.75 0 01.698 0l2.77 1.456-.53-3.084a.75.75 0 01.216-.664l2.24-2.183-3.096-.45a.75.75 0 01-.564-.41L8 2.694v.001z\"/></svg><text x=\"19\" y=\"0\">{{ $c.stars }}</text></g><g transform=\"translate({{ $c.fx_fork }},0)\"><svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M5 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm0 2.122a2.25 2.25 0 10-1.5 0v.878A2.25 2.25 0 005.75 8.5h1.5v2.128a2.251 2.251 0 101.5 0V8.5h1.5a2.25 2.25 0 002.25-2.25v-.878a2.25 2.25 0 10-1.5 0v.878a.75.75 0 01-.75.75h-4.5A.75.75 0 015 6.25v-.878zm3.75 7.378a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm3-8.75a.75.75 0 100-1.5.75.75 0 000 1.5z\"></path></svg><text x=\"19\" y=\"0\">{{ $c.forks }}</text></g></g>"
-                APPEND svg/{{ $c.file }} "<g transform=\"translate(15,{{ $c.fy2 }})\" class=\"pfoot\"><circle cx=\"0\" cy=\"-4\" r=\"5\" fill=\"{{ $c.band }}\" class=\"{{ $c.pulse }}\"/><text x=\"9\" y=\"0\">{{ $c.heat }}</text></g>"
-                APPEND svg/{{ $c.file }} "</a></svg>"
-            }
-            WRITE frag/pins.md "## Popular repositories\n\n<div align=\"center\">\n\n"
-            APPEND frag/pins.md "{{ $doc.frag_flow }}\n\n"
-            APPEND frag/pins.md "</div>\n\n"
-        }
-        LET $check: STRING = READ frag/pins.md
-        ASSERT_CONTAINS $check "Popular repositories"
-    };
-    let temp = oxdock::GuardedPath::tempdir().expect("tempdir");
-    let root = temp.as_guarded_path().clone();
-    engine.run_steps_without_snapshot(&root, &steps)?;
-    let resolver = oxdock::PathResolver::new(root.as_path(), root.as_path()).expect("resolver");
-    // Card inventory rides rows.json: deterministic temp names in,
-    // committed relpaths out.
-    let doc_path = root.join("rows.json").expect("doc path");
-    let doc: PinDoc = serde_json::from_str(&resolver.read_to_string(&doc_path).expect("read doc"))?;
-    let mut bundle: Vec<(String, String)> = vec![];
-    for card in &doc.cards {
-        let rel = format!("svg/{}", card.file);
-        let temp_path = root.join(&rel).expect("card path");
-        let svg = resolver.read_to_string(&temp_path).expect("read card");
-        assert!(svg.starts_with("<svg "));
-        assert!(svg.ends_with("</svg>"));
-        bundle.push((card.dest.clone(), svg));
-    }
-    let frag_path = root.join("frag/pins.md").expect("frag path");
-    let frag = resolver.read_to_string(&frag_path).expect("read frag");
-    bundle.push((jzombie_graph::paths::pins_fragment(), frag));
-    Ok(bundle)
 }
 
 fn engine() -> Engine {
@@ -1541,7 +1228,6 @@ fn engine() -> Engine {
             DataTable::registration(),
             ChartStyleFn::registration(),
             Flame::registration(),
-            Pins::registration(),
         ],
         types: vec![],
         record_schemas: vec![],
@@ -1559,7 +1245,7 @@ pub fn bust_token(graph_json: &str) -> anyhow::Result<String> {
     Ok(graph.generated_at.format("%Y%m%d%H%M").to_string())
 }
 
-/// Section fragments with cache-busted image URLs. Same bust token as pins:
+/// Section fragments with cache-busted image URLs. Same bust token as the
 /// the sweep timestamp, so GitHub's image proxy refetches after every
 /// nightly rebuild instead of serving the stale bytes.
 pub fn render_flame_md(graph_json: &str) -> anyhow::Result<String> {
@@ -1610,7 +1296,7 @@ pub fn render_focus_md(graph_json: &str) -> anyhow::Result<String> {
 /// no "Unspecified" slot, same rule as the pin footers. Top-6 plus an
 /// Other rollup when the tail is non-empty.
 const LANG_TOPN: usize = 6;
-/// Misc bucket gray: the pins' secondary text gray, not a language color.
+/// Misc bucket gray: the shared secondary gray, not a language color.
 const LANG_OTHER: &str = "#9198a1";
 const LANG_W: f64 = 800.0;
 const LANG_H: f64 = 56.0;
@@ -2451,18 +2137,23 @@ mod tests {
     }
 
     #[test]
-    fn wrap_desc_truncates_with_ellipsis() {
-        // Overflow never pushes content off the fixed canvas: the cut
-        // tail gets an ellipsis, and the line count never exceeds the cap.
-        let long = "word ".repeat(200);
-        let lines = wrap_desc(&long);
-        assert_eq!(lines.len(), PIN_DESC_MAX_LINES);
-        assert!(lines.last().unwrap().ends_with('\u{2026}'));
-        assert!(lines.iter().all(|l| l.chars().count() <= PIN_DESC_WIDTH));
-        // Short text passes through untouched, no ellipsis.
-        let short = wrap_desc("hello world");
-        assert_eq!(short, vec!["hello world"]);
-        assert!(wrap_desc("").len() == 1);
+    fn selected_score_ranks_reuse_over_popularity() {
+        // One portfolio dependent outweighs a crowd of stars: a repo the
+        // portfolio leans on beats a popular repo nobody imports.
+        assert!(
+            selected_score(3, 0, 0, false, true, 1, false)
+                > selected_score(0, 30, 0, false, true, 1, false)
+        );
+        // Product-ness and activity nudge a lead, never flip it.
+        assert!(
+            selected_score(2, 0, 0, true, true, 50, false)
+                > selected_score(1, 5, 0, false, false, 0, false)
+        );
+        // A diverged fork pays exactly the fork penalty, all else equal.
+        assert!(
+            selected_score(1, 5, 1, false, true, 1, false)
+                > selected_score(1, 5, 1, false, true, 1, true)
+        );
     }
 
     fn focus_val(rows: &[FocusRow], label: &str) -> f32 {

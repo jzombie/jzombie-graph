@@ -1,0 +1,17 @@
+---
+source: crates/charts/tests/render_selected.rs
+expression: md
+---
+## Selected work
+
+Ordered by load-bearing reuse first — how many portfolio repos depend on a repo — then external pull (stars and forks), then recent activity, with product repos and documented ones nudged up. It’s a ranking of signal, not a tally of volume: exact counts, layers, and reuse ride the commit data table below.
+
+- **[r0](https://github.com/me/r0)** — Depended-on core that three other repos import<br><sub>![dormant](dashboard/indicators/dormant.svg) dormant · 5 commits in 30d · ★0 · used by 3</sub>
+- **[r7](https://github.com/me/r7)** — Small and depended upon<br><sub>![dormant](dashboard/indicators/dormant.svg) dormant · 5 commits in 30d · ★9 · used by 1</sub>
+- **[r2](https://github.com/me/r2)** — Popular and forked<br><sub>![dormant](dashboard/indicators/dormant.svg) dormant · 5 commits in 30d · ★25</sub>
+- **[r1](https://github.com/me/r1)** — Most popular repo nobody here imports<br><sub>![dormant](dashboard/indicators/dormant.svg) dormant · 5 commits in 30d · ★30</sub>
+- **[r4](https://github.com/me/r4)** — Forked more than it stars<br><sub>![dormant](dashboard/indicators/dormant.svg) dormant · 5 commits in 30d · ★15</sub>
+- **[r3](https://github.com/me/r3)** — Steady earner<br><sub>![dormant](dashboard/indicators/dormant.svg) dormant · 5 commits in 30d · ★20</sub>
+- **[r5](https://github.com/me/r5)** — Mid-pack<br><sub>![dormant](dashboard/indicators/dormant.svg) dormant · 5 commits in 30d · ★10</sub>
+- **[r6](https://github.com/me/r6)** — Quiet follower<br><sub>![dormant](dashboard/indicators/dormant.svg) dormant · 5 commits in 30d · ★8</sub>
+- **[r8](https://github.com/me/r8)** — Barely there<br><sub>![dormant](dashboard/indicators/dormant.svg) dormant · 5 commits in 30d · ★7</sub>
