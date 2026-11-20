@@ -1615,6 +1615,7 @@ dependencies = [
  "oxdock-markdown-plugin",
  "serde",
  "serde_json",
+ "toml",
 ]
 
 [[package]]

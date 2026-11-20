@@ -1,0 +1,66 @@
+# Shape radar: which metrics, measured against which peers.
+#
+# This file is data, not code — edit it and re-run `oxdock-render`.
+# Axes, labels, the peer pool and the embed width all live here. A new
+# *combination* of metrics is one [[axes]] line (any key in
+# RADAR_METRICS, charts/src/lib.rs); a brand-new primitive metric is
+# one line in that registry.
+
+# Pixels the floated image asks GitHub for. The SVG fits its own
+# canvas to the labels (≈156 wide for the labels below), so this is
+# the zoom: at 190 the labels draw at ~12px instead of ~10px. Two
+# costs ride with it — every pixel here is a pixel the fact lines lose
+# on a phone, and the float grows to ~165px tall, which must stay
+# under a row's fact lines or it overlaps the next item.
+width = 190
+
+# Peer group: every vertex is this repo's percentile among the pool
+# that survives these filters, so the shapes are only comparable to
+# each other because they share one pool. A filter left out admits
+# everything — and an empty [pool] ranks against every node in the
+# graph, which is rarely what you want: most nodes are zero-commit
+# forks of other people's code, and ranking active work against them
+# pins every spoke to the rim until the nine shapes stop differing.
+[pool]
+# What the percentiles are *among* — printed in the legend and in
+# every image's alt text. Say it in words a reader can check ("my
+# active repos"), never a number that drifts as the graph grows.
+label = "my active repos"
+# Pristine forks of other people's code never measure themselves;
+# diverged forks (your commits on top) stay in.
+own_work = true
+# Repos with no trailing-30d work sit out — they are the graph's long
+# tail, not peers for active work.
+min_commits_30d = 1
+# The profile README repo is documentation, not work.
+exclude_profile = true
+
+# Axes, clockwise from top. This order is the order on the dial, so
+# the legend sentence reads in the same order the vertices turn.
+# `metric` must name a RADAR_METRICS key (a typo is a render error
+# that lists the available keys, never a blank spoke); `label` is the
+# legend, alt-text and diagram wording — the diagram wraps a long name
+# onto two lines rather than shrinking it.
+[[axes]]
+metric = "commits_30d"
+label = "Commits 30d"
+
+[[axes]]
+metric = "issue_traffic"
+label = "Issue traffic"
+
+[[axes]]
+metric = "pull_requests"
+label = "Pull requests"
+
+[[axes]]
+metric = "fan_in"
+label = "Reuse"
+
+[[axes]]
+metric = "stars"
+label = "Stars"
+
+[[axes]]
+metric = "focus"
+label = "Focus"

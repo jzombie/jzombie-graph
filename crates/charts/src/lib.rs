@@ -1031,26 +1031,1060 @@ pub fn render_flame_svg(graph_json: &str) -> anyhow::Result<String> {
     Ok(resolver.read_to_string(&out).expect("read out"))
 }
 
-/// Pinned-repo cards: bordered card, book icon + name header, wrapped
-/// description, language dot + stars + forks footer, plus a heat band
-/// and proof footer. Top-9 by stars, uniform height, emitted as one
-/// flowing paragraph so the viewport wraps them as it wishes.
-const PINS_TOPN: usize = 9;
-const PIN_W: f64 = 280.0;
-const PIN_NAME_MAX: usize = 22;
-const PIN_DESC_WIDTH: usize = 34;
-const PIN_DESC_MAX_LINES: usize = 4;
+/// Selected-work list: top-`SELECTED_TOPN` own-work repos by
+/// `selected_score`, emitted as one markdown list — name plus
+/// description first, then topics, then proof numbers (heat, commits,
+/// stars, dependents, homepage) on a shrunk line. Markdown rather than
+/// cards: it reflows at any width, reads in light and dark themes, and
+/// screen readers get text instead of an image's `<desc>`.
+const SELECTED_TOPN: usize = 9;
 
-/// Card palette: GitHub dark-mode bubbles — black card, dark link blue,
-/// secondary gray type. Language dots keep linguist colors.
-const PIN_TITLE: &str = "#4493f8";
-const PIN_ICON: &str = "#9198a1";
-const PIN_TEXT: &str = "#9198a1";
-const PIN_BG: &str = "#000000";
-const PIN_BORDER: &str = "#30363d";
+/// One list row: everything the fragment prints, shaped in Rust so the
+/// renderer below carries no graph access.
+#[derive(Debug, Clone, PartialEq)]
+struct SelectedRow {
+    /// Canonical `owner/repo` id — the radar file stem derives from it,
+    /// so the fragment and the radar file family can never disagree.
+    id: String,
+    /// Repo URL and display name.
+    url: String,
+    name: String,
+    /// Empty when the repo has none — the description line drops out
+    /// rather than printing a placeholder.
+    desc: String,
+    /// Owner login: the topic search links are user-scoped, never baked.
+    owner: String,
+    /// Repo topics, all of them, each linked to a user-scoped search.
+    topics: Vec<String>,
+    /// Repo homepage (site or crate page); `None` when unset or blank.
+    homepage: Option<String>,
+    /// `fork of owner/parent (+N own commits)` when the row is a
+    /// diverged fork; `None` for original work.
+    fork_note: Option<String>,
+    /// Heat band word; doubles as the badge file name.
+    band: &'static str,
+    /// Velocity and pull: trailing-30d commits, stars, forks, backlog.
+    commits_30d: u32,
+    stars: u32,
+    forks: u32,
+    open_issues: u32,
+    /// Dependence edges both ways — who leans on this repo, what it
+    /// leans on. Associations (docs, workflows) never count.
+    fan_in: u32,
+    fan_out: u32,
+    /// Positional tags (`middleware · application`) plus identity facts.
+    layer: String,
+    language: Option<String>,
+    license: Option<String>,
+    focus: Option<f32>,
+    last_commit: Option<String>,
+    branches: usize,
+    size_kb: u32,
+    /// Agent-parseability audit from the default-branch tree: which of
+    /// readme / license / llms.txt / agents.md exist.
+    surfaces: Vec<&'static str>,
+    /// Thread traffic in the trailing 30d, the issue gauge, and the
+    /// label census over the sampled threads (bugs vs enhancements).
+    issues_open_30d: u32,
+    issues_closed_30d: u32,
+    issue_comments_30d: u32,
+    issue_heat: Option<f32>,
+    labels: Vec<(String, u32)>,
+    /// Recent PRs: captured total, counts per state. Titles are never
+    /// rendered — this is a dashboard, not a `git log`.
+    prs_total: usize,
+    prs_states: Vec<(String, usize)>,
+    /// Sampled planning threads: captured total and state counts.
+    /// Titles are never rendered.
+    issues_total: usize,
+    issues_states: Vec<(String, usize)>,
+}
 
-/// Linguist language colors for the footer dot; unknown maps to the
-/// same `#333` fallback the reference card uses.
+/// Titles are gone: the review correctly called PR/issue titles signal
+/// destruction (a Dependabot bump teaches nothing at portfolio scale).
+/// Counts only.
+const SELECTED_TAG_MAX: usize = 4;
+
+/// Repo size as the API reports it (KB) in the units a reader expects.
+fn size_label(size_kb: u32) -> String {
+    if size_kb >= 1024 {
+        format!("{:.1} MB", size_kb as f64 / 1024.0)
+    } else {
+        format!("{size_kb} KB")
+    }
+}
+
+/// Flagship score: load-bearing reuse first — one portfolio dependent
+/// outweighs any star — then external pull, then product-ness and recent
+/// shipping. Diverged forks pay for being forks: original work reads as
+/// the flagship. Pure ranking: no units, no meaning beyond the order it
+/// produces, which is why the section prose states the measure.
+fn selected_score(
+    fan_in: u32,
+    stars: u32,
+    forks: u32,
+    application: bool,
+    has_readme: bool,
+    commits_30d: u32,
+    fork: bool,
+) -> f64 {
+    2.5 * f64::from(fan_in)
+        + 1.5 * (1.0 + f64::from(stars)).ln()
+        + 0.5 * (1.0 + f64::from(forks)).ln()
+        + if application { 2.0 } else { 0.0 }
+        + if has_readme { 0.5 } else { 0.0 }
+        + 0.5 * (1.0 + f64::from(commits_30d)).ln()
+        - if fork { 1.0 } else { 0.0 }
+}
+
+/// GitHub profile README repo (`owner` equals `name`, case-insensitive):
+/// a whole-portfolio documentation index, never selected work. Same rule
+/// the cartographer uses to keep it out of the cluster.
+fn is_profile_repo(id: &str) -> bool {
+    let Some((owner, name)) = id.split_once('/') else {
+        return false;
+    };
+    owner.eq_ignore_ascii_case(name)
+}
+
+/// Selected rows: public own-work repos with commits in the trailing 30d
+/// — the pool the pins drew from — scored, sorted, cut to the top. Ties
+/// break on name, so the order is a pure function of the JSON. Takes a
+/// parsed graph: the fragment shares one parse with the radar readouts.
+fn selected_rows(graph: &jzombie_graph::graph::Graph) -> Vec<SelectedRow> {
+    let fan_in = graph.node_fan_in();
+    let mut scored: Vec<(f64, &jzombie_graph::graph::Node)> = graph
+        .nodes
+        .iter()
+        .filter(|nd| {
+            !nd.private
+                && jzombie_graph::graph::is_own_work(nd)
+                && nd.commits_30d > 0
+                && !is_profile_repo(&nd.id)
+        })
+        .map(|nd| {
+            let fi = fan_in.get(&nd.id).copied().unwrap_or(0);
+            let score = selected_score(
+                fi,
+                nd.stars,
+                nd.forks_count,
+                nd.layer.contains(&jzombie_graph::graph::Layer::Application),
+                nd.has_readme,
+                nd.commits_30d,
+                nd.fork,
+            );
+            (score, nd)
+        })
+        .collect();
+    scored.sort_by(|a, b| {
+        b.0.partial_cmp(&a.0)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.1.name.cmp(&b.1.name))
+    });
+    scored.truncate(SELECTED_TOPN);
+    let fan_out = graph.node_fan_out();
+    scored
+        .into_iter()
+        .map(|(_, nd)| {
+            let mut surfaces = vec![];
+            if nd.has_readme {
+                surfaces.push("readme");
+            }
+            if nd.has_license_file {
+                surfaces.push("license");
+            }
+            if nd.has_llms_txt {
+                surfaces.push("llms.txt");
+            }
+            if nd.has_agents_md {
+                surfaces.push("agents.md");
+            }
+            let mut labels: Vec<(String, u32)> = nd
+                .issue_labels
+                .iter()
+                .map(|(k, v)| (k.clone(), *v))
+                .collect();
+            // Loudest label first, name breaks ties: one order, every run.
+            labels.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+            let counts = |states: &[&str], hit: &dyn Fn(&str) -> usize| -> Vec<(String, usize)> {
+                states.iter().map(|s| ((*s).to_string(), hit(s))).collect()
+            };
+            let prs_total = nd.recent_prs.len();
+            let prs_states = counts(&["merged", "open", "closed"], &|s| {
+                nd.recent_prs
+                    .iter()
+                    .filter(|p| p.state.eq_ignore_ascii_case(s))
+                    .count()
+            });
+            let issues_total = nd.recent_issues.len();
+            let issues_states = counts(&["open", "closed"], &|s| {
+                nd.recent_issues
+                    .iter()
+                    .filter(|i| i.state.eq_ignore_ascii_case(s))
+                    .count()
+            });
+            let fork_note = if nd.fork {
+                Some(match (nd.upstream.as_deref(), nd.ahead_by) {
+                    (Some(up), Some(ahead)) if ahead > 0 => {
+                        format!("fork of {up} (+{ahead} own commits)")
+                    }
+                    (Some(up), _) => format!("fork of {up}"),
+                    (None, _) => "fork".to_string(),
+                })
+            } else {
+                None
+            };
+            SelectedRow {
+                id: nd.id.clone(),
+                url: format!("https://github.com/{}", nd.id),
+                name: nd.name.clone(),
+                desc: nd.description.clone().unwrap_or_default(),
+                band: heat_band(nd.commit_heat.or_else(|| nd.commit_heat())),
+                commits_30d: nd.commits_30d,
+                stars: nd.stars,
+                forks: nd.forks_count,
+                open_issues: nd.open_issues,
+                fan_in: fan_in.get(&nd.id).copied().unwrap_or(0),
+                fan_out: fan_out.get(&nd.id).copied().unwrap_or(0),
+                owner: nd.owner.clone(),
+                topics: nd.topics.clone(),
+                homepage: nd
+                    .homepage
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|h| !h.is_empty())
+                    .map(str::to_string),
+                fork_note,
+                layer: jzombie_graph::graph::Graph::layer_string(&nd.layer),
+                language: nd.language.clone(),
+                license: nd.license.clone(),
+                focus: nd.focus,
+                last_commit: nd.last_commit_at.map(|t| t.format("%Y-%m-%d").to_string()),
+                branches: nd.branch_heat.len(),
+                size_kb: nd.size_kb,
+                surfaces,
+                issues_open_30d: nd.issues_open_30d,
+                issues_closed_30d: nd.issues_closed_30d,
+                issue_comments_30d: nd.issue_comments_30d,
+                issue_heat: nd.issue_heat,
+                labels,
+                prs_total,
+                prs_states,
+                issues_total,
+                issues_states,
+            }
+        })
+        .collect()
+}
+
+/// Render the selected-work fragment: heading, the sentence that states
+/// what the order measures, the legend for the shape radars, then one
+/// bullet per row — a floated radar, description, topics (capped),
+/// classification, proof, consolidated thread counts. The radar floats
+/// `right` so it keeps its configured width at any viewport: inside a
+/// markdown table the text column steals width on narrow screens and
+/// the image shrinks to illegibility on mobile.
+/// The markdown itself carries no cache-bust token (text re-renders with
+/// the commit); the radar images do, because they are proxied and cached
+/// like every other image on the page.
+pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
+    let graph = jzombie_graph::graph::Graph::from_json(graph_json)?;
+    let rows = selected_rows(&graph);
+    if rows.is_empty() {
+        return Ok("## Selected work\n\n*No commits in trailing 30d*\n".to_string());
+    }
+    let plan = RadarPlan::load()?;
+    let bust = bust_token(graph_json)?;
+    let mut items = String::new();
+    for (row_idx, row) in rows.iter().enumerate() {
+        let link = format!("[{}]({})", row.name, row.url);
+        let head = if row.desc.is_empty() {
+            format!("**{link}**")
+        } else {
+            // Descriptions are single-line on GitHub; flatten anyway so
+            // one stray newline cannot break the list. The whole head
+            // line is bold — name and description read as one title.
+            let desc = row.desc.split_whitespace().collect::<Vec<_>>().join(" ");
+            format!("**{link}: {desc}**")
+        };
+        let radar = radar_img(&plan, &graph, row, &bust)?;
+        // The radar rides on the head line (no `<br>` before it — two
+        // breaks in a row would print a blank line) so every fact line
+        // flows around the float, and the float keeps its width on
+        // mobile where a table column would surrender it.
+        let mut lines: Vec<String> = vec![format!("- {head} {radar}")];
+        // Topics capped: the first N links carry the architecture, the
+        // rest collapse to a `+N more` count instead of nine search links
+        // that bury the metrics.
+        if !row.topics.is_empty() {
+            let mut tags: Vec<String> = row
+                .topics
+                .iter()
+                .take(SELECTED_TAG_MAX)
+                .map(|t| topic_link(&row.owner, t))
+                .collect();
+            if row.topics.len() > SELECTED_TAG_MAX {
+                tags.push(format!("+{} more", row.topics.len() - SELECTED_TAG_MAX));
+            }
+            lines.push(format!("<sub>{}</sub>", tags.join(" ")));
+        }
+
+        // One classification line: what the repo *is* and how it
+        // *stands*. Back in a list (not a table cell) pipes are safe
+        // again, so identity and state separate into two groups.
+        let mut identity: Vec<String> = vec![format!("layer: `{}`", row.layer)];
+        if let Some(lang) = &row.language {
+            identity.push(lang.clone());
+        }
+        if let Some(lic) = &row.license {
+            identity.push(lic.clone());
+        }
+        if let Some(note) = &row.fork_note {
+            identity.push(note.clone());
+        }
+        if !row.surfaces.is_empty() {
+            identity.push(format!("docs: {}", row.surfaces.join(", ")));
+        }
+        let mut state: Vec<String> = vec![];
+        if let Some(f) = row.focus {
+            state.push(format!("focus: {f:+.2}"));
+        }
+        if let Some(d) = &row.last_commit {
+            state.push(format!("last commit: {d}"));
+        }
+        state.push(if row.branches == 1 {
+            "branch: 1".to_string()
+        } else {
+            format!("branches: {}", row.branches)
+        });
+        if row.size_kb > 0 {
+            state.push(format!("size: {}", size_label(row.size_kb)));
+        }
+        let mut groups: Vec<String> = vec![];
+        if !identity.is_empty() {
+            groups.push(identity.join(" \u{b7} "));
+        }
+        if !state.is_empty() {
+            groups.push(state.join(" \u{b7} "));
+        }
+        lines.push(format!("<sub>{}</sub>", groups.join(" | ")));
+
+        // The proof line: gauge, volume, pull, backlog, reuse, site — the
+        // full URL, never a truncated host. The badge file carries its own
+        // 44px design size; inline here it asks for 24. Vertical centering
+        // uses the legacy `absmiddle`, because GitHub strips `style` — and
+        // `middle` is not a synonym: browsers map it to middle-on-
+        // baseline, which measures ~4px low against the text, while
+        // `absmiddle` is true centering (measured within 0.5px).
+        let commits = if row.commits_30d == 1 {
+            "1 commit in 30d".to_string()
+        } else {
+            format!("{} commits in 30d", row.commits_30d)
+        };
+        let mut proof = format!(
+            "<img src=\"{badge}\" width=\"24\" align=\"absmiddle\" alt=\"\"> {band} \u{b7} {commits} \u{b7} \u{2605}{stars} \u{b7} \u{2442}{forks} \u{b7} {open} open issues | used by {fan_in} \u{b7} uses {fan_out}",
+            badge = jzombie_graph::paths::indicator_url(row.band),
+            band = row.band,
+            commits = commits,
+            stars = row.stars,
+            forks = row.forks,
+            open = row.open_issues,
+            fan_in = row.fan_in,
+            fan_out = row.fan_out,
+        );
+        if let Some(home) = &row.homepage {
+            proof.push_str(&format!(" \u{b7} [{home}]({home})"));
+        }
+        lines.push(format!("<sub>{proof}</sub>"));
+
+        // One consolidated thread line: window counts, gauge, census,
+        // then lifetime totals — counts only, never titles. The old
+        // layout printed the 30d window and the lifetime states as two
+        // near-identical lines plus literal PR/issue titles; this is the
+        // single unified metric.
+        if row.prs_total > 0
+            || row.issues_total > 0
+            || row.issues_open_30d > 0
+            || row.issues_closed_30d > 0
+        {
+            let mut threads: Vec<String> = vec![];
+            if row.prs_total > 0 {
+                threads.push(thread_counts(
+                    &format!("PRs ({})", row.prs_total),
+                    &row.prs_states,
+                ));
+            }
+            if row.issues_total > 0 {
+                threads.push(thread_counts(
+                    &format!("issues ({})", row.issues_total),
+                    &row.issues_states,
+                ));
+            }
+            let mut window = vec![format!(
+                "issues 30d: {} opened \u{b7} {} closed \u{b7} {} comments",
+                row.issues_open_30d, row.issues_closed_30d, row.issue_comments_30d
+            )];
+            if let Some(h) = row.issue_heat {
+                window.push(format!("issue heat: {h:.2}"));
+            }
+            threads.push(window.join(" \u{b7} "));
+            if !row.labels.is_empty() {
+                let census: Vec<String> = row
+                    .labels
+                    .iter()
+                    .map(|(l, c)| format!("{l}\u{d7}{c}"))
+                    .collect();
+                threads.push(format!("label census: {}", census.join(", ")));
+            }
+            lines.push(format!("<sub>{}</sub>", threads.join(" \u{b7} ")));
+        }
+
+        // Join with literal `<br>`: markdown needs a hard break inside a
+        // list item, and GitHub keeps raw HTML tags. The row closes with
+        // `<br clear="both">`: the radar floats right at ~165px tall, so
+        // a short row would otherwise spill its float into the next
+        // bullet and shove that row's radar left. The clearing break
+        // forces each `<li>` to contain its own float — GitHub's
+        // sanitizer keeps the `clear` attribute. A `<hr>` inside the
+        // bullet separates rows (a rule at column 0 would split the
+        // `<ul>` in two, verified against the API); the last row skips
+        // it so no rule dangles before the next section.
+        items.push_str(&lines.join("<br>"));
+        items.push_str("<br clear=\"both\">");
+        if row_idx + 1 < rows.len() {
+            items.push_str("<hr>");
+        }
+        items.push('\n');
+    }
+    // The legend reads in dial order — the same order the vertices turn
+    // — so a reader can name a spoke without counting from the top.
+    let axis_legend = plan
+        .axes
+        .iter()
+        .map(|(label, _)| label.as_str())
+        .collect::<Vec<_>>()
+        .join(" \u{b7} ");
+    let pool_label = plan.pool_label();
+    Ok(formatdoc! {r#"
+        ## Selected work
+
+        Ordered by load-bearing reuse first: how many portfolio repos depend on a repo, then external pull (stars and forks), then recent activity, with product repos and documented ones nudged up. It’s a ranking of signal, not a tally of volume. Exact counts, layers, and reuse ride the commit data table below.
+
+        Each row carries a shape radar: axes clockwise from top ({axis_legend}), and each vertex is that repo’s percentile among {pool_label}.
+
+        {items}"#})
+}
+
+/// `label: 17 merged · 1 open · 2 closed` — counts only. Titles were cut:
+/// a Dependabot bump teaches nothing at portfolio scale, and the samples
+/// doubled the row height while burying heat, reuse, and layer.
+fn thread_counts(label: &str, states: &[(String, usize)]) -> String {
+    let counts: Vec<String> = states.iter().map(|(s, c)| format!("{c} {s}")).collect();
+    format!("{label}: {}", counts.join(" \u{b7} "))
+}
+
+// --- Shape radar -------------------------------------------------------
+//
+// One hexagon per selected repo, floated right in its list row. Same
+// split as every chart here: Rust owns percentiles and geometry, the
+// embedded script owns markup emission only.
+
+/// Radar config (`radar.toml`): which metrics, against which peers.
+/// Loaded on every render — the file is tiny, and a config mistake
+/// should surface as a render error, never as a stale cached shape.
+#[derive(Debug, Clone, serde::Deserialize)]
+struct RadarConfig {
+    /// Floated image width in pixels (the GitHub `width` attribute).
+    width: u32,
+    pool: RadarPool,
+    axes: Vec<RadarAxisCfg>,
+}
+
+/// The peer group percentiles rank against. `label` is required: the
+/// legend and every alt text must be able to say what the numbers are
+/// *among*, and a count baked into prose would drift as the graph grows.
+#[derive(Debug, Clone, serde::Deserialize)]
+struct RadarPool {
+    label: String,
+    /// Keep only own work: diverged forks stay, pristine ones sit out.
+    #[serde(default)]
+    own_work: bool,
+    /// Keep only repos with at least this many trailing-30d commits.
+    #[serde(default)]
+    min_commits_30d: Option<u32>,
+    /// Drop the profile README repo (`owner` == `name`).
+    #[serde(default)]
+    exclude_profile: bool,
+}
+
+/// One axis as configured: a metric key plus the words a reader sees.
+#[derive(Debug, Clone, serde::Deserialize)]
+struct RadarAxisCfg {
+    metric: String,
+    label: String,
+}
+
+/// Graph-derived facts an axis may read that are not node fields.
+struct RadarCtx {
+    fan_in: u32,
+    fan_out: u32,
+}
+
+/// One primitive metric: how to read a value off a node. `radar.toml`
+/// chooses which become axes — a new *combination* is a config line,
+/// a new primitive is one line here.
+type Metric = fn(&jzombie_graph::graph::Node, &RadarCtx) -> f64;
+
+fn or_zero(v: Option<f32>) -> f64 {
+    v.unwrap_or(0.0) as f64
+}
+
+/// Every metric `radar.toml` may name. Values stay `f64` end to end so
+/// percentiles never truncate, and every axis lands on the same 0..1
+/// scale — shapes drawn on different scales cannot be compared.
+const RADAR_METRICS: &[(&str, Metric)] = &[
+    ("commits_1d", |n, _| n.commits_1d as f64),
+    ("commits_5d", |n, _| n.commits_5d as f64),
+    ("commits_15d", |n, _| n.commits_15d as f64),
+    ("commits_30d", |n, _| n.commits_30d as f64),
+    ("issue_traffic", |n, _| {
+        (n.issues_open_30d + n.issues_closed_30d) as f64
+    }),
+    ("issue_comments", |n, _| n.issue_comments_30d as f64),
+    ("pull_requests", |n, _| n.recent_prs.len() as f64),
+    ("stars", |n, _| n.stars as f64),
+    ("forks", |n, _| n.forks_count as f64),
+    ("fan_in", |_, c| c.fan_in as f64),
+    ("fan_out", |_, c| c.fan_out as f64),
+    ("focus", |n, _| n.focus.unwrap_or(0.0) as f64),
+    ("open_issues", |n, _| n.open_issues as f64),
+    ("branches", |n, _| n.branch_heat.len() as f64),
+    ("size_kb", |n, _| n.size_kb as f64),
+    ("commit_heat", |n, _| {
+        or_zero(n.commit_heat.or_else(|| n.commit_heat()))
+    }),
+    ("issue_heat", |n, _| or_zero(n.issue_heat)),
+];
+
+/// The peer group percentiles rank against. Private nodes never qualify
+/// (they are not portfolio signal); everything else is config.
+fn radar_pool<'a>(
+    graph: &'a jzombie_graph::graph::Graph,
+    cfg: &RadarConfig,
+) -> Vec<&'a jzombie_graph::graph::Node> {
+    graph
+        .nodes
+        .iter()
+        .filter(|nd| {
+            if nd.private {
+                return false;
+            }
+            if cfg.pool.own_work && !jzombie_graph::graph::is_own_work(nd) {
+                return false;
+            }
+            if let Some(min) = cfg.pool.min_commits_30d
+                && nd.commits_30d < min
+            {
+                return false;
+            }
+            !(cfg.pool.exclude_profile && is_profile_repo(&nd.id))
+        })
+        .collect()
+}
+
+/// Mid-rank percentile of `v` among `pool`: ties share the middle of
+/// their run (a pool where most repos have zero stars doesn't pretend
+/// they all sit at zero), negatives and outliers need no special
+/// casing, and the result is always 0..1 — the shared scale every axis
+/// is drawn on.
+fn percentile(pool: &[f64], v: f64) -> f64 {
+    if pool.is_empty() {
+        return 0.0;
+    }
+    let below = pool.iter().filter(|&&x| x < v).count();
+    let ties = pool.iter().filter(|&&x| x == v).count();
+    (below as f64 + 0.5 * ties as f64) / pool.len() as f64
+}
+
+/// Config with every axis resolved to its metric. A typo'd `metric`
+/// key fails here, naming the keys that exist, instead of rendering a
+/// spoke nobody can explain.
+#[derive(Debug)]
+struct RadarPlan {
+    cfg: RadarConfig,
+    /// Display label and reader, in configured (dial) order.
+    axes: Vec<(String, Metric)>,
+}
+
+impl RadarPlan {
+    fn load() -> anyhow::Result<Self> {
+        let cfg: RadarConfig = toml::from_str(include_str!("../radar.toml"))
+            .map_err(|e| anyhow::anyhow!("radar.toml: {e}"))?;
+        Self::resolve(cfg)
+    }
+
+    /// Validation: axes declared, width sane, every `metric` naming a
+    /// registry key. Split from `load` so the typo path is testable
+    /// against a config the test writes itself.
+    fn resolve(cfg: RadarConfig) -> anyhow::Result<Self> {
+        anyhow::ensure!(!cfg.axes.is_empty(), "radar.toml declares no axes");
+        anyhow::ensure!(cfg.width > 0, "radar.toml: width must be positive");
+        let mut axes = Vec::with_capacity(cfg.axes.len());
+        for ax in &cfg.axes {
+            let Some((_, metric)) = RADAR_METRICS.iter().find(|(key, _)| *key == ax.metric) else {
+                let mut keys: Vec<&str> = RADAR_METRICS.iter().map(|(k, _)| *k).collect();
+                keys.sort_unstable();
+                anyhow::bail!(
+                    "radar.toml: unknown metric {:?}; available: {}",
+                    ax.metric,
+                    keys.join(", ")
+                );
+            };
+            axes.push((ax.label.clone(), *metric));
+        }
+        Ok(Self { cfg, axes })
+    }
+
+    fn pool_label(&self) -> &str {
+        &self.cfg.pool.label
+    }
+
+    /// Percentiles for one node, in axis order — the numbers behind the
+    /// shape, the hover title and the alt text, so the three can never
+    /// disagree with each other.
+    fn percentiles(
+        &self,
+        graph: &jzombie_graph::graph::Graph,
+        node: &jzombie_graph::graph::Node,
+    ) -> Vec<f64> {
+        let fan_in = graph.node_fan_in();
+        let fan_out = graph.node_fan_out();
+        let ctx = |nd: &jzombie_graph::graph::Node| RadarCtx {
+            fan_in: fan_in.get(&nd.id).copied().unwrap_or(0),
+            fan_out: fan_out.get(&nd.id).copied().unwrap_or(0),
+        };
+        let pool = radar_pool(graph, &self.cfg);
+        self.axes
+            .iter()
+            .map(|(_, metric)| {
+                let values: Vec<f64> = pool.iter().map(|&nd| metric(nd, &ctx(nd))).collect();
+                percentile(&values, metric(node, &ctx(node)))
+            })
+            .collect()
+    }
+}
+
+/// `99` -> "99th": alt text reads as prose, not as a table.
+fn ordinal(n: usize) -> String {
+    let suffix = match (n % 10, n % 100) {
+        (1, 11) | (2, 12) | (3, 13) => "th",
+        (1, _) => "st",
+        (2, _) => "nd",
+        (3, _) => "rd",
+        _ => "th",
+    };
+    format!("{n}{suffix}")
+}
+
+/// The numbers the shape only implies, spelled out: a screen reader
+/// gets the same facts a sighted reader gets from the vertices, and
+/// the hover title says the same words.
+fn radar_readout(plan: &RadarPlan, percentiles: &[f64]) -> String {
+    let facts: Vec<String> = plan
+        .axes
+        .iter()
+        .zip(percentiles)
+        .map(|((label, _), p)| {
+            let rank = ordinal(((p * 100.0).round() as usize).min(100));
+            format!("{label} {rank} percentile")
+        })
+        .collect();
+    format!(
+        "Radar chart of percentiles among {}: {}",
+        plan.pool_label(),
+        facts.join(", ")
+    )
+}
+
+/// Geometry for one radar, precomputed — the script interpolates, Rust
+/// does the math. Every vertex sits at `radius × percentile` of the
+/// shared pool, which is what makes nine shapes comparable.
+#[derive(Debug, Clone, serde::Serialize)]
+struct RadarDoc {
+    header: String,
+    footer: String,
+    /// Center of the fitted canvas, shared by rings, spokes, vertices.
+    cx: String,
+    cy: String,
+    /// Drawing sizes the script interpolates: label font and vertex dot.
+    font: String,
+    dot: String,
+    /// Grid ink: the same mid-gray every chart draws scaffolding in.
+    ink: String,
+    /// Heat-band color — the polygon wears the row's badge color.
+    color: String,
+    /// Breathing class from the repo's heat, as the share slices carry.
+    pulse: String,
+    /// Vertex `x,y` pairs, clockwise from top.
+    points: String,
+    rings: Vec<RadarRing>,
+    spokes: Vec<RadarSpoke>,
+    dots: Vec<RadarDot>,
+    /// Axis labels, one entry per rendered line: a long name wraps to
+    /// two lines on the diagram (the legend and alt text do not).
+    labels: Vec<RadarLabel>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct RadarLabel {
+    x: String,
+    y: String,
+    /// `start` / `middle` / `end`: text always runs away from center.
+    anchor: &'static str,
+    text: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct RadarRing {
+    r: String,
+    /// The outer ring reads stronger: it is the pool's ceiling.
+    op: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct RadarSpoke {
+    x: String,
+    y: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct RadarDot {
+    cx: String,
+    cy: String,
+}
+
+/// Radar geometry. The canvas is *not* fixed: it is fitted to the
+/// geometry plus the label extents, so a longer axis name widens the
+/// diagram instead of running off the edge. The fitted size becomes
+/// the SVG's intrinsic width/height, so a bare embed renders at the
+/// design size rather than the browser's 300×150 default.
+const RADAR_R: f64 = 42.0;
+/// Label size in viewBox units; `width` in radar.toml scales the whole
+/// diagram, so this is what a label costs when the config zooms.
+const RADAR_FONT: f64 = 10.0;
+const RADAR_LINE_H: f64 = 12.0;
+/// Breathing room between a vertex and its label, and padding around
+/// the fitted box.
+const RADAR_GAP: f64 = 6.0;
+const RADAR_PAD: f64 = 4.0;
+const RADAR_DOT: f64 = 2.5;
+
+/// Band name to the shared palette token: the shape wears the same
+/// color as the heat badge printed on the same row.
+fn band_color(band: &str) -> String {
+    match band {
+        "heating" => palette::heating(),
+        "steady" => palette::steady(),
+        "cooling" => palette::cooling(),
+        _ => palette::dormant(),
+    }
+}
+
+/// Label width at the radar's font: half an em per glyph — the same
+/// estimation `est_w` uses for the other charts, scaled to this size.
+fn label_w(s: &str) -> f64 {
+    s.chars().count() as f64 * RADAR_FONT * 0.5
+}
+
+/// Split an axis label for the drawing: one line when it fits the
+/// label budget, two at the space nearest the middle when it doesn't.
+/// Only the diagram wraps — the legend sentence and the alt text keep
+/// the full wording, so nothing a reader parses is abbreviated.
+fn label_lines(label: &str) -> Vec<String> {
+    const BUDGET: usize = 9;
+    if label.chars().count() <= BUDGET {
+        return vec![label.to_string()];
+    }
+    let words: Vec<&str> = label.split_whitespace().collect();
+    if words.len() < 2 {
+        return vec![label.to_string()];
+    }
+    // Split where the two lines come out most even.
+    let total = label.chars().count();
+    let mut best = 1;
+    let mut best_gap = usize::MAX;
+    for i in 1..words.len() {
+        let head: usize = words[..i].iter().map(|w| w.chars().count() + 1).sum();
+        let gap = (2 * head).abs_diff(total);
+        if gap < best_gap {
+            best_gap = gap;
+            best = i;
+        }
+    }
+    vec![words[..best].join(" "), words[best..].join(" ")]
+}
+
+/// One repo's radar geometry: config, graph and node in, a canvas
+/// fitted to geometry plus labels out. The work happens in a local
+/// frame (center at the origin, -90° up, clockwise); the fit finds the
+/// bounding box and translates everything onto the canvas — so a longer
+/// axis name widens the diagram instead of running off the edge.
+fn radar_doc(
+    graph: &jzombie_graph::graph::Graph,
+    node: &jzombie_graph::graph::Node,
+    plan: &RadarPlan,
+) -> RadarDoc {
+    let pcts = plan.percentiles(graph, node);
+    let n = plan.axes.len();
+    let dirs: Vec<(f64, f64)> = (0..n)
+        .map(|i| {
+            let a = (-90.0 + 360.0 * i as f64 / n as f64).to_radians();
+            (a.cos(), a.sin())
+        })
+        .collect();
+    let reach = |p: f64| RADAR_R * p.clamp(0.0, 1.0);
+    let local = |i: usize, r: f64| (r * dirs[i].0, r * dirs[i].1);
+
+    // The drawing wraps long names; the legend and alt text do not, so
+    // nothing a reader parses as prose is ever abbreviated.
+    let wrapped: Vec<Vec<String>> = plan
+        .axes
+        .iter()
+        .map(|(label, _)| label_lines(label))
+        .collect();
+
+    // Fit: geometry first, then every label at its anchor. Labels are
+    // anchored away from the center, so none can cross the polygon.
+    let mut left = -RADAR_R - RADAR_DOT;
+    let mut right = RADAR_R + RADAR_DOT;
+    let mut top = -RADAR_R - RADAR_DOT;
+    let mut bottom = RADAR_R + RADAR_DOT;
+    // Per axis: label anchor x, first baseline, and text anchor.
+    let mut placed: Vec<(f64, f64, &'static str)> = Vec::with_capacity(n);
+    for (i, lines) in wrapped.iter().enumerate() {
+        let (dx, dy) = dirs[i];
+        let ax = (RADAR_R + RADAR_GAP) * dx;
+        let ay = (RADAR_R + RADAR_GAP) * dy;
+        let anchor = if dx > 0.1 {
+            "start"
+        } else if dx < -0.1 {
+            "end"
+        } else {
+            "middle"
+        };
+        let w = lines.iter().map(|l| label_w(l)).fold(0.0_f64, f64::max);
+        let (x0, x1) = match anchor {
+            "start" => (ax, ax + w),
+            "end" => (ax - w, ax),
+            _ => (ax - w / 2.0, ax + w / 2.0),
+        };
+        // Where the first line's baseline goes. The discriminator is
+        // the anchor, not the sign of dy: a side label sits at ±0.5 on
+        // that axis and must stay optically centered on its spoke,
+        // while only the true top/bottom labels stack above or below.
+        let extra = RADAR_LINE_H * (lines.len() - 1) as f64;
+        let b0 = if anchor == "middle" && dy < 0.0 {
+            ay - RADAR_FONT * 0.25 - extra
+        } else if anchor == "middle" {
+            ay + RADAR_FONT * 0.75
+        } else {
+            ay + RADAR_FONT * 0.35 - extra / 2.0
+        };
+        left = left.min(x0);
+        right = right.max(x1);
+        top = top.min(b0 - RADAR_FONT * 0.75);
+        bottom = bottom.max(b0 + RADAR_FONT * 0.25 + extra);
+        placed.push((ax, b0, anchor));
+    }
+    // Translate the local frame onto the canvas: padding off the left
+    // and top edges, and the center lands wherever the fit put it.
+    let ox = RADAR_PAD - left;
+    let oy = RADAR_PAD - top;
+    let vw = right - left + 2.0 * RADAR_PAD;
+    let vh = bottom - top + 2.0 * RADAR_PAD;
+
+    let points = pcts
+        .iter()
+        .enumerate()
+        .map(|(i, p)| {
+            let (x, y) = local(i, reach(*p));
+            format!("{},{}", f1(x + ox), f1(y + oy))
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+    let spokes = (0..n)
+        .map(|i| {
+            let (x, y) = local(i, RADAR_R);
+            RadarSpoke {
+                x: f1(x + ox),
+                y: f1(y + oy),
+            }
+        })
+        .collect();
+    // Quartile rings: the half ring doubles as the pool's median, so a
+    // vertex sitting on it is an exactly average repo on that axis.
+    let rings = [0.25, 0.5, 0.75, 1.0]
+        .into_iter()
+        .map(|q| RadarRing {
+            r: f1(RADAR_R * q),
+            op: if q == 1.0 { "0.7" } else { "0.4" }.to_string(),
+        })
+        .collect();
+    let dots = pcts
+        .iter()
+        .enumerate()
+        .map(|(i, p)| {
+            let (x, y) = local(i, reach(*p));
+            RadarDot {
+                cx: f1(x + ox),
+                cy: f1(y + oy),
+            }
+        })
+        .collect();
+    let mut labels = Vec::new();
+    for (i, lines) in wrapped.iter().enumerate() {
+        let (ax, b0, anchor) = placed[i];
+        for (j, text) in lines.iter().enumerate() {
+            labels.push(RadarLabel {
+                x: f1(ax + ox),
+                y: f1(b0 + RADAR_LINE_H * j as f64 + oy),
+                anchor,
+                text: text.clone(),
+            });
+        }
+    }
+    let heat = node.commit_heat.or_else(|| node.commit_heat());
+    RadarDoc {
+        header: format!(
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{w}\" height=\"{h}\" viewBox=\"0 0 {w} {h}\" role=\"img\" font-family=\"{family}\"><title>{title}</title>",
+            w = f1(vw),
+            h = f1(vh),
+            family = palette::family(),
+            title = radar_readout(plan, &pcts),
+        ),
+        footer: "</svg>".to_string(),
+        cx: f1(ox),
+        cy: f1(oy),
+        font: f1(RADAR_FONT),
+        dot: f1(RADAR_DOT),
+        ink: palette::ink(),
+        color: band_color(heat_band(heat)),
+        pulse: palette::heat_pulse(heat).to_string(),
+        points,
+        rings,
+        spokes,
+        dots,
+        labels,
+    }
+}
+
+/// Plugin function: graph JSON + repo id in, radar geometry document
+/// out. Pure data shaping (no IO); base64 transport on entry, like the
+/// other chart funcs — the script never sees raw JSON.
+#[oxdock_func(pure, name = "RADAR")]
+fn radar(graph_json: String, repo_id: String) -> anyhow::Result<Value> {
+    let graph_json = transport_out(&graph_json)?;
+    let repo_id = transport_out(&repo_id)?;
+    let graph = jzombie_graph::graph::Graph::from_json(&graph_json)?;
+    let node = graph
+        .nodes
+        .iter()
+        .find(|n| n.id == repo_id)
+        .ok_or_else(|| anyhow::anyhow!("no node {repo_id} in the graph"))?;
+    let plan = RadarPlan::load()?;
+    let doc = radar_doc(&graph, node, &plan);
+    Ok(Value::string(serde_json::to_string(&doc)?))
+}
+
+/// Render one repo's radar: graph JSON + id in, SVG bytes out. The
+/// embedded script emits markup only; every number arrives in the
+/// geometry document the host func returns.
+pub fn render_radar_svg(graph_json: &str, repo_id: &str) -> anyhow::Result<String> {
+    let engine = engine();
+    let arg = transport_in(graph_json);
+    let id_arg = transport_in(repo_id);
+    let steps: Vec<oxdock_parser::Step> = oxdock! {
+        modules: [CHARTS],
+        IMPORT [STD, CHARTS]
+        LET $doc_json: STRING = CHARTS::RADAR(#arg, #id_arg)
+        WRITE doc.json $doc_json
+        LET $doc: MAP<ANY> = LOAD_JSON("doc.json")
+        LET $style: STRING = CHARTS::CHART_STYLE()
+        WRITE out.svg $doc.header
+        APPEND out.svg $style
+        FOR $ring: MAP<ANY> IN $doc.rings {
+            APPEND out.svg "<circle cx=\"{{ $doc.cx }}\" cy=\"{{ $doc.cy }}\" r=\"{{ $ring.r }}\" fill=\"none\" stroke=\"{{ $doc.ink }}\" stroke-width=\"1\" opacity=\"{{ $ring.op }}\"/>"
+        }
+        FOR $spoke: MAP<ANY> IN $doc.spokes {
+            APPEND out.svg "<line x1=\"{{ $doc.cx }}\" y1=\"{{ $doc.cy }}\" x2=\"{{ $spoke.x }}\" y2=\"{{ $spoke.y }}\" stroke=\"{{ $doc.ink }}\" stroke-width=\"1\" opacity=\"0.5\"/>"
+        }
+        APPEND out.svg "<polygon points=\"{{ $doc.points }}\" fill=\"{{ $doc.color }}\" fill-opacity=\"0.32\" stroke=\"{{ $doc.color }}\" stroke-width=\"2\" stroke-linejoin=\"round\" class=\"{{ $doc.pulse }}\"/>"
+        FOR $dot: MAP<ANY> IN $doc.dots {
+            APPEND out.svg "<circle cx=\"{{ $dot.cx }}\" cy=\"{{ $dot.cy }}\" r=\"{{ $doc.dot }}\" fill=\"{{ $doc.color }}\"/>"
+        }
+        FOR $label: MAP<ANY> IN $doc.labels {
+            APPEND out.svg "<text x=\"{{ $label.x }}\" y=\"{{ $label.y }}\" text-anchor=\"{{ $label.anchor }}\" font-size=\"{{ $doc.font }}\" fill=\"{{ $doc.ink }}\">{{ $label.text }}</text>"
+        }
+        APPEND out.svg $doc.footer
+        LET $check: STRING = READ out.svg
+        ASSERT_CONTAINS $check "</svg>"
+        ASSERT_CONTAINS $check "<polygon"
+        ASSERT_CONTAINS $check "<text"
+    };
+    let temp = oxdock::GuardedPath::tempdir().expect("tempdir");
+    let root = temp.as_guarded_path().clone();
+    engine.run_steps_without_snapshot(&root, &steps)?;
+    let resolver = oxdock::PathResolver::new(root.as_path(), root.as_path()).expect("resolver");
+    let out = root.join("out.svg").expect("out path");
+    Ok(resolver.read_to_string(&out).expect("read out"))
+}
+
+/// The radar family: one (file stem, SVG) pair per selected repo — the
+/// same rows the fragment lists, so an embedded image can never point
+/// at a file the lane didn't write.
+pub fn render_radars(graph_json: &str) -> anyhow::Result<Vec<(String, String)>> {
+    let graph = jzombie_graph::graph::Graph::from_json(graph_json)?;
+    let rows = selected_rows(&graph);
+    rows.iter()
+        .map(|row| {
+            let svg = render_radar_svg(graph_json, &row.id)?;
+            Ok((jzombie_graph::paths::radar_stem(&row.id), svg))
+        })
+        .collect()
+}
+
+/// The floated radar on a row's head line: sized by config, aligned
+/// with the legacy `align` attribute (the only alignment GitHub's
+/// sanitizer keeps — `style` is stripped), sweep-stamped like every
+/// other image, and anchored to its own repo — a bare `<img>` gets
+/// auto-linked to the raw SVG bytes instead, which is a click nobody
+/// wants. The alt text spells the percentiles out, so a screen reader
+/// gets the same facts the vertices show. Floated (not tabled) so the
+/// image keeps its width on narrow screens instead of shrinking with
+/// its column.
+fn radar_img(
+    plan: &RadarPlan,
+    graph: &jzombie_graph::graph::Graph,
+    row: &SelectedRow,
+    bust: &str,
+) -> anyhow::Result<String> {
+    let node = graph
+        .nodes
+        .iter()
+        .find(|n| n.id == row.id)
+        .ok_or_else(|| anyhow::anyhow!("selected row {} missing from the graph", row.id))?;
+    let pcts = plan.percentiles(graph, node);
+    Ok(format!(
+        "<a href=\"{url}\"><img src=\"{src}\" width=\"{width}\" align=\"right\" alt=\"{alt}\"></a>",
+        url = row.url,
+        src = jzombie_graph::paths::radar_url(&jzombie_graph::paths::radar_stem(&row.id), bust),
+        width = plan.cfg.width,
+        alt = radar_readout(plan, &pcts),
+    ))
+}
+
+/// Linguist language colors for a language dot; unknown maps to the
+/// same `#333` fallback the reference uses.
 fn lang_color(lang: &str) -> &'static str {
     match lang {
         "Rust" => "#dea584",
@@ -1078,456 +2112,10 @@ fn lang_color(lang: &str) -> &'static str {
     }
 }
 
-/// Compact counts like the reference card (`1200` → `1.2k`).
-fn k_fmt(n: u32) -> String {
-    if n >= 1000 {
-        format!("{:.1}k", n as f64 / 1000.0)
-    } else {
-        n.to_string()
-    }
-}
-
-/// Word-wrap a description for the card: 34 chars per line, 4 lines
-/// max, left-aligned. Overflow pushes nothing — the canvas is fixed —
-/// so a cut tail gets an ellipsis instead of vanishing mid-sentence.
-/// Empty input names itself.
-fn wrap_desc(s: &str) -> Vec<String> {
-    let flat: String = s.split_whitespace().collect::<Vec<_>>().join(" ");
-    if flat.is_empty() {
-        return vec!["No description provided".to_string()];
-    }
-    let mut lines: Vec<String> = vec![];
-    let mut cur = String::new();
-    let mut truncated = false;
-    for w in flat.split(' ') {
-        if w.is_empty() {
-            continue;
-        }
-        let fits = cur.is_empty() || cur.len() + 1 + w.len() <= PIN_DESC_WIDTH;
-        if !fits {
-            lines.push(std::mem::take(&mut cur));
-            if lines.len() == PIN_DESC_MAX_LINES {
-                truncated = true;
-                break;
-            }
-        }
-        if !cur.is_empty() {
-            cur.push(' ');
-        }
-        cur.push_str(w);
-    }
-    if truncated {
-        // Words were cut: fall through to the ellipsis below.
-    } else if lines.len() < PIN_DESC_MAX_LINES {
-        if !cur.is_empty() {
-            lines.push(cur);
-        }
-    } else if !cur.is_empty() {
-        truncated = true;
-    }
-    if lines.is_empty() {
-        lines.push("No description provided".to_string());
-    } else if truncated {
-        let last = lines.last_mut().expect("wrapped line");
-        while last.chars().count() + 1 > PIN_DESC_WIDTH {
-            last.pop();
-        }
-        last.push('\u{2026}');
-    }
-    lines
-}
-
 /// Estimated 12px Segoe UI advance, for footer item spacing. The
 /// reference measures real glyphs; estimation keeps Rust side-only.
 fn est_w(s: &str) -> f64 {
     s.chars().count() as f64 * 6.6
-}
-
-/// One pinned card: precomputed strings, so the template carries no
-/// coordinates — same split as every other chart (Rust shapes, OxDock
-/// emits). Each card renders to its own SVG file, so every bubble
-/// links to its own repo.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-struct PinCard {
-    /// Temp workspace filename (`pin-{i}.svg`); the committed file name
-    /// rides `fname`, the committed path `dest`.
-    file: String,
-    /// Committed file name, built once from the slug — the fragment URL
-    /// derives from this, never by re-splitting the path.
-    fname: String,
-    /// Final committed path.
-    dest: String,
-    url: String,
-    name: String,
-    fullname: String,
-    d1: String,
-    d2: String,
-    d3: String,
-    d4: String,
-    has2: bool,
-    has3: bool,
-    has4: bool,
-    /// Heat-band color: left strip + footer dot, so the card carries
-    /// proof data (30d heat) GitHub's pinned cards don't show.
-    band: String,
-    /// Breathe class for the heat markers (`pulse`, `pulse slow`, or
-    /// empty): heating breathes fast, steady slow, cooling/dormant static.
-    pulse: String,
-    /// Footer readout, e.g. `steady · 19 commits in 30d`: heat band
-    /// spelled out next to the count, on its own footer line under the
-    /// GitHub-like language/stars/forks row. Visible text, not a hover —
-    /// README `<img>` embeds are non-interactive, so tooltips don't fire.
-    heat: String,
-    /// Plain-language summary for `<desc>`: what the card is plus the
-    /// numbers, for direct-file readers (screen readers, agents, indexers).
-    meta: String,
-    has_lang: bool,
-    lang: String,
-    lang_color: String,
-    stars: String,
-    forks: String,
-    fx_star: String,
-    fx_fork: String,
-    w: String,
-    h: String,
-    bw: String,
-    bh: String,
-    fy: String,
-    fy2: String,
-}
-
-/// Pins document: static decor prebuilt in Rust, cards + fragment
-/// interpolated. One oxdock run writes the whole family.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-struct PinDoc {
-    header: String,
-    footer: String,
-    empty: bool,
-    msg: String,
-    muted: String,
-    font: String,
-    css: String,
-    bg: String,
-    border: String,
-    icon: String,
-    title: String,
-    cards: Vec<PinCard>,
-    frag_flow: String,
-}
-
-/// Pins rows: top-6 own-work repos by stars, ties break on forks
-/// then name — the same popularity order GitHub's own section uses.
-fn pin_rows(graph_json: &str) -> anyhow::Result<PinDoc> {
-    let graph = jzombie_graph::graph::Graph::from_json(graph_json)?;
-    let empty = PinDoc {
-        header: String::new(),
-        footer: String::new(),
-        empty: true,
-        msg: "No commits in trailing 30d".to_string(),
-        muted: palette::muted(),
-        font: palette::family(),
-        css: pins_card_css()?,
-        bg: PIN_BG.to_string(),
-        border: PIN_BORDER.to_string(),
-        icon: PIN_ICON.to_string(),
-        title: "Popular repositories".to_string(),
-        cards: vec![],
-        frag_flow: String::new(),
-    };
-    let mut repos: Vec<&jzombie_graph::graph::Node> = graph
-        .nodes
-        .iter()
-        .filter(|nd| !nd.private && jzombie_graph::graph::is_own_work(nd))
-        .filter(|nd| nd.commits_30d > 0)
-        .collect();
-    if repos.is_empty() {
-        return Ok(empty);
-    }
-    repos.sort_by(|a, b| {
-        b.stars
-            .cmp(&a.stars)
-            .then_with(|| b.forks_count.cmp(&a.forks_count))
-            .then_with(|| a.name.cmp(&b.name))
-    });
-    let shown = &repos[..repos.len().min(PINS_TOPN)];
-    // Cache-bust token: the sweep timestamp, compact. Bytes change
-    // nightly under stable filenames, and GitHub's image proxy caches
-    // by URL — so every rendered asset URL carries the build it came
-    // from. Same data, same token; new sweep, fresh fetch.
-    let bust = graph.generated_at.format("%Y%m%d%H%M").to_string();
-    // Card height follows the reference formula per card, then the
-    // tallest wins for the whole family: uniform files, so the profile
-    // grid reads as one set instead of six odd sizes.
-    let mut line_sets: Vec<Vec<String>> = vec![];
-    let mut h_max = 0.0_f64;
-    for nd in shown.iter() {
-        let desc = nd.description.as_deref().unwrap_or("");
-        let lines = wrap_desc(desc);
-        let h = if lines.len() > 1 { 100.0 } else { 90.0 } + lines.len() as f64 * 10.0 + 16.0;
-        h_max = h_max.max(h);
-        line_sets.push(lines);
-    }
-    let mut cards: Vec<PinCard> = vec![];
-    for (i, nd) in shown.iter().enumerate() {
-        let lines = &line_sets[i];
-        let mut d = lines.clone();
-        while d.len() < 4 {
-            d.push(String::new());
-        }
-        let name = if nd.name.chars().count() > PIN_NAME_MAX {
-            nd.name.chars().take(PIN_NAME_MAX - 1).collect::<String>() + "\u{2026}"
-        } else {
-            nd.name.clone()
-        };
-        let slug: String = nd
-            .name
-            .chars()
-            .map(|c| {
-                if c.is_ascii_alphanumeric() {
-                    c.to_ascii_lowercase()
-                } else {
-                    '-'
-                }
-            })
-            .collect();
-        let stars = k_fmt(nd.stars);
-        let forks = k_fmt(nd.forks_count);
-        let lang_raw = nd.language.as_deref();
-        // Left cluster: language, then stars, then forks. Left-anchored
-        // rows degrade gracefully under font substitution; right-edge
-        // anchoring clipped instead.
-        let lang_w = match lang_raw {
-            Some(l) => 10.0 + 4.0 + est_w(l),
-            None => 0.0,
-        };
-        let star_w = 16.0 + 3.0 + est_w(&stars);
-        let fx_star = if lang_raw.is_some() {
-            lang_w + 12.0
-        } else {
-            0.0
-        };
-        let fx_fork = fx_star + star_w + 12.0;
-        let heat = nd.commit_heat.or_else(|| nd.commit_heat());
-        let (band, pulse) = match heat_band(heat) {
-            "heating" => (palette::heating(), "pulse"),
-            "steady" => (palette::steady(), "pulse slow"),
-            "cooling" => (palette::cooling(), ""),
-            _ => (palette::dormant(), ""),
-        };
-        let url = format!("https://github.com/{}", nd.id);
-        let fname = jzombie_graph::paths::pin_file_name(&slug);
-        let dest = format!("{}/{fname}", jzombie_graph::paths::CHARTS_DIR);
-        cards.push(PinCard {
-            file: format!("pin-{i}.svg"),
-            fname: fname.clone(),
-            dest: dest.clone(),
-            url: url.clone(),
-            name: xml_escape(&name),
-            fullname: xml_escape(&nd.name),
-            d1: xml_escape(&d[0]),
-            d2: xml_escape(&d[1]),
-            d3: xml_escape(&d[2]),
-            d4: xml_escape(&d[3]),
-            has2: lines.len() > 1,
-            has3: lines.len() > 2,
-            has4: lines.len() > 3,
-            band,
-            pulse: pulse.to_string(),
-            heat: format!(
-                "{} · {} {} in 30d",
-                heat_band(heat),
-                nd.commits_30d,
-                if nd.commits_30d == 1 {
-                    "commit"
-                } else {
-                    "commits"
-                }
-            ),
-            meta: xml_escape(&format!(
-                "{}: {}. {} {}, {} {}, {} {} in the last 30 days.",
-                nd.name,
-                lines.join(" "),
-                nd.stars,
-                if nd.stars == 1 { "star" } else { "stars" },
-                nd.forks_count,
-                if nd.forks_count == 1 { "fork" } else { "forks" },
-                nd.commits_30d,
-                if nd.commits_30d == 1 {
-                    "commit"
-                } else {
-                    "commits"
-                }
-            )),
-            has_lang: lang_raw.is_some(),
-            lang: xml_escape(lang_raw.unwrap_or("")),
-            lang_color: lang_raw.map(lang_color).unwrap_or("").to_string(),
-            stars: xml_escape(&stars),
-            forks: xml_escape(&forks),
-            fx_star: f1(fx_star),
-            fx_fork: f1(fx_fork),
-            w: f1(PIN_W),
-            h: f1(h_max),
-            bw: f1(PIN_W - 1.0),
-            bh: f1(h_max - 1.0),
-            fy: f1(h_max - 26.0),
-            fy2: f1(h_max - 10.0),
-        });
-    }
-    // Fragment: one flowing paragraph, rank order left to right. No
-    // fixed trios — the viewport wraps the bubbles as it wishes, and the
-    // centered wrapper balances each visual line.
-    let mut cells: Vec<String> = vec![];
-    for c in cards.iter() {
-        cells.push(format!(
-            "[![{}]({})]({})",
-            c.name,
-            jzombie_graph::paths::chart_url(&c.fname, &bust),
-            c.url
-        ));
-    }
-    let frag_flow = cells.join(" ");
-    Ok(PinDoc {
-        header: String::new(),
-        footer: String::new(),
-        empty: false,
-        msg: String::new(),
-        muted: palette::muted(),
-        font: palette::family(),
-        css: pins_card_css()?,
-        bg: PIN_BG.to_string(),
-        border: PIN_BORDER.to_string(),
-        icon: PIN_ICON.to_string(),
-        title: "Popular repositories".to_string(),
-        cards,
-        frag_flow,
-    })
-}
-
-/// Shared motion rules, extracted from the single-sourced chart style —
-/// no second copy of the breathe timing to drift. Fails loudly if the
-/// shared stylesheet ever stops carrying these rules.
-fn chart_pulse_css() -> anyhow::Result<String> {
-    let css = chart_style()?;
-    fn block<'a>(css: &'a str, pat: &str) -> anyhow::Result<&'a str> {
-        let start = css
-            .find(pat)
-            .ok_or_else(|| anyhow::anyhow!("{pat} missing in shared style"))?;
-        let mut depth = 0;
-        for (i, c) in css[start..].char_indices() {
-            if c == '{' {
-                depth += 1;
-            }
-            if c == '}' {
-                depth -= 1;
-                if depth == 0 {
-                    return Ok(css[start..start + i + 1].trim());
-                }
-            }
-        }
-        Err(anyhow::anyhow!("{pat} unterminated in shared style"))
-    }
-    Ok([
-        block(&css, ".pulse {")?,
-        block(&css, ".slow {")?,
-        block(&css, "@keyframes breathe")?,
-        block(&css, "@media (prefers-reduced-motion: reduce)")?,
-    ]
-    .join("\n"))
-}
-
-/// Pins chrome: per-card font classes on the shared Segoe stack, plus the
-/// family's breathe rules lifted from the shared template above.
-/// Heating breathes fast, steady slow, cooling/dormant stay static —
-/// same thresholds as the flame and indicator bands. One copy rides every
-/// card file so each SVG stands alone.
-fn pins_card_css() -> anyhow::Result<String> {
-    Ok(format!(
-        ".pname {{ font: 600 18px 'Segoe UI', Ubuntu, Sans-Serif; fill: {title}; }} .pdesc {{ font: 400 12px 'Segoe UI', Ubuntu, Sans-Serif; fill: {text}; }} .pfoot {{ font: 400 12px 'Segoe UI', Ubuntu, Sans-Serif; fill: {text}; }} {pulse}",
-        title = PIN_TITLE,
-        text = PIN_TEXT,
-        pulse = chart_pulse_css()?,
-    ))
-}
-
-/// Plugin function: validated graph JSON in, pins document out.
-#[oxdock_func(pure, name = "PINS")]
-fn pins(graph_json: String) -> anyhow::Result<Value> {
-    let graph_json = transport_out(&graph_json)?;
-    Ok(Value::string(serde_json::to_string(&pin_rows(
-        &graph_json,
-    )?)?))
-}
-
-/// Render the popular-repositories pins family: one SVG per top repo
-/// plus the fragment table that embeds them, each bubble linking to
-/// its own repo. Returns `(committed relpath, bytes)` pairs; the
-/// caller writes the bytes (so output paths stay in one place).
-/// Same transport as the pie: embedded script emits markup into a
-/// temp workspace.
-pub fn render_pins_bundle(graph_json: &str) -> anyhow::Result<Vec<(String, String)>> {
-    let engine = engine();
-    let arg = transport_in(graph_json);
-    let steps: Vec<oxdock_parser::Step> = oxdock! {
-        modules: [CHARTS],
-        IMPORT [CHARTS]
-        IMPORT [STD]
-        LET $doc_json: STRING = CHARTS::PINS(#arg)
-        WRITE rows.json $doc_json
-        LET $doc: MAP<ANY> = LOAD_JSON("rows.json")
-        MKDIR svg
-        MKDIR frag
-        IF $doc.empty {
-            WRITE frag/pins.md "## Popular repositories\n\n*{{ $doc.msg }}*\n"
-        } ELSE {
-            FOR $c: MAP<ANY> IN $doc.cards {
-                WRITE svg/{{ $c.file }} "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{{ $c.w }}\" height=\"{{ $c.h }}\" viewBox=\"0 0 {{ $c.w }} {{ $c.h }}\" role=\"img\" font-family=\"{{ $doc.font }}\"><title>{{ $c.fullname }}</title><desc>{{ $c.meta }}</desc><style>{{ $doc.css }}</style><a href=\"{{ $c.url }}\"><rect x=\"0.5\" y=\"0.5\" width=\"{{ $c.bw }}\" height=\"{{ $c.bh }}\" rx=\"4.5\" fill=\"{{ $doc.bg }}\" stroke=\"{{ $doc.border }}\"/><rect x=\"0.5\" y=\"0.5\" width=\"5\" height=\"{{ $c.bh }}\" rx=\"2\" fill=\"{{ $c.band }}\" class=\"{{ $c.pulse }}\"/><g transform=\"translate(12,30)\">"
-                APPEND svg/{{ $c.file }} "<svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 110-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1V9h-8c-.356 0-.694.074-1 .208V2.5a1 1 0 011-1h8zM5 12.25v3.25a.25.25 0 00.4.2l1.45-1.087a.25.25 0 01.3 0L8.6 15.7a.25.25 0 00.4-.2v-3.25a.25.25 0 00-.25-.25h-3.5a.25.25 0 00-.25.25z\"/></svg><text x=\"28\" y=\"0\" class=\"pname\">{{ $c.name }}</text></g>"
-                APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"54\" class=\"pdesc\">{{ $c.d1 }}</text>"
-                IF $c.has2 {
-                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"70\" class=\"pdesc\">{{ $c.d2 }}</text>"
-                }
-                IF $c.has3 {
-                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"86\" class=\"pdesc\">{{ $c.d3 }}</text>"
-                }
-                IF $c.has4 {
-                    APPEND svg/{{ $c.file }} "<text x=\"12\" y=\"102\" class=\"pdesc\">{{ $c.d4 }}</text>"
-                }
-                APPEND svg/{{ $c.file }} "<g transform=\"translate(15,{{ $c.fy }})\" class=\"pfoot\">"
-                IF $c.has_lang {
-                    APPEND svg/{{ $c.file }} "<circle cx=\"0\" cy=\"-4\" r=\"5\" fill=\"{{ $c.lang_color }}\"/><text x=\"9\" y=\"0\">{{ $c.lang }}</text>"
-                }
-                APPEND svg/{{ $c.file }} "<g transform=\"translate({{ $c.fx_star }},0)\"><svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25zm0 2.445L6.615 5.5a.75.75 0 01-.564.41l-3.097.45 2.24 2.184a.75.75 0 01.216.664l-.528 3.084 2.769-1.456a.75.75 0 01.698 0l2.77 1.456-.53-3.084a.75.75 0 01.216-.664l2.24-2.183-3.096-.45a.75.75 0 01-.564-.41L8 2.694v.001z\"/></svg><text x=\"19\" y=\"0\">{{ $c.stars }}</text></g><g transform=\"translate({{ $c.fx_fork }},0)\"><svg x=\"0\" y=\"-13\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" version=\"1.1\" fill=\"{{ $doc.icon }}\"><path fill-rule=\"evenodd\" d=\"M5 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm0 2.122a2.25 2.25 0 10-1.5 0v.878A2.25 2.25 0 005.75 8.5h1.5v2.128a2.251 2.251 0 101.5 0V8.5h1.5a2.25 2.25 0 002.25-2.25v-.878a2.25 2.25 0 10-1.5 0v.878a.75.75 0 01-.75.75h-4.5A.75.75 0 015 6.25v-.878zm3.75 7.378a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm3-8.75a.75.75 0 100-1.5.75.75 0 000 1.5z\"></path></svg><text x=\"19\" y=\"0\">{{ $c.forks }}</text></g></g>"
-                APPEND svg/{{ $c.file }} "<g transform=\"translate(15,{{ $c.fy2 }})\" class=\"pfoot\"><circle cx=\"0\" cy=\"-4\" r=\"5\" fill=\"{{ $c.band }}\" class=\"{{ $c.pulse }}\"/><text x=\"9\" y=\"0\">{{ $c.heat }}</text></g>"
-                APPEND svg/{{ $c.file }} "</a></svg>"
-            }
-            WRITE frag/pins.md "## Popular repositories\n\n<div align=\"center\">\n\n"
-            APPEND frag/pins.md "{{ $doc.frag_flow }}\n\n"
-            APPEND frag/pins.md "</div>\n\n"
-        }
-        LET $check: STRING = READ frag/pins.md
-        ASSERT_CONTAINS $check "Popular repositories"
-    };
-    let temp = oxdock::GuardedPath::tempdir().expect("tempdir");
-    let root = temp.as_guarded_path().clone();
-    engine.run_steps_without_snapshot(&root, &steps)?;
-    let resolver = oxdock::PathResolver::new(root.as_path(), root.as_path()).expect("resolver");
-    // Card inventory rides rows.json: deterministic temp names in,
-    // committed relpaths out.
-    let doc_path = root.join("rows.json").expect("doc path");
-    let doc: PinDoc = serde_json::from_str(&resolver.read_to_string(&doc_path).expect("read doc"))?;
-    let mut bundle: Vec<(String, String)> = vec![];
-    for card in &doc.cards {
-        let rel = format!("svg/{}", card.file);
-        let temp_path = root.join(&rel).expect("card path");
-        let svg = resolver.read_to_string(&temp_path).expect("read card");
-        assert!(svg.starts_with("<svg "));
-        assert!(svg.ends_with("</svg>"));
-        bundle.push((card.dest.clone(), svg));
-    }
-    let frag_path = root.join("frag/pins.md").expect("frag path");
-    let frag = resolver.read_to_string(&frag_path).expect("read frag");
-    bundle.push((jzombie_graph::paths::pins_fragment(), frag));
-    Ok(bundle)
 }
 
 fn engine() -> Engine {
@@ -1541,7 +2129,7 @@ fn engine() -> Engine {
             DataTable::registration(),
             ChartStyleFn::registration(),
             Flame::registration(),
-            Pins::registration(),
+            Radar::registration(),
         ],
         types: vec![],
         record_schemas: vec![],
@@ -1559,7 +2147,7 @@ pub fn bust_token(graph_json: &str) -> anyhow::Result<String> {
     Ok(graph.generated_at.format("%Y%m%d%H%M").to_string())
 }
 
-/// Section fragments with cache-busted image URLs. Same bust token as pins:
+/// Section fragments with cache-busted image URLs. Same bust token as the
 /// the sweep timestamp, so GitHub's image proxy refetches after every
 /// nightly rebuild instead of serving the stale bytes.
 pub fn render_flame_md(graph_json: &str) -> anyhow::Result<String> {
@@ -1610,7 +2198,7 @@ pub fn render_focus_md(graph_json: &str) -> anyhow::Result<String> {
 /// no "Unspecified" slot, same rule as the pin footers. Top-6 plus an
 /// Other rollup when the tail is non-empty.
 const LANG_TOPN: usize = 6;
-/// Misc bucket gray: the pins' secondary text gray, not a language color.
+/// Misc bucket gray: the shared secondary gray, not a language color.
 const LANG_OTHER: &str = "#9198a1";
 const LANG_W: f64 = 800.0;
 const LANG_H: f64 = 56.0;
@@ -1892,10 +2480,16 @@ fn indicators(graph_json: String, only: String) -> anyhow::Result<Value> {
     for (i, r) in doc.rows.iter_mut().enumerate() {
         r.cx = f1(i as f64 * INDICATOR_CELL + INDICATOR_CELL / 2.0);
     }
+    // Explicit width/height, not just a viewBox: a viewBox alone gives
+    // the image no intrinsic size, so every renderer falls back to its
+    // own default — browsers ratio-fit into 300x150, which turned a
+    // 44px badge into a 150px block inside a text line. Pinning the
+    // design size in the file makes it render the same everywhere,
+    // including opened directly in a tab.
+    let w = f1(doc.rows.len() as f64 * INDICATOR_CELL);
+    let h = f1(INDICATOR_CELL);
     doc.header = format!(
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" role=\"img\" font-family=\"{family}\"><title>Status indicators</title>",
-        f1(doc.rows.len() as f64 * INDICATOR_CELL),
-        f1(INDICATOR_CELL),
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{w}\" height=\"{h}\" viewBox=\"0 0 {w} {h}\" role=\"img\" font-family=\"{family}\"><title>Status indicators</title>",
         family = palette::family(),
     );
     Ok(Value::string(serde_json::to_string(&doc)?))
@@ -1959,29 +2553,32 @@ fn heat_cell(band: &str) -> String {
     )
 }
 
+/// One `#topic` link to a user-scoped repo search. Owner rides the node —
+/// never a baked-in login.
+fn topic_link(owner: &str, topic: &str) -> String {
+    let enc: String = topic
+        .chars()
+        .flat_map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' {
+                vec![c]
+            } else {
+                format!("%{0:02X}", c as u32).chars().collect::<Vec<_>>()
+            }
+        })
+        .collect();
+    format!(
+        "[#{topic}](https://github.com/search?q=user%3A{owner}+topic%3A{enc}&type=repositories)"
+    )
+}
+
 /// Topic links for an about cell: tiny `#tag` links to a user-scoped repo
-/// search, capped so one repo can't flood the table. Owner rides the
-/// node — never a baked-in login.
+/// search, capped so one repo can't flood the table.
 fn topic_links(owner: &str, topics: &[String]) -> String {
     const MAX: usize = 4;
     let mut tags: Vec<String> = topics
         .iter()
         .take(MAX)
-        .map(|t| {
-            let enc: String = t
-                .chars()
-                .flat_map(|c| {
-                    if c.is_ascii_alphanumeric() || c == '-' {
-                        vec![c]
-                    } else {
-                        format!("%{0:02X}", c as u32).chars().collect::<Vec<_>>()
-                    }
-                })
-                .collect();
-            format!(
-                "[#{t}](https://github.com/search?q=user%3A{owner}+topic%3A{enc}&type=repositories)"
-            )
-        })
+        .map(|t| topic_link(owner, t))
         .collect();
     if topics.len() > MAX {
         tags.push(format!("+{}", topics.len() - MAX));
@@ -2451,18 +3048,23 @@ mod tests {
     }
 
     #[test]
-    fn wrap_desc_truncates_with_ellipsis() {
-        // Overflow never pushes content off the fixed canvas: the cut
-        // tail gets an ellipsis, and the line count never exceeds the cap.
-        let long = "word ".repeat(200);
-        let lines = wrap_desc(&long);
-        assert_eq!(lines.len(), PIN_DESC_MAX_LINES);
-        assert!(lines.last().unwrap().ends_with('\u{2026}'));
-        assert!(lines.iter().all(|l| l.chars().count() <= PIN_DESC_WIDTH));
-        // Short text passes through untouched, no ellipsis.
-        let short = wrap_desc("hello world");
-        assert_eq!(short, vec!["hello world"]);
-        assert!(wrap_desc("").len() == 1);
+    fn selected_score_ranks_reuse_over_popularity() {
+        // One portfolio dependent outweighs a crowd of stars: a repo the
+        // portfolio leans on beats a popular repo nobody imports.
+        assert!(
+            selected_score(3, 0, 0, false, true, 1, false)
+                > selected_score(0, 30, 0, false, true, 1, false)
+        );
+        // Product-ness and activity nudge a lead, never flip it.
+        assert!(
+            selected_score(2, 0, 0, true, true, 50, false)
+                > selected_score(1, 5, 0, false, false, 0, false)
+        );
+        // A diverged fork pays exactly the fork penalty, all else equal.
+        assert!(
+            selected_score(1, 5, 1, false, true, 1, false)
+                > selected_score(1, 5, 1, false, true, 1, true)
+        );
     }
 
     fn focus_val(rows: &[FocusRow], label: &str) -> f32 {
@@ -3243,6 +3845,12 @@ mod tests {
         // Ring + core, one 44px cell, tooltip kept, unknown bands error.
         assert_eq!(one.matches("<circle").count(), 2);
         assert!(one.contains("viewBox=\"0 0 44.0 44.0\""));
+        // Intrinsic size pinned: without it a renderer falls back to its
+        // own default (browsers: 300x150 ratio-fit → a 150px block).
+        assert!(
+            one.contains("width=\"44.0\" height=\"44.0\""),
+            "design size on the root:\n{one}"
+        );
         assert!(one.contains("steady 1.00"));
         assert!(render_indicator_svg("volcanic").is_err());
     }
@@ -3428,5 +4036,177 @@ mod tests {
         let focus = focus_rows(&g, 12, 5).unwrap();
         let focus_names: Vec<&str> = focus.iter().map(|r| r.label.as_str()).collect();
         assert_eq!(focus_names, pie_names);
+    }
+
+    // --- Shape radar -------------------------------------------------
+
+    /// A plan over exactly the axes a test names, with a pool that
+    /// admits every node: geometry tests must not depend on which axes
+    /// `radar.toml` happens to declare today.
+    fn plan_over(axes: Vec<(&str, Metric)>) -> RadarPlan {
+        RadarPlan {
+            cfg: RadarConfig {
+                width: 120,
+                pool: RadarPool {
+                    label: "test peers".into(),
+                    own_work: false,
+                    min_commits_30d: Some(1),
+                    exclude_profile: false,
+                },
+                axes: vec![],
+            },
+            axes: axes
+                .into_iter()
+                .map(|(label, metric)| (label.to_string(), metric))
+                .collect(),
+        }
+    }
+
+    /// Mean vertex radius of a rendered doc — how far out the shape
+    /// sits, which is what a percentile decides. The canvas is fitted,
+    /// so the center comes from the doc rather than a constant.
+    fn mean_radius(doc: &RadarDoc) -> f64 {
+        let cx: f64 = doc.cx.parse().expect("cx");
+        let cy: f64 = doc.cy.parse().expect("cy");
+        let radii: Vec<f64> = doc
+            .points
+            .split(' ')
+            .map(|pair| {
+                let (x, y) = pair.split_once(',').expect("x,y pair");
+                let (x, y): (f64, f64) = (x.parse().expect("x"), y.parse().expect("y"));
+                ((x - cx).powi(2) + (y - cy).powi(2)).sqrt()
+            })
+            .collect();
+        radii.iter().sum::<f64>() / radii.len() as f64
+    }
+
+    #[test]
+    fn percentile_shares_ties_and_needs_no_special_casing() {
+        // Ties take the middle of their run: three repos at zero stars
+        // all read the same rank instead of all reading the floor.
+        assert_eq!(percentile(&[0.0, 0.0, 0.0], 0.0), 0.5);
+        // Negatives and outliers ride the same scale as anything else —
+        // focus runs to -109 in the real graph and needs no handling.
+        let pool = [-10.0, -1.0, 0.0, 5.0];
+        assert_eq!(percentile(&pool, -10.0), 0.125);
+        assert_eq!(percentile(&pool, 5.0), 0.875);
+        // An empty pool degrades to the floor, never to NaN.
+        assert_eq!(percentile(&[], 3.0), 0.0);
+    }
+
+    #[test]
+    fn ordinal_reads_as_prose() {
+        for (n, want) in [
+            (1, "1st"),
+            (2, "2nd"),
+            (3, "3rd"),
+            (4, "4th"),
+            (11, "11th"),
+            (12, "12th"),
+            (13, "13th"),
+            (21, "21st"),
+            (100, "100th"),
+        ] {
+            assert_eq!(ordinal(n), want, "{n}");
+        }
+    }
+
+    #[test]
+    fn vertices_run_outward_with_percentile() {
+        // Two repos, one axis: the leader's rank (0.75 in a two-repo
+        // pool) must land farther from center than the trailer's (0.25)
+        // — the mapping from percentile to radius.
+        let g = graph_with(&[("strong", 30), ("weak", 10)]);
+        let graph = jzombie_graph::graph::Graph::from_json(&g).expect("fixture parses");
+        let plan = plan_over(vec![("Commits", |n, _| n.commits_30d as f64)]);
+        let radius = |name: &str| {
+            let node = graph
+                .nodes
+                .iter()
+                .find(|n| n.name == name)
+                .unwrap_or_else(|| panic!("{name} in fixture"));
+            mean_radius(&radar_doc(&graph, node, &plan))
+        };
+        let strong = radius("strong");
+        let weak = radius("weak");
+        assert!(strong > weak, "strong {strong} must outrank weak {weak}");
+        // Mid-rank percentiles stay inside the rim: a leader is never
+        // drawn at the pool's ceiling, a trailer never collapses to a
+        // point — both keep a readable shape.
+        assert!(strong < RADAR_R, "leader stays inside the outer ring");
+        assert!(weak > 0.0, "trailer keeps a visible shape");
+    }
+
+    #[test]
+    fn radar_pool_admits_only_the_configured_peers() {
+        let g = mixed_ownership_graph();
+        let mut graph = jzombie_graph::graph::Graph::from_json(&g).expect("fixture parses");
+        // Two more nodes the filters must reject: the profile README
+        // repo, and a repo with nothing in the trailing 30d.
+        let mut profile = graph.nodes[0].clone();
+        profile.id = "me/me".into();
+        profile.name = "me".into();
+        graph.nodes.push(profile);
+        let mut quiet = graph.nodes[1].clone();
+        quiet.id = "me/quiet".into();
+        quiet.name = "quiet".into();
+        quiet.commits_30d = 0;
+        graph.nodes.push(quiet);
+        let cfg = RadarConfig {
+            width: 120,
+            pool: RadarPool {
+                label: "peers".into(),
+                own_work: true,
+                min_commits_30d: Some(1),
+                exclude_profile: true,
+            },
+            axes: vec![],
+        };
+        let names: Vec<&str> = radar_pool(&graph, &cfg)
+            .iter()
+            .map(|n| n.name.as_str())
+            .collect();
+        // `pristine` is someone else's code, `secret` is private, the
+        // profile repo documents rather than works, `quiet` sat still.
+        // The graph stores nodes sorted by id, so the survivors read
+        // in id order rather than insertion order.
+        assert_eq!(names, vec!["diverged", "mine", "renamed"]);
+    }
+
+    #[test]
+    fn shipped_radar_config_loads_and_resolves() {
+        let plan = RadarPlan::load().expect("radar.toml parses; every metric exists");
+        assert!(!plan.axes.is_empty(), "axes are declared");
+        assert!(
+            !plan.pool_label().trim().is_empty(),
+            "the peer group is named"
+        );
+        for (label, _) in &plan.axes {
+            assert!(!label.trim().is_empty(), "axis labels read as words");
+        }
+    }
+
+    #[test]
+    fn an_unknown_metric_names_the_keys_that_exist() {
+        let cfg = RadarConfig {
+            width: 120,
+            pool: RadarPool {
+                label: "peers".into(),
+                own_work: false,
+                min_commits_30d: None,
+                exclude_profile: false,
+            },
+            axes: vec![RadarAxisCfg {
+                metric: "commits".into(),
+                label: "Commits".into(),
+            }],
+        };
+        let err = RadarPlan::resolve(cfg).expect_err("a typo must not render");
+        let msg = format!("{err:#}");
+        assert!(msg.contains("unknown metric \"commits\""), "{msg}");
+        assert!(
+            msg.contains("commits_30d"),
+            "the error lists real keys: {msg}"
+        );
     }
 }
