@@ -268,10 +268,12 @@ fn selected_fragment_ranks_by_score_not_stars() {
     // Top-9 cut: the tail never renders.
     assert!(!md.contains("me/r9"), "cut tail");
     assert!(!md.contains("me/r10"), "cut tail");
-    // Strict two-column grid: one markdown table, radar in its own
-    // cell — no float, so text can never wrap around the image.
-    assert!(md.contains("| Repo | Shape |"), "table headers");
-    assert!(!md.contains("align=\"right\""), "no floated radar");
+    // Floated list: one bullet per row, radar pinned right at its
+    // configured width at any viewport. A markdown table lets the text
+    // column steal width on narrow screens and the image shrinks to
+    // illegibility on mobile.
+    assert!(md.contains("- **["), "bulleted rows");
+    assert!(md.contains("align=\"right\""), "radar floated on every row");
     // Dependents ride as text, zeros included — nothing is suppressed
     // for looking empty.
     assert!(md.contains("used by 3"), "fan-in spelled out");
@@ -305,10 +307,11 @@ fn selected_fragment_ranks_by_score_not_stars() {
         "diverged fork says so"
     );
     // Proof line: backlog, structure and the homepage — the full URL,
-    // never a truncated host. No pipes: a raw `|` would split the table.
+    // never a truncated host. Back in a list, pipes are safe again, so
+    // the backlog closes one group and reuse opens the next.
     assert!(
-        md.contains("69 open issues · used by 3"),
-        "backlog joins with dots, not pipes"
+        md.contains("69 open issues | used by 3"),
+        "backlog closes its group"
     );
     assert!(
         md.contains("[https://crates.io/crates/r0](https://crates.io/crates/r0)"),
@@ -345,21 +348,18 @@ fn selected_fragment_ranks_by_score_not_stars() {
         "topic linked to a user-scoped search"
     );
     assert!(md.contains("+2 more"), "topics cap at four");
+    // The whole head line is bold — name and description read as one
+    // title — and every row ends with a forced break for breathing
+    // room between bullets.
+    assert!(
+        md.contains("**[r0](https://github.com/me/r0): "),
+        "head line opens bold"
+    );
+    assert!(md.contains("</sub><br>\n"), "row ends with a blank line");
     // `r2` carries neither: no topic line, no homepage in its proof.
     let r2_item = &md[pos("me/r2")..pos("me/r1")];
     assert!(!r2_item.contains("topic%3A"), "no topics, no topic line");
     assert!(!r2_item.contains("crates.io"), "no homepage, no host");
-    // No raw pipes inside cells: every `|` in the fragment is a table
-    // delimiter (header, separator, cell edges).
-    for line in md.lines().filter(|l| l.starts_with('|')) {
-        // Header + one row per repo + separator: exactly 3 pipes each
-        // (leading, middle, trailing).
-        assert_eq!(
-            line.matches('|').count(),
-            3,
-            "no pipes inside cells:\n{line}"
-        );
-    }
     insta::assert_snapshot!("selected_frag", md);
 }
 

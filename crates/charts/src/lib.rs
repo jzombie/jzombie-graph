@@ -1279,15 +1279,14 @@ fn selected_rows(graph: &jzombie_graph::graph::Graph) -> Vec<SelectedRow> {
 
 /// Render the selected-work fragment: heading, the sentence that states
 /// what the order measures, the legend for the shape radars, then one
-/// markdown table — Repo (text) | Shape (radar). The table is the strict
-/// two-column grid: GitHub strips `style`/`class`, so flex-grid is not
-/// available, and a floated `align="right"` image lets seven lines of
-/// prose wrap around the SVG and destroys vertical scanning. A table
-/// column cannot wrap; the radar sits in its own cell.
+/// bullet per row — a floated radar, description, topics (capped),
+/// classification, proof, consolidated thread counts. The radar floats
+/// `right` so it keeps its configured width at any viewport: inside a
+/// markdown table the text column steals width on narrow screens and
+/// the image shrinks to illegibility on mobile.
 /// The markdown itself carries no cache-bust token (text re-renders with
 /// the commit); the radar images do, because they are proxied and cached
-/// like every other image on the page. No `|` inside cells — a raw pipe
-/// would split the table — so groups join with `·` and lines with `<br>`.
+/// like every other image on the page.
 pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
     let graph = jzombie_graph::graph::Graph::from_json(graph_json)?;
     let rows = selected_rows(&graph);
@@ -1296,22 +1295,27 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
     }
     let plan = RadarPlan::load()?;
     let bust = bust_token(graph_json)?;
-    let mut body = String::new();
+    let mut items = String::new();
     for row in &rows {
         let link = format!("[{}]({})", row.name, row.url);
         let head = if row.desc.is_empty() {
             format!("**{link}**")
         } else {
             // Descriptions are single-line on GitHub; flatten anyway so
-            // one stray newline cannot break the table row.
+            // one stray newline cannot break the list. The whole head
+            // line is bold — name and description read as one title.
             let desc = row.desc.split_whitespace().collect::<Vec<_>>().join(" ");
-            format!("**{link}**: {desc}")
+            format!("**{link}: {desc}**")
         };
         let radar = radar_img(&plan, &graph, row, &bust)?;
+        // The radar rides on the head line (no `<br>` before it — two
+        // breaks in a row would print a blank line) so every fact line
+        // flows around the float, and the float keeps its width on
+        // mobile where a table column would surrender it.
+        let mut lines: Vec<String> = vec![format!("- {head} {radar}")];
         // Topics capped: the first N links carry the architecture, the
         // rest collapse to a `+N more` count instead of nine search links
         // that bury the metrics.
-        let mut left: Vec<String> = vec![head];
         if !row.topics.is_empty() {
             let mut tags: Vec<String> = row
                 .topics
@@ -1322,11 +1326,12 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
             if row.topics.len() > SELECTED_TAG_MAX {
                 tags.push(format!("+{} more", row.topics.len() - SELECTED_TAG_MAX));
             }
-            left.push(format!("<sub>{}</sub>", tags.join(" ")));
+            lines.push(format!("<sub>{}</sub>", tags.join(" ")));
         }
 
-        // One classification line: what the repo *is* and how it *stands*,
-        // joined with dots only (no pipes — this lives in a table cell).
+        // One classification line: what the repo *is* and how it
+        // *stands*. Back in a list (not a table cell) pipes are safe
+        // again, so identity and state separate into two groups.
         let mut identity: Vec<String> = vec![format!("layer: `{}`", row.layer)];
         if let Some(lang) = &row.language {
             identity.push(lang.clone());
@@ -1340,21 +1345,29 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
         if !row.surfaces.is_empty() {
             identity.push(format!("docs: {}", row.surfaces.join(", ")));
         }
+        let mut state: Vec<String> = vec![];
         if let Some(f) = row.focus {
-            identity.push(format!("focus: {f:+.2}"));
+            state.push(format!("focus: {f:+.2}"));
         }
         if let Some(d) = &row.last_commit {
-            identity.push(format!("last commit: {d}"));
+            state.push(format!("last commit: {d}"));
         }
-        identity.push(if row.branches == 1 {
+        state.push(if row.branches == 1 {
             "branch: 1".to_string()
         } else {
             format!("branches: {}", row.branches)
         });
         if row.size_kb > 0 {
-            identity.push(format!("size: {}", size_label(row.size_kb)));
+            state.push(format!("size: {}", size_label(row.size_kb)));
         }
-        left.push(format!("<sub>{}</sub>", identity.join(" \u{b7} ")));
+        let mut groups: Vec<String> = vec![];
+        if !identity.is_empty() {
+            groups.push(identity.join(" \u{b7} "));
+        }
+        if !state.is_empty() {
+            groups.push(state.join(" \u{b7} "));
+        }
+        lines.push(format!("<sub>{}</sub>", groups.join(" | ")));
 
         // The proof line: gauge, volume, pull, backlog, reuse, site — the
         // full URL, never a truncated host. The badge file carries its own
@@ -1369,7 +1382,7 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
             format!("{} commits in 30d", row.commits_30d)
         };
         let mut proof = format!(
-            "<img src=\"{badge}\" width=\"24\" align=\"absmiddle\" alt=\"\"> {band} \u{b7} {commits} \u{b7} \u{2605}{stars} \u{b7} \u{2442}{forks} \u{b7} {open} open issues \u{b7} used by {fan_in} \u{b7} uses {fan_out}",
+            "<img src=\"{badge}\" width=\"24\" align=\"absmiddle\" alt=\"\"> {band} \u{b7} {commits} \u{b7} \u{2605}{stars} \u{b7} \u{2442}{forks} \u{b7} {open} open issues | used by {fan_in} \u{b7} uses {fan_out}",
             badge = jzombie_graph::paths::indicator_url(row.band),
             band = row.band,
             commits = commits,
@@ -1382,7 +1395,7 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
         if let Some(home) = &row.homepage {
             proof.push_str(&format!(" \u{b7} [{home}]({home})"));
         }
-        left.push(format!("<sub>{proof}</sub>"));
+        lines.push(format!("<sub>{proof}</sub>"));
 
         // One consolidated thread line: window counts, gauge, census,
         // then lifetime totals — counts only, never titles. The old
@@ -1423,10 +1436,15 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
                     .collect();
                 threads.push(format!("label census: {}", census.join(", ")));
             }
-            left.push(format!("<sub>{}</sub>", threads.join(" \u{b7} ")));
+            lines.push(format!("<sub>{}</sub>", threads.join(" \u{b7} ")));
         }
 
-        body.push_str(&format!("| {} | {} |\n", left.join("<br>"), radar));
+        // Join with literal `<br>`: markdown needs a hard break inside a
+        // list item, and GitHub keeps raw HTML tags. One more `<br>` at
+        // the end of every row for breathing room between bullets.
+        items.push_str(&lines.join("<br>"));
+        items.push_str("<br>");
+        items.push('\n');
     }
     // The legend reads in dial order — the same order the vertices turn
     // — so a reader can name a spoke without counting from the top.
@@ -1444,9 +1462,7 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
 
         Each row carries a shape radar: axes clockwise from top ({axis_legend}), and each vertex is that repo’s percentile among {pool_label}.
 
-        | Repo | Shape |
-        | --- | --- |
-        {body}"#})
+        {items}"#})
 }
 
 /// `label: 17 merged · 1 open · 2 closed` — counts only. Titles were cut:
@@ -1459,7 +1475,7 @@ fn thread_counts(label: &str, states: &[(String, usize)]) -> String {
 
 // --- Shape radar -------------------------------------------------------
 //
-// One hexagon per selected repo, in its own table cell. Same
+// One hexagon per selected repo, floated right in its list row. Same
 // split as every chart here: Rust owns percentiles and geometry, the
 // embedded script owns markup emission only.
 
@@ -1468,7 +1484,7 @@ fn thread_counts(label: &str, states: &[(String, usize)]) -> String {
 /// should surface as a render error, never as a stale cached shape.
 #[derive(Debug, Clone, serde::Deserialize)]
 struct RadarConfig {
-    /// Cell image width in pixels (the GitHub `width` attribute).
+    /// Floated image width in pixels (the GitHub `width` attribute).
     width: u32,
     pool: RadarPool,
     axes: Vec<RadarAxisCfg>,
@@ -2027,12 +2043,15 @@ pub fn render_radars(graph_json: &str) -> anyhow::Result<Vec<(String, String)>> 
         .collect()
 }
 
-/// The radar in its own table cell: sized by config, no float (the
-/// table column is the grid — text can never wrap around the image),
-/// sweep-stamped like every other image, and anchored to its own repo —
-/// a bare `<img>` gets auto-linked to the raw SVG bytes instead, which
-/// is a click nobody wants. The alt text spells the percentiles out, so
-/// a screen reader gets the same facts the vertices show.
+/// The floated radar on a row's head line: sized by config, aligned
+/// with the legacy `align` attribute (the only alignment GitHub's
+/// sanitizer keeps — `style` is stripped), sweep-stamped like every
+/// other image, and anchored to its own repo — a bare `<img>` gets
+/// auto-linked to the raw SVG bytes instead, which is a click nobody
+/// wants. The alt text spells the percentiles out, so a screen reader
+/// gets the same facts the vertices show. Floated (not tabled) so the
+/// image keeps its width on narrow screens instead of shrinking with
+/// its column.
 fn radar_img(
     plan: &RadarPlan,
     graph: &jzombie_graph::graph::Graph,
@@ -2046,7 +2065,7 @@ fn radar_img(
         .ok_or_else(|| anyhow::anyhow!("selected row {} missing from the graph", row.id))?;
     let pcts = plan.percentiles(graph, node);
     Ok(format!(
-        "<a href=\"{url}\"><img src=\"{src}\" width=\"{width}\" alt=\"{alt}\"></a>",
+        "<a href=\"{url}\"><img src=\"{src}\" width=\"{width}\" align=\"right\" alt=\"{alt}\"></a>",
         url = row.url,
         src = jzombie_graph::paths::radar_url(&jzombie_graph::paths::radar_stem(&row.id), bust),
         width = plan.cfg.width,
