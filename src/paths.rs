@@ -163,3 +163,27 @@ pub fn indicator_url(name: &str) -> String {
         .unwrap_or(INDICATORS_DIR);
     format!("{prefix}/{name}.svg")
 }
+
+/// Per-repo radar family: one file per selected repo under the charts
+/// dir. A family, not a fixed list — the lane sweeps orphans when the
+/// selection or the config changes.
+pub const RADAR_DIR: &str = "proof/dashboard/charts/radar";
+
+/// Radar file stem for a repo id: `jzombie/term-wm` -> `jzombie-term-wm`.
+/// The owner rides along so two orgs can never collide on a repo name.
+pub fn radar_stem(id: &str) -> String {
+    id.replace('/', "-")
+}
+
+/// On-disk radar file for a stem (what the lane writes).
+pub fn radar_file(stem: &str) -> String {
+    format!("{RADAR_DIR}/{stem}.svg")
+}
+
+/// Relative radar URL for assembled markdown: same `proof/`-relative
+/// rule and sweep-stamped bust token as every other image on the page,
+/// so GitHub's image proxy refetches after a nightly rebuild.
+pub fn radar_url(stem: &str, bust: &str) -> String {
+    let prefix = RADAR_DIR.strip_prefix("proof/").unwrap_or(RADAR_DIR);
+    format!("{prefix}/{stem}.svg?v={bust}")
+}

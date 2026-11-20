@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120.0" height="120.0" viewBox="0 0 120.0 120.0" role="img" font-family="Helvetica, Arial, sans-serif"><title>Radar chart of percentiles among my active repos: Commits 30d 18th percentile, Issue traffic 9th percentile, Pull requests 68th percentile, Reuse 32nd percentile, Stars 91st percentile, Focus 12th percentile</title><style>
+            .bar {
+                stroke: #fff;
+                stroke-width: 2;
+                rx: 4;
+            }
+            .lbl {
+                fill: #fff;
+                font-size: 13px;
+                font-weight: 600;
+            }
+            .sub {
+                fill: #fff;
+                font-size: 11px;
+                opacity: .92;
+            }
+            .dim {
+                fill: #333;
+                font-size: 12px;
+            }
+            .wht {
+                fill: #fff;
+                font-size: 10px;
+                paint-order: stroke;
+                stroke: rgba(0, 0, 0, .45);
+                stroke-width: 3px;
+                stroke-linejoin: round;
+            }
+            .muted {
+                fill: #666;
+                font-size: 11px;
+            }
+            .pulse {
+                animation: breathe 2.2s ease-in-out infinite;
+            }
+            .slow {
+                animation-duration: 3.4s;
+            }
+            @keyframes breathe {
+                0%, 100% { opacity: .95; }
+                50% { opacity: .62; }
+            }
+            .halo {
+                transform-box: fill-box;
+                transform-origin: center;
+                animation: halo 2.2s ease-out infinite;
+            }
+            @keyframes halo {
+                0% { opacity: .75; transform: scale(1); }
+                100% { opacity: 0; transform: scale(2.4); }
+            }
+            .card {
+                opacity: 0;
+                animation: whisk ease-in-out infinite;
+                animation-iteration-count: infinite;
+            }
+            .deck .card#r0 {
+                opacity: 1;
+            }
+            @keyframes whisk {
+                0% { opacity: 0; transform: translateX(60px); }
+                3% { opacity: 1; transform: translateX(0); }
+                10% { opacity: 1; transform: translateX(0); }
+                13% { opacity: 0; transform: translateX(-60px); }
+                100% { opacity: 0; transform: translateX(-60px); }
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .pulse, .halo, .card { animation: none; }
+            }
+        </style><circle cx="60.0" cy="60.0" r="12.5" fill="none" stroke="#767676" stroke-width="1" opacity="0.4"/><circle cx="60.0" cy="60.0" r="25.0" fill="none" stroke="#767676" stroke-width="1" opacity="0.4"/><circle cx="60.0" cy="60.0" r="37.5" fill="none" stroke="#767676" stroke-width="1" opacity="0.4"/><circle cx="60.0" cy="60.0" r="50.0" fill="none" stroke="#767676" stroke-width="1" opacity="0.7"/><line x1="60.0" y1="60.0" x2="60.0" y2="10.0" stroke="#767676" stroke-width="1" opacity="0.5"/><line x1="60.0" y1="60.0" x2="103.3" y2="35.0" stroke="#767676" stroke-width="1" opacity="0.5"/><line x1="60.0" y1="60.0" x2="103.3" y2="85.0" stroke="#767676" stroke-width="1" opacity="0.5"/><line x1="60.0" y1="60.0" x2="60.0" y2="110.0" stroke="#767676" stroke-width="1" opacity="0.5"/><line x1="60.0" y1="60.0" x2="16.7" y2="85.0" stroke="#767676" stroke-width="1" opacity="0.5"/><line x1="60.0" y1="60.0" x2="16.7" y2="35.0" stroke="#767676" stroke-width="1" opacity="0.5"/><polygon points="60.0,51.2 63.8,57.8 89.3,76.9 60.0,76.2 20.5,82.8 54.9,57.1" fill="#BBBBBB" fill-opacity="0.32" stroke="#BBBBBB" stroke-width="2" stroke-linejoin="round" class=""/><circle cx="60.0" cy="51.2" r="2.5" fill="#BBBBBB"/><circle cx="63.8" cy="57.8" r="2.5" fill="#BBBBBB"/><circle cx="89.3" cy="76.9" r="2.5" fill="#BBBBBB"/><circle cx="60.0" cy="76.2" r="2.5" fill="#BBBBBB"/><circle cx="20.5" cy="82.8" r="2.5" fill="#BBBBBB"/><circle cx="54.9" cy="57.1" r="2.5" fill="#BBBBBB"/></svg>

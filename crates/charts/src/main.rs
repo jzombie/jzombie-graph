@@ -36,9 +36,42 @@ enum Chart {
     Focus,
     Flame,
     Selected,
+    Radar,
     Indicators,
     Data,
     Languages,
+}
+
+/// One radar SVG per selected repo, then sweep the ones the new
+/// selection dropped: axes and pool come from config, so the file set
+/// moves without a code change. Write first, sweep second — an
+/// interrupted run never leaves the fragment pointing at a missing
+/// file.
+fn write_radars(text: &str) -> anyhow::Result<()> {
+    let radars = charts::render_radars(text)?;
+    let mut keep = std::collections::BTreeSet::new();
+    for (stem, svg) in &radars {
+        let dest = jzombie_graph::paths::radar_file(stem);
+        jzombie_graph::output::write_file(std::path::Path::new(&dest), svg)?;
+        keep.insert(format!("{stem}.svg"));
+    }
+    let dir = std::path::Path::new(jzombie_graph::paths::RADAR_DIR);
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries {
+            let entry = entry?;
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            if name.ends_with(".svg") && !keep.contains(name.as_ref()) {
+                std::fs::remove_file(entry.path())?;
+            }
+        }
+    }
+    eprintln!(
+        "radars: {} files in {}",
+        radars.len(),
+        jzombie_graph::paths::RADAR_DIR
+    );
+    Ok(())
 }
 
 /// Badge files for the heat bands. Written atomically with the strip
@@ -123,6 +156,19 @@ fn main() {
         }
         return;
     }
+    // Radar writes a family of SVGs — one per selected repo — and
+    // sweeps orphans. Fixed layout: no --stdout/--output.
+    if cli.chart == Chart::Radar {
+        if cli.stdout || cli.output.is_some() {
+            eprintln!("--chart radar writes the radar family; no --stdout/--output");
+            std::process::exit(1);
+        }
+        if let Err(e) = write_radars(&text) {
+            eprintln!("render error: {e:#}");
+            std::process::exit(1);
+        }
+        return;
+    }
     // Indicators also drop one-off badge files beside the proof strip
     // plus the committed render proof (table + badges) — the strip
     // is the look-check, the files are what tables embed.
@@ -138,6 +184,7 @@ fn main() {
         Chart::Focus => charts::render_focus_svg(&text),
         Chart::Flame => charts::render_flame_svg(&text),
         Chart::Selected => unreachable!("handled by the early return above"),
+        Chart::Radar => unreachable!("handled by the early return above"),
         Chart::Indicators => charts::render_indicators_svg(),
         Chart::Data => unreachable!("handled by the early return above"),
         Chart::Languages => charts::render_languages_svg(&text),
@@ -153,6 +200,7 @@ fn main() {
         Chart::Focus => jzombie_graph::paths::developer_focus_svg(),
         Chart::Flame => jzombie_graph::paths::flame_svg(),
         Chart::Selected => unreachable!("handled by the early return above"),
+        Chart::Radar => unreachable!("handled by the early return above"),
         Chart::Indicators => jzombie_graph::paths::indicators_svg(),
         Chart::Share => jzombie_graph::paths::share_svg(),
         Chart::Data => unreachable!("handled by the early return above"),

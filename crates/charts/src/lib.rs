@@ -1046,6 +1046,9 @@ const SELECTED_TOPN: usize = 9;
 /// at collection.
 #[derive(Debug, Clone, PartialEq)]
 struct SelectedRow {
+    /// Canonical `owner/repo` id — the radar file stem derives from it,
+    /// so the fragment and the radar file family can never disagree.
+    id: String,
     /// Repo URL and display name.
     url: String,
     name: String,
@@ -1150,9 +1153,9 @@ fn is_profile_repo(id: &str) -> bool {
 
 /// Selected rows: public own-work repos with commits in the trailing 30d
 /// — the pool the pins drew from — scored, sorted, cut to the top. Ties
-/// break on name, so the order is a pure function of the JSON.
-fn selected_rows(graph_json: &str) -> anyhow::Result<Vec<SelectedRow>> {
-    let graph = jzombie_graph::graph::Graph::from_json(graph_json)?;
+/// break on name, so the order is a pure function of the JSON. Takes a
+/// parsed graph: the fragment shares one parse with the radar readouts.
+fn selected_rows(graph: &jzombie_graph::graph::Graph) -> Vec<SelectedRow> {
     let fan_in = graph.node_fan_in();
     let mut scored: Vec<(f64, &jzombie_graph::graph::Node)> = graph
         .nodes
@@ -1184,7 +1187,7 @@ fn selected_rows(graph_json: &str) -> anyhow::Result<Vec<SelectedRow>> {
     });
     scored.truncate(SELECTED_TOPN);
     let fan_out = graph.node_fan_out();
-    Ok(scored
+    scored
         .into_iter()
         .map(|(_, nd)| {
             let mut surfaces = vec![];
@@ -1267,6 +1270,7 @@ fn selected_rows(graph_json: &str) -> anyhow::Result<Vec<SelectedRow>> {
                 None
             };
             SelectedRow {
+                id: nd.id.clone(),
                 url: format!("https://github.com/{}", nd.id),
                 name: nd.name.clone(),
                 desc: nd.description.clone().unwrap_or_default(),
@@ -1307,19 +1311,24 @@ fn selected_rows(graph_json: &str) -> anyhow::Result<Vec<SelectedRow>> {
                 issues_sample,
             }
         })
-        .collect())
+        .collect()
 }
 
 /// Render the selected-work fragment: heading, the sentence that states
-/// what the order measures, then one bullet per row — description,
-/// topics, classification, proof, thread traffic. Plain markdown — no
-/// cache-bust token, because text re-renders with the commit instead of
-/// being proxied as an image.
+/// what the order measures, the legend for the shape radars, then one
+/// bullet per row — a floated radar, description, topics,
+/// classification, proof, thread traffic. The markdown itself carries
+/// no cache-bust token (text re-renders with the commit); the radar
+/// images do, because they are proxied and cached like every other
+/// image on the page.
 pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
-    let rows = selected_rows(graph_json)?;
+    let graph = jzombie_graph::graph::Graph::from_json(graph_json)?;
+    let rows = selected_rows(&graph);
     if rows.is_empty() {
         return Ok("## Selected work\n\n*No commits in trailing 30d*\n".to_string());
     }
+    let plan = RadarPlan::load()?;
+    let bust = bust_token(graph_json)?;
     let mut items = String::new();
     for row in &rows {
         let link = format!("[{}]({})", row.name, row.url);
@@ -1332,8 +1341,11 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
             format!("**{link}** \u{2014} {desc}")
         };
         // One fact group per `<sub>` line: pruning is deleting a line,
-        // never rewording a sentence.
-        let mut lines: Vec<String> = vec![format!("- {head}")];
+        // never rewording a sentence. The radar rides on the head line
+        // (no `<br>` before it — two breaks in a row would print a
+        // blank line) so every fact line flows around the float.
+        let radar = radar_img(&plan, &graph, row, &bust)?;
+        let mut lines: Vec<String> = vec![format!("- {head} {radar}")];
 
         if !row.topics.is_empty() {
             let tags: Vec<String> = row
@@ -1450,10 +1462,21 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
         items.push_str(&lines.join("<br>"));
         items.push('\n');
     }
+    // The legend reads in dial order — the same order the vertices turn
+    // — so a reader can name a spoke without counting from the top.
+    let axis_legend = plan
+        .axes
+        .iter()
+        .map(|(label, _)| label.as_str())
+        .collect::<Vec<_>>()
+        .join(" \u{b7} ");
+    let pool_label = plan.pool_label();
     Ok(formatdoc! {r#"
         ## Selected work
 
         Ordered by load-bearing reuse first — how many portfolio repos depend on a repo — then external pull (stars and forks), then recent activity, with product repos and documented ones nudged up. It’s a ranking of signal, not a tally of volume: exact counts, layers, and reuse ride the commit data table below.
+
+        Each row carries a shape radar: axes clockwise from top — {axis_legend} — and each vertex is that repo’s percentile among {pool_label}.
 
         {items}"#})
 }
@@ -1473,6 +1496,457 @@ fn thread_line(label: &str, states: &[(String, usize)], sample: &[String], total
         out.push_str(&format!(" \u{2014} {}", titles.join(" \u{b7} ")));
     }
     out
+}
+
+// --- Shape radar -------------------------------------------------------
+//
+// One hexagon per selected repo, floated right in its list row. Same
+// split as every chart here: Rust owns percentiles and geometry, the
+// embedded script owns markup emission only.
+
+/// Radar config (`radar.toml`): which metrics, against which peers.
+/// Loaded on every render — the file is tiny, and a config mistake
+/// should surface as a render error, never as a stale cached shape.
+#[derive(Debug, Clone, serde::Deserialize)]
+struct RadarConfig {
+    /// Floated image width in pixels (the GitHub `width` attribute).
+    width: u32,
+    pool: RadarPool,
+    axes: Vec<RadarAxisCfg>,
+}
+
+/// The peer group percentiles rank against. `label` is required: the
+/// legend and every alt text must be able to say what the numbers are
+/// *among*, and a count baked into prose would drift as the graph grows.
+#[derive(Debug, Clone, serde::Deserialize)]
+struct RadarPool {
+    label: String,
+    /// Keep only own work: diverged forks stay, pristine ones sit out.
+    #[serde(default)]
+    own_work: bool,
+    /// Keep only repos with at least this many trailing-30d commits.
+    #[serde(default)]
+    min_commits_30d: Option<u32>,
+    /// Drop the profile README repo (`owner` == `name`).
+    #[serde(default)]
+    exclude_profile: bool,
+}
+
+/// One axis as configured: a metric key plus the words a reader sees.
+#[derive(Debug, Clone, serde::Deserialize)]
+struct RadarAxisCfg {
+    metric: String,
+    label: String,
+}
+
+/// Graph-derived facts an axis may read that are not node fields.
+struct RadarCtx {
+    fan_in: u32,
+    fan_out: u32,
+}
+
+/// One primitive metric: how to read a value off a node. `radar.toml`
+/// chooses which become axes — a new *combination* is a config line,
+/// a new primitive is one line here.
+type Metric = fn(&jzombie_graph::graph::Node, &RadarCtx) -> f64;
+
+fn or_zero(v: Option<f32>) -> f64 {
+    v.unwrap_or(0.0) as f64
+}
+
+/// Every metric `radar.toml` may name. Values stay `f64` end to end so
+/// percentiles never truncate, and every axis lands on the same 0..1
+/// scale — shapes drawn on different scales cannot be compared.
+const RADAR_METRICS: &[(&str, Metric)] = &[
+    ("commits_1d", |n, _| n.commits_1d as f64),
+    ("commits_5d", |n, _| n.commits_5d as f64),
+    ("commits_15d", |n, _| n.commits_15d as f64),
+    ("commits_30d", |n, _| n.commits_30d as f64),
+    ("issue_traffic", |n, _| {
+        (n.issues_open_30d + n.issues_closed_30d) as f64
+    }),
+    ("issue_comments", |n, _| n.issue_comments_30d as f64),
+    ("pull_requests", |n, _| n.recent_prs.len() as f64),
+    ("stars", |n, _| n.stars as f64),
+    ("forks", |n, _| n.forks_count as f64),
+    ("fan_in", |_, c| c.fan_in as f64),
+    ("fan_out", |_, c| c.fan_out as f64),
+    ("focus", |n, _| n.focus.unwrap_or(0.0) as f64),
+    ("open_issues", |n, _| n.open_issues as f64),
+    ("branches", |n, _| n.branch_heat.len() as f64),
+    ("size_kb", |n, _| n.size_kb as f64),
+    ("commit_heat", |n, _| {
+        or_zero(n.commit_heat.or_else(|| n.commit_heat()))
+    }),
+    ("issue_heat", |n, _| or_zero(n.issue_heat)),
+];
+
+/// The peer group percentiles rank against. Private nodes never qualify
+/// (they are not portfolio signal); everything else is config.
+fn radar_pool<'a>(
+    graph: &'a jzombie_graph::graph::Graph,
+    cfg: &RadarConfig,
+) -> Vec<&'a jzombie_graph::graph::Node> {
+    graph
+        .nodes
+        .iter()
+        .filter(|nd| {
+            if nd.private {
+                return false;
+            }
+            if cfg.pool.own_work && !jzombie_graph::graph::is_own_work(nd) {
+                return false;
+            }
+            if let Some(min) = cfg.pool.min_commits_30d
+                && nd.commits_30d < min
+            {
+                return false;
+            }
+            !(cfg.pool.exclude_profile && is_profile_repo(&nd.id))
+        })
+        .collect()
+}
+
+/// Mid-rank percentile of `v` among `pool`: ties share the middle of
+/// their run (a pool where most repos have zero stars doesn't pretend
+/// they all sit at zero), negatives and outliers need no special
+/// casing, and the result is always 0..1 — the shared scale every axis
+/// is drawn on.
+fn percentile(pool: &[f64], v: f64) -> f64 {
+    if pool.is_empty() {
+        return 0.0;
+    }
+    let below = pool.iter().filter(|&&x| x < v).count();
+    let ties = pool.iter().filter(|&&x| x == v).count();
+    (below as f64 + 0.5 * ties as f64) / pool.len() as f64
+}
+
+/// Config with every axis resolved to its metric. A typo'd `metric`
+/// key fails here, naming the keys that exist, instead of rendering a
+/// spoke nobody can explain.
+#[derive(Debug)]
+struct RadarPlan {
+    cfg: RadarConfig,
+    /// Display label and reader, in configured (dial) order.
+    axes: Vec<(String, Metric)>,
+}
+
+impl RadarPlan {
+    fn load() -> anyhow::Result<Self> {
+        let cfg: RadarConfig = toml::from_str(include_str!("../radar.toml"))
+            .map_err(|e| anyhow::anyhow!("radar.toml: {e}"))?;
+        Self::resolve(cfg)
+    }
+
+    /// Validation: axes declared, width sane, every `metric` naming a
+    /// registry key. Split from `load` so the typo path is testable
+    /// against a config the test writes itself.
+    fn resolve(cfg: RadarConfig) -> anyhow::Result<Self> {
+        anyhow::ensure!(!cfg.axes.is_empty(), "radar.toml declares no axes");
+        anyhow::ensure!(cfg.width > 0, "radar.toml: width must be positive");
+        let mut axes = Vec::with_capacity(cfg.axes.len());
+        for ax in &cfg.axes {
+            let Some((_, metric)) = RADAR_METRICS.iter().find(|(key, _)| *key == ax.metric) else {
+                let mut keys: Vec<&str> = RADAR_METRICS.iter().map(|(k, _)| *k).collect();
+                keys.sort_unstable();
+                anyhow::bail!(
+                    "radar.toml: unknown metric {:?}; available: {}",
+                    ax.metric,
+                    keys.join(", ")
+                );
+            };
+            axes.push((ax.label.clone(), *metric));
+        }
+        Ok(Self { cfg, axes })
+    }
+
+    fn pool_label(&self) -> &str {
+        &self.cfg.pool.label
+    }
+
+    /// Percentiles for one node, in axis order — the numbers behind the
+    /// shape, the hover title and the alt text, so the three can never
+    /// disagree with each other.
+    fn percentiles(
+        &self,
+        graph: &jzombie_graph::graph::Graph,
+        node: &jzombie_graph::graph::Node,
+    ) -> Vec<f64> {
+        let fan_in = graph.node_fan_in();
+        let fan_out = graph.node_fan_out();
+        let ctx = |nd: &jzombie_graph::graph::Node| RadarCtx {
+            fan_in: fan_in.get(&nd.id).copied().unwrap_or(0),
+            fan_out: fan_out.get(&nd.id).copied().unwrap_or(0),
+        };
+        let pool = radar_pool(graph, &self.cfg);
+        self.axes
+            .iter()
+            .map(|(_, metric)| {
+                let values: Vec<f64> = pool.iter().map(|&nd| metric(nd, &ctx(nd))).collect();
+                percentile(&values, metric(node, &ctx(node)))
+            })
+            .collect()
+    }
+}
+
+/// `99` -> "99th": alt text reads as prose, not as a table.
+fn ordinal(n: usize) -> String {
+    let suffix = match (n % 10, n % 100) {
+        (1, 11) | (2, 12) | (3, 13) => "th",
+        (1, _) => "st",
+        (2, _) => "nd",
+        (3, _) => "rd",
+        _ => "th",
+    };
+    format!("{n}{suffix}")
+}
+
+/// The numbers the shape only implies, spelled out: a screen reader
+/// gets the same facts a sighted reader gets from the vertices, and
+/// the hover title says the same words.
+fn radar_readout(plan: &RadarPlan, percentiles: &[f64]) -> String {
+    let facts: Vec<String> = plan
+        .axes
+        .iter()
+        .zip(percentiles)
+        .map(|((label, _), p)| {
+            let rank = ordinal(((p * 100.0).round() as usize).min(100));
+            format!("{label} {rank} percentile")
+        })
+        .collect();
+    format!(
+        "Radar chart of percentiles among {}: {}",
+        plan.pool_label(),
+        facts.join(", ")
+    )
+}
+
+/// Geometry for one radar, precomputed — the script interpolates, Rust
+/// does the math. Every vertex sits at `radius × percentile` of the
+/// shared pool, which is what makes nine shapes comparable.
+#[derive(Debug, Clone, serde::Serialize)]
+struct RadarDoc {
+    header: String,
+    footer: String,
+    /// Center, shared by rings, spokes and vertices.
+    cx: String,
+    cy: String,
+    /// Grid ink: the same mid-gray every chart draws scaffolding in.
+    ink: String,
+    /// Heat-band color — the polygon wears the row's badge color.
+    color: String,
+    /// Breathing class from the repo's heat, as the share slices carry.
+    pulse: String,
+    /// Vertex `x,y` pairs, clockwise from top.
+    points: String,
+    rings: Vec<RadarRing>,
+    spokes: Vec<RadarSpoke>,
+    dots: Vec<RadarDot>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct RadarRing {
+    r: String,
+    /// The outer ring reads stronger: it is the pool's ceiling.
+    op: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct RadarSpoke {
+    x: String,
+    y: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct RadarDot {
+    cx: String,
+    cy: String,
+}
+
+/// Design size in viewBox units, and how far a vertex may reach: the
+/// 10-unit margin keeps dots off the edge. The SVG carries intrinsic
+/// width/height so a bare embed renders square instead of falling back
+/// to the browser's 300×150 default — the fix the badges already use.
+const RADAR_SIZE: f64 = 120.0;
+const RADAR_R: f64 = 50.0;
+
+/// Band name to the shared palette token: the shape wears the same
+/// color as the heat badge printed on the same row.
+fn band_color(band: &str) -> String {
+    match band {
+        "heating" => palette::heating(),
+        "steady" => palette::steady(),
+        "cooling" => palette::cooling(),
+        _ => palette::dormant(),
+    }
+}
+
+/// One repo's radar geometry: config, graph and node in, vertices out.
+fn radar_doc(
+    graph: &jzombie_graph::graph::Graph,
+    node: &jzombie_graph::graph::Node,
+    plan: &RadarPlan,
+) -> RadarDoc {
+    let pcts = plan.percentiles(graph, node);
+    let n = plan.axes.len();
+    let cx = RADAR_SIZE / 2.0;
+    let cy = RADAR_SIZE / 2.0;
+    // Clockwise from top: -90° points up, one step per axis.
+    let at = |i: usize, r: f64| {
+        let a = (-90.0 + 360.0 * i as f64 / n as f64).to_radians();
+        (cx + r * a.cos(), cy + r * a.sin())
+    };
+    let reach = |p: f64| RADAR_R * p.clamp(0.0, 1.0);
+    let points = pcts
+        .iter()
+        .enumerate()
+        .map(|(i, p)| {
+            let (x, y) = at(i, reach(*p));
+            format!("{},{}", f1(x), f1(y))
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+    let spokes = (0..n)
+        .map(|i| {
+            let (x, y) = at(i, RADAR_R);
+            RadarSpoke { x: f1(x), y: f1(y) }
+        })
+        .collect();
+    // Quartile rings: the half ring doubles as the pool's median, so a
+    // vertex sitting on it is an exactly average repo on that axis.
+    let rings = [0.25, 0.5, 0.75, 1.0]
+        .into_iter()
+        .map(|q| RadarRing {
+            r: f1(RADAR_R * q),
+            op: if q == 1.0 { "0.7" } else { "0.4" }.to_string(),
+        })
+        .collect();
+    let dots = pcts
+        .iter()
+        .enumerate()
+        .map(|(i, p)| {
+            let (x, y) = at(i, reach(*p));
+            RadarDot {
+                cx: f1(x),
+                cy: f1(y),
+            }
+        })
+        .collect();
+    let heat = node.commit_heat.or_else(|| node.commit_heat());
+    RadarDoc {
+        header: format!(
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{size}\" height=\"{size}\" viewBox=\"0 0 {size} {size}\" role=\"img\" font-family=\"{family}\"><title>{title}</title>",
+            size = f1(RADAR_SIZE),
+            family = palette::family(),
+            title = radar_readout(plan, &pcts),
+        ),
+        footer: "</svg>".to_string(),
+        cx: f1(cx),
+        cy: f1(cy),
+        ink: palette::ink(),
+        color: band_color(heat_band(heat)),
+        pulse: palette::heat_pulse(heat).to_string(),
+        points,
+        rings,
+        spokes,
+        dots,
+    }
+}
+
+/// Plugin function: graph JSON + repo id in, radar geometry document
+/// out. Pure data shaping (no IO); base64 transport on entry, like the
+/// other chart funcs — the script never sees raw JSON.
+#[oxdock_func(pure, name = "RADAR")]
+fn radar(graph_json: String, repo_id: String) -> anyhow::Result<Value> {
+    let graph_json = transport_out(&graph_json)?;
+    let repo_id = transport_out(&repo_id)?;
+    let graph = jzombie_graph::graph::Graph::from_json(&graph_json)?;
+    let node = graph
+        .nodes
+        .iter()
+        .find(|n| n.id == repo_id)
+        .ok_or_else(|| anyhow::anyhow!("no node {repo_id} in the graph"))?;
+    let plan = RadarPlan::load()?;
+    let doc = radar_doc(&graph, node, &plan);
+    Ok(Value::string(serde_json::to_string(&doc)?))
+}
+
+/// Render one repo's radar: graph JSON + id in, SVG bytes out. The
+/// embedded script emits markup only; every number arrives in the
+/// geometry document the host func returns.
+pub fn render_radar_svg(graph_json: &str, repo_id: &str) -> anyhow::Result<String> {
+    let engine = engine();
+    let arg = transport_in(graph_json);
+    let id_arg = transport_in(repo_id);
+    let steps: Vec<oxdock_parser::Step> = oxdock! {
+        modules: [CHARTS],
+        IMPORT [STD, CHARTS]
+        LET $doc_json: STRING = CHARTS::RADAR(#arg, #id_arg)
+        WRITE doc.json $doc_json
+        LET $doc: MAP<ANY> = LOAD_JSON("doc.json")
+        LET $style: STRING = CHARTS::CHART_STYLE()
+        WRITE out.svg $doc.header
+        APPEND out.svg $style
+        FOR $ring: MAP<ANY> IN $doc.rings {
+            APPEND out.svg "<circle cx=\"{{ $doc.cx }}\" cy=\"{{ $doc.cy }}\" r=\"{{ $ring.r }}\" fill=\"none\" stroke=\"{{ $doc.ink }}\" stroke-width=\"1\" opacity=\"{{ $ring.op }}\"/>"
+        }
+        FOR $spoke: MAP<ANY> IN $doc.spokes {
+            APPEND out.svg "<line x1=\"{{ $doc.cx }}\" y1=\"{{ $doc.cy }}\" x2=\"{{ $spoke.x }}\" y2=\"{{ $spoke.y }}\" stroke=\"{{ $doc.ink }}\" stroke-width=\"1\" opacity=\"0.5\"/>"
+        }
+        APPEND out.svg "<polygon points=\"{{ $doc.points }}\" fill=\"{{ $doc.color }}\" fill-opacity=\"0.32\" stroke=\"{{ $doc.color }}\" stroke-width=\"2\" stroke-linejoin=\"round\" class=\"{{ $doc.pulse }}\"/>"
+        FOR $dot: MAP<ANY> IN $doc.dots {
+            APPEND out.svg "<circle cx=\"{{ $dot.cx }}\" cy=\"{{ $dot.cy }}\" r=\"2.5\" fill=\"{{ $doc.color }}\"/>"
+        }
+        APPEND out.svg $doc.footer
+        LET $check: STRING = READ out.svg
+        ASSERT_CONTAINS $check "</svg>"
+        ASSERT_CONTAINS $check "<polygon"
+    };
+    let temp = oxdock::GuardedPath::tempdir().expect("tempdir");
+    let root = temp.as_guarded_path().clone();
+    engine.run_steps_without_snapshot(&root, &steps)?;
+    let resolver = oxdock::PathResolver::new(root.as_path(), root.as_path()).expect("resolver");
+    let out = root.join("out.svg").expect("out path");
+    Ok(resolver.read_to_string(&out).expect("read out"))
+}
+
+/// The radar family: one (file stem, SVG) pair per selected repo — the
+/// same rows the fragment lists, so an embedded image can never point
+/// at a file the lane didn't write.
+pub fn render_radars(graph_json: &str) -> anyhow::Result<Vec<(String, String)>> {
+    let graph = jzombie_graph::graph::Graph::from_json(graph_json)?;
+    let rows = selected_rows(&graph);
+    rows.iter()
+        .map(|row| {
+            let svg = render_radar_svg(graph_json, &row.id)?;
+            Ok((jzombie_graph::paths::radar_stem(&row.id), svg))
+        })
+        .collect()
+}
+
+/// The floated radar on a row's head line: sized by config, aligned
+/// with the legacy `align` attribute (the only alignment GitHub's
+/// sanitizer keeps — `style` is stripped), sweep-stamped like every
+/// other image. The alt text spells the percentiles out, so a screen
+/// reader gets the same facts the vertices show.
+fn radar_img(
+    plan: &RadarPlan,
+    graph: &jzombie_graph::graph::Graph,
+    row: &SelectedRow,
+    bust: &str,
+) -> anyhow::Result<String> {
+    let node = graph
+        .nodes
+        .iter()
+        .find(|n| n.id == row.id)
+        .ok_or_else(|| anyhow::anyhow!("selected row {} missing from the graph", row.id))?;
+    let pcts = plan.percentiles(graph, node);
+    Ok(format!(
+        "<img src=\"{src}\" width=\"{width}\" align=\"right\" alt=\"{alt}\">",
+        src = jzombie_graph::paths::radar_url(&jzombie_graph::paths::radar_stem(&row.id), bust),
+        width = plan.cfg.width,
+        alt = radar_readout(plan, &pcts),
+    ))
 }
 
 /// Linguist language colors for a language dot; unknown maps to the
@@ -1521,6 +1995,7 @@ fn engine() -> Engine {
             DataTable::registration(),
             ChartStyleFn::registration(),
             Flame::registration(),
+            Radar::registration(),
         ],
         types: vec![],
         record_schemas: vec![],
@@ -3427,5 +3902,175 @@ mod tests {
         let focus = focus_rows(&g, 12, 5).unwrap();
         let focus_names: Vec<&str> = focus.iter().map(|r| r.label.as_str()).collect();
         assert_eq!(focus_names, pie_names);
+    }
+
+    // --- Shape radar -------------------------------------------------
+
+    /// A plan over exactly the axes a test names, with a pool that
+    /// admits every node: geometry tests must not depend on which axes
+    /// `radar.toml` happens to declare today.
+    fn plan_over(axes: Vec<(&str, Metric)>) -> RadarPlan {
+        RadarPlan {
+            cfg: RadarConfig {
+                width: 120,
+                pool: RadarPool {
+                    label: "test peers".into(),
+                    own_work: false,
+                    min_commits_30d: Some(1),
+                    exclude_profile: false,
+                },
+                axes: vec![],
+            },
+            axes: axes
+                .into_iter()
+                .map(|(label, metric)| (label.to_string(), metric))
+                .collect(),
+        }
+    }
+
+    /// Mean vertex radius of a rendered doc — how far out the shape
+    /// sits, which is what a percentile decides.
+    fn mean_radius(doc: &RadarDoc) -> f64 {
+        let (cx, cy) = (RADAR_SIZE / 2.0, RADAR_SIZE / 2.0);
+        let radii: Vec<f64> = doc
+            .points
+            .split(' ')
+            .map(|pair| {
+                let (x, y) = pair.split_once(',').expect("x,y pair");
+                let (x, y): (f64, f64) = (x.parse().expect("x"), y.parse().expect("y"));
+                ((x - cx).powi(2) + (y - cy).powi(2)).sqrt()
+            })
+            .collect();
+        radii.iter().sum::<f64>() / radii.len() as f64
+    }
+
+    #[test]
+    fn percentile_shares_ties_and_needs_no_special_casing() {
+        // Ties take the middle of their run: three repos at zero stars
+        // all read the same rank instead of all reading the floor.
+        assert_eq!(percentile(&[0.0, 0.0, 0.0], 0.0), 0.5);
+        // Negatives and outliers ride the same scale as anything else —
+        // focus runs to -109 in the real graph and needs no handling.
+        let pool = [-10.0, -1.0, 0.0, 5.0];
+        assert_eq!(percentile(&pool, -10.0), 0.125);
+        assert_eq!(percentile(&pool, 5.0), 0.875);
+        // An empty pool degrades to the floor, never to NaN.
+        assert_eq!(percentile(&[], 3.0), 0.0);
+    }
+
+    #[test]
+    fn ordinal_reads_as_prose() {
+        for (n, want) in [
+            (1, "1st"),
+            (2, "2nd"),
+            (3, "3rd"),
+            (4, "4th"),
+            (11, "11th"),
+            (12, "12th"),
+            (13, "13th"),
+            (21, "21st"),
+            (100, "100th"),
+        ] {
+            assert_eq!(ordinal(n), want, "{n}");
+        }
+    }
+
+    #[test]
+    fn vertices_run_outward_with_percentile() {
+        // Two repos, one axis: the leader's rank (0.75 in a two-repo
+        // pool) must land farther from center than the trailer's (0.25)
+        // — the mapping from percentile to radius.
+        let g = graph_with(&[("strong", 30), ("weak", 10)]);
+        let graph = jzombie_graph::graph::Graph::from_json(&g).expect("fixture parses");
+        let plan = plan_over(vec![("Commits", |n, _| n.commits_30d as f64)]);
+        let radius = |name: &str| {
+            let node = graph
+                .nodes
+                .iter()
+                .find(|n| n.name == name)
+                .unwrap_or_else(|| panic!("{name} in fixture"));
+            mean_radius(&radar_doc(&graph, node, &plan))
+        };
+        let strong = radius("strong");
+        let weak = radius("weak");
+        assert!(strong > weak, "strong {strong} must outrank weak {weak}");
+        // Mid-rank percentiles stay inside the rim: a leader is never
+        // drawn at the pool's ceiling, a trailer never collapses to a
+        // point — both keep a readable shape.
+        assert!(strong < RADAR_R, "leader stays inside the outer ring");
+        assert!(weak > 0.0, "trailer keeps a visible shape");
+    }
+
+    #[test]
+    fn radar_pool_admits_only_the_configured_peers() {
+        let g = mixed_ownership_graph();
+        let mut graph = jzombie_graph::graph::Graph::from_json(&g).expect("fixture parses");
+        // Two more nodes the filters must reject: the profile README
+        // repo, and a repo with nothing in the trailing 30d.
+        let mut profile = graph.nodes[0].clone();
+        profile.id = "me/me".into();
+        profile.name = "me".into();
+        graph.nodes.push(profile);
+        let mut quiet = graph.nodes[1].clone();
+        quiet.id = "me/quiet".into();
+        quiet.name = "quiet".into();
+        quiet.commits_30d = 0;
+        graph.nodes.push(quiet);
+        let cfg = RadarConfig {
+            width: 120,
+            pool: RadarPool {
+                label: "peers".into(),
+                own_work: true,
+                min_commits_30d: Some(1),
+                exclude_profile: true,
+            },
+            axes: vec![],
+        };
+        let names: Vec<&str> = radar_pool(&graph, &cfg)
+            .iter()
+            .map(|n| n.name.as_str())
+            .collect();
+        // `pristine` is someone else's code, `secret` is private, the
+        // profile repo documents rather than works, `quiet` sat still.
+        // The graph stores nodes sorted by id, so the survivors read
+        // in id order rather than insertion order.
+        assert_eq!(names, vec!["diverged", "mine", "renamed"]);
+    }
+
+    #[test]
+    fn shipped_radar_config_loads_and_resolves() {
+        let plan = RadarPlan::load().expect("radar.toml parses; every metric exists");
+        assert!(!plan.axes.is_empty(), "axes are declared");
+        assert!(
+            !plan.pool_label().trim().is_empty(),
+            "the peer group is named"
+        );
+        for (label, _) in &plan.axes {
+            assert!(!label.trim().is_empty(), "axis labels read as words");
+        }
+    }
+
+    #[test]
+    fn an_unknown_metric_names_the_keys_that_exist() {
+        let cfg = RadarConfig {
+            width: 120,
+            pool: RadarPool {
+                label: "peers".into(),
+                own_work: false,
+                min_commits_30d: None,
+                exclude_profile: false,
+            },
+            axes: vec![RadarAxisCfg {
+                metric: "commits".into(),
+                label: "Commits".into(),
+            }],
+        };
+        let err = RadarPlan::resolve(cfg).expect_err("a typo must not render");
+        let msg = format!("{err:#}");
+        assert!(msg.contains("unknown metric \"commits\""), "{msg}");
+        assert!(
+            msg.contains("commits_30d"),
+            "the error lists real keys: {msg}"
+        );
     }
 }
