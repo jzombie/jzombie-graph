@@ -280,10 +280,16 @@ fn selected_fragment_ranks_by_score_not_stars() {
         md.contains("layer: `middleware · application`"),
         "layer spelled out"
     );
-    assert!(md.contains("focus -99.00"), "focus gauge");
-    assert!(md.contains("last commit 2026-11-15"), "recency date");
-    assert!(md.contains("2 branches"), "branch count");
-    assert!(md.contains("6.2 MB"), "size in reader units");
+    assert!(md.contains("focus: -99.00"), "focus gauge");
+    assert!(md.contains("last commit: 2026-11-15"), "recency date");
+    assert!(md.contains("branches: 2"), "branch count");
+    assert!(md.contains("size: 6.2 MB"), "size in reader units");
+    // The classification line groups as `identity | state`: the tree
+    // audit closes one group, the repo's state opens the next.
+    assert!(
+        md.contains("docs: readme, license, agents.md | focus: -99.00"),
+        "classification line groups"
+    );
     assert!(
         md.contains("docs: readme, license, agents.md"),
         "tree audit"
@@ -292,27 +298,31 @@ fn selected_fragment_ranks_by_score_not_stars() {
         md.contains("fork of other/Quiet (+12 own commits)"),
         "diverged fork says so"
     );
-    // Proof line: backlog and structure, then the homepage printed in
-    // full — never a truncated host.
-    assert!(md.contains("69 open issues"), "backlog");
+    // Proof line: backlog and pull in one group, structure and the
+    // homepage in the next — the full URL, never a truncated host.
+    assert!(
+        md.contains("69 open issues | used by 3"),
+        "backlog closes its group"
+    );
     assert!(
         md.contains("[https://crates.io/crates/r0](https://crates.io/crates/r0)"),
         "homepage printed in full, linked"
     );
-    // Thread traffic: window counts, gauge, label census, then the
-    // threads themselves as state counts plus a sample.
+    // Thread traffic: window counts and gauge, then the census in its
+    // own group, then the threads themselves as counts plus samples.
     assert!(
         md.contains("issues 30d: 6 opened · 5 closed · 9 comments"),
         "issue window"
     );
-    assert!(md.contains("issue heat 1.40"), "issue gauge");
     assert!(
-        md.contains("label census: enhancement×5, bug×4"),
-        "loudest label first"
+        md.contains("issue heat: 1.40 | label census: enhancement×5, bug×4"),
+        "gauge then census, grouped"
     );
     assert!(
-        md.contains("PRs (3): 1 merged · 1 open · 1 closed"),
-        "PR states"
+        md.contains(
+            "PRs (3): 1 merged · 1 open · 1 closed | \"fix: Cut UI lag from mouse bursts\""
+        ),
+        "PR counts group, pipe, samples"
     );
     assert!(
         md.contains("\"fix: Cut UI lag from mouse bursts\" · \"Bump deps\""),

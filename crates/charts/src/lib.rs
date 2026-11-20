@@ -1338,7 +1338,7 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
             // Descriptions are single-line on GitHub; flatten anyway so
             // one stray newline cannot break the list.
             let desc = row.desc.split_whitespace().collect::<Vec<_>>().join(" ");
-            format!("**{link}** \u{2014} {desc}")
+            format!("**{link}**: {desc}")
         };
         // One fact group per `<sub>` line: pruning is deleting a line,
         // never rewording a sentence. The radar rides on the head line
@@ -1356,50 +1356,62 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
             lines.push(format!("<sub>{}</sub>", tags.join(" ")));
         }
 
-        // Positional tags, identity, and the tree audit. The layer value
-        // wears backticks because it carries its own middle dots.
-        let mut class: Vec<String> = vec![format!("layer: `{}`", row.layer)];
+        // Two groups on one line, split by a pipe: what the repo *is*
+        // (position, identity, tree audit) and how it *stands* (state).
+        // Within a group the middle dot separates facts; a label that
+        // needs one wears `label: value` so the colon rhythm matches
+        // the other lines. The layer value wears backticks because it
+        // carries its own middle dots.
+        let mut identity: Vec<String> = vec![format!("layer: `{}`", row.layer)];
         if let Some(lang) = &row.language {
-            class.push(lang.clone());
+            identity.push(lang.clone());
         }
         if let Some(lic) = &row.license {
-            class.push(lic.clone());
+            identity.push(lic.clone());
         }
         if let Some(note) = &row.fork_note {
-            class.push(note.clone());
-        }
-        if let Some(f) = row.focus {
-            class.push(format!("focus {f:+.2}"));
-        }
-        if let Some(d) = &row.last_commit {
-            class.push(format!("last commit {d}"));
-        }
-        class.push(if row.branches == 1 {
-            "1 branch".to_string()
-        } else {
-            format!("{} branches", row.branches)
-        });
-        if row.size_kb > 0 {
-            class.push(size_label(row.size_kb));
+            identity.push(note.clone());
         }
         if !row.surfaces.is_empty() {
-            class.push(format!("docs: {}", row.surfaces.join(", ")));
+            identity.push(format!("docs: {}", row.surfaces.join(", ")));
         }
-        lines.push(format!("<sub>{}</sub>", class.join(" \u{b7} ")));
+        let mut state: Vec<String> = vec![];
+        if let Some(f) = row.focus {
+            state.push(format!("focus: {f:+.2}"));
+        }
+        if let Some(d) = &row.last_commit {
+            state.push(format!("last commit: {d}"));
+        }
+        state.push(if row.branches == 1 {
+            "branch: 1".to_string()
+        } else {
+            format!("branches: {}", row.branches)
+        });
+        if row.size_kb > 0 {
+            state.push(format!("size: {}", size_label(row.size_kb)));
+        }
+        let mut groups: Vec<String> = vec![];
+        if !identity.is_empty() {
+            groups.push(identity.join(" \u{b7} "));
+        }
+        if !state.is_empty() {
+            groups.push(state.join(" \u{b7} "));
+        }
+        lines.push(format!("<sub>{}</sub>", groups.join(" | ")));
 
-        // The proof line: gauge, volume, pull, structure, and the site —
-        // the full URL, never a truncated host. The badge file carries
-        // its own 44px design size; inline here it asks for 24 and
-        // centers on the text with the legacy `align` attribute, which
-        // is the only vertical alignment GitHub's sanitizer keeps
-        // (`style` is stripped).
+        // The proof line: gauge, volume, pull, backlog in one group,
+        // then structure and the site in the next — the full URL, never
+        // a truncated host. The badge file carries its own 44px design
+        // size; inline here it asks for 24 and centers on the text with
+        // the legacy `align` attribute, which is the only vertical
+        // alignment GitHub's sanitizer keeps (`style` is stripped).
         let commits = if row.commits_30d == 1 {
             "1 commit in 30d".to_string()
         } else {
             format!("{} commits in 30d", row.commits_30d)
         };
         let mut proof = format!(
-            "<img src=\"{badge}\" width=\"24\" align=\"middle\" alt=\"\"> {band} \u{b7} {commits} \u{b7} \u{2605}{stars} \u{b7} \u{2442}{forks} \u{b7} {open} open issues \u{b7} used by {fan_in} \u{b7} uses {fan_out}",
+            "<img src=\"{badge}\" width=\"24\" align=\"middle\" alt=\"\"> {band} \u{b7} {commits} \u{b7} \u{2605}{stars} \u{b7} \u{2442}{forks} \u{b7} {open} open issues | used by {fan_in} \u{b7} uses {fan_out}",
             badge = jzombie_graph::paths::indicator_url(row.band),
             band = row.band,
             commits = commits,
@@ -1414,24 +1426,25 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
         }
         lines.push(format!("<sub>{proof}</sub>"));
 
-        // Thread traffic: what moved in the window, the issue gauge, and
-        // how the sampled threads are labelled.
-        let mut activity = vec![format!(
+        // Thread traffic in two groups: what moved in the window (with
+        // the gauge), then how the sampled threads are labelled.
+        let mut window = vec![format!(
             "issues 30d: {} opened \u{b7} {} closed \u{b7} {} comments",
             row.issues_open_30d, row.issues_closed_30d, row.issue_comments_30d
         )];
         if let Some(h) = row.issue_heat {
-            activity.push(format!("issue heat {h:.2}"));
+            window.push(format!("issue heat: {h:.2}"));
         }
+        let mut groups = vec![window.join(" \u{b7} ")];
         if !row.labels.is_empty() {
             let census: Vec<String> = row
                 .labels
                 .iter()
                 .map(|(l, c)| format!("{l}\u{d7}{c}"))
                 .collect();
-            activity.push(format!("label census: {}", census.join(", ")));
+            groups.push(format!("label census: {}", census.join(", ")));
         }
-        lines.push(format!("<sub>{}</sub>", activity.join(" \u{b7} ")));
+        lines.push(format!("<sub>{}</sub>", groups.join(" | ")));
 
         // The threads themselves: counts by state, then a short sample.
         if row.prs_total > 0 {
@@ -1474,17 +1487,17 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
     Ok(formatdoc! {r#"
         ## Selected work
 
-        Ordered by load-bearing reuse first — how many portfolio repos depend on a repo — then external pull (stars and forks), then recent activity, with product repos and documented ones nudged up. It’s a ranking of signal, not a tally of volume: exact counts, layers, and reuse ride the commit data table below.
+        Ordered by load-bearing reuse first: how many portfolio repos depend on a repo, then external pull (stars and forks), then recent activity, with product repos and documented ones nudged up. It’s a ranking of signal, not a tally of volume. Exact counts, layers, and reuse ride the commit data table below.
 
-        Each row carries a shape radar: axes clockwise from top — {axis_legend} — and each vertex is that repo’s percentile among {pool_label}.
+        Each row carries a shape radar: axes clockwise from top ({axis_legend}), and each vertex is that repo’s percentile among {pool_label}.
 
         {items}"#})
 }
 
-/// `label: 17 merged · 1 open · 2 closed — title · title · +17`,
-/// shared by the PR and issue lines so both read the same way. Samples
-/// arrive already rendered — the issue sample carries its own wrapper,
-/// so nothing nests.
+/// `label: 17 merged · 1 open · 2 closed | title · title · +17`,
+/// shared by the PR and issue lines so both read the same way: the
+/// pipe says "here come the samples". Samples arrive already rendered
+/// — the issue sample carries its own wrapper, so nothing nests.
 fn thread_line(label: &str, states: &[(String, usize)], sample: &[String], total: usize) -> String {
     let counts: Vec<String> = states.iter().map(|(s, c)| format!("{c} {s}")).collect();
     let mut out = format!("{label}: {}", counts.join(" \u{b7} "));
@@ -1493,7 +1506,7 @@ fn thread_line(label: &str, states: &[(String, usize)], sample: &[String], total
         if total > sample.len() {
             titles.push(format!("+{}", total - sample.len()));
         }
-        out.push_str(&format!(" \u{2014} {}", titles.join(" \u{b7} ")));
+        out.push_str(&format!(" | {}", titles.join(" \u{b7} ")));
     }
     out
 }
