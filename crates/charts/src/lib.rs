@@ -1728,9 +1728,12 @@ fn radar_readout(plan: &RadarPlan, percentiles: &[f64]) -> String {
 struct RadarDoc {
     header: String,
     footer: String,
-    /// Center, shared by rings, spokes and vertices.
+    /// Center of the fitted canvas, shared by rings, spokes, vertices.
     cx: String,
     cy: String,
+    /// Drawing sizes the script interpolates: label font and vertex dot.
+    font: String,
+    dot: String,
     /// Grid ink: the same mid-gray every chart draws scaffolding in.
     ink: String,
     /// Heat-band color — the polygon wears the row's badge color.
@@ -1742,6 +1745,18 @@ struct RadarDoc {
     rings: Vec<RadarRing>,
     spokes: Vec<RadarSpoke>,
     dots: Vec<RadarDot>,
+    /// Axis labels, one entry per rendered line: a long name wraps to
+    /// two lines on the diagram (the legend and alt text do not).
+    labels: Vec<RadarLabel>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct RadarLabel {
+    x: String,
+    y: String,
+    /// `start` / `middle` / `end`: text always runs away from center.
+    anchor: &'static str,
+    text: String,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -1763,12 +1778,21 @@ struct RadarDot {
     cy: String,
 }
 
-/// Design size in viewBox units, and how far a vertex may reach: the
-/// 10-unit margin keeps dots off the edge. The SVG carries intrinsic
-/// width/height so a bare embed renders square instead of falling back
-/// to the browser's 300×150 default — the fix the badges already use.
-const RADAR_SIZE: f64 = 120.0;
-const RADAR_R: f64 = 50.0;
+/// Radar geometry. The canvas is *not* fixed: it is fitted to the
+/// geometry plus the label extents, so a longer axis name widens the
+/// diagram instead of running off the edge. The fitted size becomes
+/// the SVG's intrinsic width/height, so a bare embed renders at the
+/// design size rather than the browser's 300×150 default.
+const RADAR_R: f64 = 42.0;
+/// Label size in viewBox units; `width` in radar.toml scales the whole
+/// diagram, so this is what a label costs when the config zooms.
+const RADAR_FONT: f64 = 10.0;
+const RADAR_LINE_H: f64 = 12.0;
+/// Breathing room between a vertex and its label, and padding around
+/// the fitted box.
+const RADAR_GAP: f64 = 6.0;
+const RADAR_PAD: f64 = 4.0;
+const RADAR_DOT: f64 = 2.5;
 
 /// Band name to the shared palette token: the shape wears the same
 /// color as the heat badge printed on the same row.
@@ -1781,7 +1805,45 @@ fn band_color(band: &str) -> String {
     }
 }
 
-/// One repo's radar geometry: config, graph and node in, vertices out.
+/// Label width at the radar's font: half an em per glyph — the same
+/// estimation `est_w` uses for the other charts, scaled to this size.
+fn label_w(s: &str) -> f64 {
+    s.chars().count() as f64 * RADAR_FONT * 0.5
+}
+
+/// Split an axis label for the drawing: one line when it fits the
+/// label budget, two at the space nearest the middle when it doesn't.
+/// Only the diagram wraps — the legend sentence and the alt text keep
+/// the full wording, so nothing a reader parses is abbreviated.
+fn label_lines(label: &str) -> Vec<String> {
+    const BUDGET: usize = 9;
+    if label.chars().count() <= BUDGET {
+        return vec![label.to_string()];
+    }
+    let words: Vec<&str> = label.split_whitespace().collect();
+    if words.len() < 2 {
+        return vec![label.to_string()];
+    }
+    // Split where the two lines come out most even.
+    let total = label.chars().count();
+    let mut best = 1;
+    let mut best_gap = usize::MAX;
+    for i in 1..words.len() {
+        let head: usize = words[..i].iter().map(|w| w.chars().count() + 1).sum();
+        let gap = (2 * head).abs_diff(total);
+        if gap < best_gap {
+            best_gap = gap;
+            best = i;
+        }
+    }
+    vec![words[..best].join(" "), words[best..].join(" ")]
+}
+
+/// One repo's radar geometry: config, graph and node in, a canvas
+/// fitted to geometry plus labels out. The work happens in a local
+/// frame (center at the origin, -90° up, clockwise); the fit finds the
+/// bounding box and translates everything onto the canvas — so a longer
+/// axis name widens the diagram instead of running off the edge.
 fn radar_doc(
     graph: &jzombie_graph::graph::Graph,
     node: &jzombie_graph::graph::Node,
@@ -1789,27 +1851,89 @@ fn radar_doc(
 ) -> RadarDoc {
     let pcts = plan.percentiles(graph, node);
     let n = plan.axes.len();
-    let cx = RADAR_SIZE / 2.0;
-    let cy = RADAR_SIZE / 2.0;
-    // Clockwise from top: -90° points up, one step per axis.
-    let at = |i: usize, r: f64| {
-        let a = (-90.0 + 360.0 * i as f64 / n as f64).to_radians();
-        (cx + r * a.cos(), cy + r * a.sin())
-    };
+    let dirs: Vec<(f64, f64)> = (0..n)
+        .map(|i| {
+            let a = (-90.0 + 360.0 * i as f64 / n as f64).to_radians();
+            (a.cos(), a.sin())
+        })
+        .collect();
     let reach = |p: f64| RADAR_R * p.clamp(0.0, 1.0);
+    let local = |i: usize, r: f64| (r * dirs[i].0, r * dirs[i].1);
+
+    // The drawing wraps long names; the legend and alt text do not, so
+    // nothing a reader parses as prose is ever abbreviated.
+    let wrapped: Vec<Vec<String>> = plan
+        .axes
+        .iter()
+        .map(|(label, _)| label_lines(label))
+        .collect();
+
+    // Fit: geometry first, then every label at its anchor. Labels are
+    // anchored away from the center, so none can cross the polygon.
+    let mut left = -RADAR_R - RADAR_DOT;
+    let mut right = RADAR_R + RADAR_DOT;
+    let mut top = -RADAR_R - RADAR_DOT;
+    let mut bottom = RADAR_R + RADAR_DOT;
+    // Per axis: label anchor x, first baseline, and text anchor.
+    let mut placed: Vec<(f64, f64, &'static str)> = Vec::with_capacity(n);
+    for (i, lines) in wrapped.iter().enumerate() {
+        let (dx, dy) = dirs[i];
+        let ax = (RADAR_R + RADAR_GAP) * dx;
+        let ay = (RADAR_R + RADAR_GAP) * dy;
+        let anchor = if dx > 0.1 {
+            "start"
+        } else if dx < -0.1 {
+            "end"
+        } else {
+            "middle"
+        };
+        let w = lines.iter().map(|l| label_w(l)).fold(0.0_f64, f64::max);
+        let (x0, x1) = match anchor {
+            "start" => (ax, ax + w),
+            "end" => (ax - w, ax),
+            _ => (ax - w / 2.0, ax + w / 2.0),
+        };
+        // Where the first line's baseline goes. The discriminator is
+        // the anchor, not the sign of dy: a side label sits at ±0.5 on
+        // that axis and must stay optically centered on its spoke,
+        // while only the true top/bottom labels stack above or below.
+        let extra = RADAR_LINE_H * (lines.len() - 1) as f64;
+        let b0 = if anchor == "middle" && dy < 0.0 {
+            ay - RADAR_FONT * 0.25 - extra
+        } else if anchor == "middle" {
+            ay + RADAR_FONT * 0.75
+        } else {
+            ay + RADAR_FONT * 0.35 - extra / 2.0
+        };
+        left = left.min(x0);
+        right = right.max(x1);
+        top = top.min(b0 - RADAR_FONT * 0.75);
+        bottom = bottom.max(b0 + RADAR_FONT * 0.25 + extra);
+        placed.push((ax, b0, anchor));
+    }
+    // Translate the local frame onto the canvas: padding off the left
+    // and top edges, and the center lands wherever the fit put it.
+    let ox = RADAR_PAD - left;
+    let oy = RADAR_PAD - top;
+    let vw = right - left + 2.0 * RADAR_PAD;
+    let vh = bottom - top + 2.0 * RADAR_PAD;
+
     let points = pcts
         .iter()
         .enumerate()
         .map(|(i, p)| {
-            let (x, y) = at(i, reach(*p));
-            format!("{},{}", f1(x), f1(y))
+            let (x, y) = local(i, reach(*p));
+            format!("{},{}", f1(x + ox), f1(y + oy))
         })
         .collect::<Vec<_>>()
         .join(" ");
     let spokes = (0..n)
         .map(|i| {
-            let (x, y) = at(i, RADAR_R);
-            RadarSpoke { x: f1(x), y: f1(y) }
+            let (x, y) = local(i, RADAR_R);
+            RadarSpoke {
+                x: f1(x + ox),
+                y: f1(y + oy),
+            }
         })
         .collect();
     // Quartile rings: the half ring doubles as the pool's median, so a
@@ -1825,24 +1949,39 @@ fn radar_doc(
         .iter()
         .enumerate()
         .map(|(i, p)| {
-            let (x, y) = at(i, reach(*p));
+            let (x, y) = local(i, reach(*p));
             RadarDot {
-                cx: f1(x),
-                cy: f1(y),
+                cx: f1(x + ox),
+                cy: f1(y + oy),
             }
         })
         .collect();
+    let mut labels = Vec::new();
+    for (i, lines) in wrapped.iter().enumerate() {
+        let (ax, b0, anchor) = placed[i];
+        for (j, text) in lines.iter().enumerate() {
+            labels.push(RadarLabel {
+                x: f1(ax + ox),
+                y: f1(b0 + RADAR_LINE_H * j as f64 + oy),
+                anchor,
+                text: text.clone(),
+            });
+        }
+    }
     let heat = node.commit_heat.or_else(|| node.commit_heat());
     RadarDoc {
         header: format!(
-            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{size}\" height=\"{size}\" viewBox=\"0 0 {size} {size}\" role=\"img\" font-family=\"{family}\"><title>{title}</title>",
-            size = f1(RADAR_SIZE),
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{w}\" height=\"{h}\" viewBox=\"0 0 {w} {h}\" role=\"img\" font-family=\"{family}\"><title>{title}</title>",
+            w = f1(vw),
+            h = f1(vh),
             family = palette::family(),
             title = radar_readout(plan, &pcts),
         ),
         footer: "</svg>".to_string(),
-        cx: f1(cx),
-        cy: f1(cy),
+        cx: f1(ox),
+        cy: f1(oy),
+        font: f1(RADAR_FONT),
+        dot: f1(RADAR_DOT),
         ink: palette::ink(),
         color: band_color(heat_band(heat)),
         pulse: palette::heat_pulse(heat).to_string(),
@@ -1850,6 +1989,7 @@ fn radar_doc(
         rings,
         spokes,
         dots,
+        labels,
     }
 }
 
@@ -1895,12 +2035,16 @@ pub fn render_radar_svg(graph_json: &str, repo_id: &str) -> anyhow::Result<Strin
         }
         APPEND out.svg "<polygon points=\"{{ $doc.points }}\" fill=\"{{ $doc.color }}\" fill-opacity=\"0.32\" stroke=\"{{ $doc.color }}\" stroke-width=\"2\" stroke-linejoin=\"round\" class=\"{{ $doc.pulse }}\"/>"
         FOR $dot: MAP<ANY> IN $doc.dots {
-            APPEND out.svg "<circle cx=\"{{ $dot.cx }}\" cy=\"{{ $dot.cy }}\" r=\"2.5\" fill=\"{{ $doc.color }}\"/>"
+            APPEND out.svg "<circle cx=\"{{ $dot.cx }}\" cy=\"{{ $dot.cy }}\" r=\"{{ $doc.dot }}\" fill=\"{{ $doc.color }}\"/>"
+        }
+        FOR $label: MAP<ANY> IN $doc.labels {
+            APPEND out.svg "<text x=\"{{ $label.x }}\" y=\"{{ $label.y }}\" text-anchor=\"{{ $label.anchor }}\" font-size=\"{{ $doc.font }}\" fill=\"{{ $doc.ink }}\">{{ $label.text }}</text>"
         }
         APPEND out.svg $doc.footer
         LET $check: STRING = READ out.svg
         ASSERT_CONTAINS $check "</svg>"
         ASSERT_CONTAINS $check "<polygon"
+        ASSERT_CONTAINS $check "<text"
     };
     let temp = oxdock::GuardedPath::tempdir().expect("tempdir");
     let root = temp.as_guarded_path().clone();
@@ -3929,9 +4073,11 @@ mod tests {
     }
 
     /// Mean vertex radius of a rendered doc — how far out the shape
-    /// sits, which is what a percentile decides.
+    /// sits, which is what a percentile decides. The canvas is fitted,
+    /// so the center comes from the doc rather than a constant.
     fn mean_radius(doc: &RadarDoc) -> f64 {
-        let (cx, cy) = (RADAR_SIZE / 2.0, RADAR_SIZE / 2.0);
+        let cx: f64 = doc.cx.parse().expect("cx");
+        let cy: f64 = doc.cy.parse().expect("cy");
         let radii: Vec<f64> = doc
             .points
             .split(' ')

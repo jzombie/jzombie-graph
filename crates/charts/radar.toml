@@ -6,10 +6,12 @@
 # RADAR_METRICS, charts/src/lib.rs); a brand-new primitive metric is
 # one line in that registry.
 
-# Pixels the floated image asks GitHub for. The SVG is vector, so this
-# is presentation only — the fact lines flow around whatever height it
-# ends up being.
-width = 120
+# Pixels the floated image asks GitHub for. The SVG fits its own
+# canvas to the labels, so this doubles as the zoom: leave it near the
+# design width (≈166 for the labels below) and labels draw at ~10px;
+# lower it and they shrink with everything else. It is also the mobile
+# cost — every pixel here is a pixel the fact lines lose on a phone.
+width = 160
 
 # Peer group: every vertex is this repo's percentile among the pool
 # that survives these filters, so the shapes are only comparable to
@@ -36,7 +38,8 @@ exclude_profile = true
 # the legend sentence reads in the same order the vertices turn.
 # `metric` must name a RADAR_METRICS key (a typo is a render error
 # that lists the available keys, never a blank spoke); `label` is the
-# legend and alt-text wording.
+# legend, alt-text and diagram wording — the diagram wraps a long name
+# onto two lines rather than shrinking it.
 [[axes]]
 metric = "commits_30d"
 label = "Commits 30d"

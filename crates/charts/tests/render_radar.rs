@@ -145,8 +145,28 @@ fn radar_family_covers_exactly_the_fragment_rows() {
     }
 }
 
+/// Axis labels out of the shipped config — the test follows the
+/// config rather than pinning wording, because labels are meant to be
+/// edited.
+fn configured_labels() -> Vec<String> {
+    #[derive(serde::Deserialize)]
+    struct Cfg {
+        axes: Vec<Axis>,
+    }
+    #[derive(serde::Deserialize)]
+    struct Axis {
+        label: String,
+    }
+    toml::from_str::<Cfg>(include_str!("../radar.toml"))
+        .expect("radar.toml parses")
+        .axes
+        .into_iter()
+        .map(|a| a.label)
+        .collect()
+}
+
 #[test]
-fn radar_draws_one_vertex_per_configured_axis_inside_the_design_square() {
+fn radar_draws_one_vertex_per_configured_axis_inside_the_fitted_canvas() {
     let g = graph_json();
     let axes = axis_count();
     assert!(axes >= 3, "config sanity: {axes} axes declared");
@@ -161,17 +181,46 @@ fn radar_draws_one_vertex_per_configured_axis_inside_the_design_square() {
         .expect("points value");
     assert_eq!(points.split(' ').count(), axes, "one vertex per axis");
     assert_eq!(svg.matches("r=\"2.5\"").count(), axes, "one dot per vertex");
+
+    // The canvas is fitted to geometry plus labels rather than being a
+    // fixed box, so read the viewBox and check against that.
+    let vb: Vec<f64> = svg
+        .split("viewBox=\"")
+        .nth(1)
+        .expect("viewBox")
+        .split('"')
+        .next()
+        .expect("viewBox value")
+        .split_whitespace()
+        .map(|s| s.parse().expect("number"))
+        .collect();
+    let (vx, vy, vw, vh) = (vb[0], vb[1], vb[2], vb[3]);
+    assert!(vw > 0.0 && vh > 0.0, "canvas has area");
     for pair in points.split(' ') {
         let (x, y) = pair.split_once(',').expect("x,y pair");
         let (x, y): (f64, f64) = (x.parse().expect("x"), y.parse().expect("y"));
         assert!(
-            (0.0..=120.0).contains(&x) && (0.0..=120.0).contains(&y),
-            "vertex inside the viewBox: {pair}"
+            (vx..=vx + vw).contains(&x) && (vy..=vy + vh).contains(&y),
+            "vertex inside the fitted canvas: {pair}"
         );
     }
-    // Intrinsic sizing: a bare embed renders square, never the
-    // browser's 300×150 default — the fix the badges already carry.
-    assert!(svg.contains("width=\"120.0\" height=\"120.0\""), "{svg}");
+    // Intrinsic sizing equals the fitted canvas, so a bare embed
+    // renders at the design size instead of the 300×150 default.
+    assert!(
+        svg.contains(&format!("width=\"{vw:.1}\" height=\"{vh:.1}\"")),
+        "intrinsic size matches the viewBox:\n{svg}"
+    );
+
+    // Every configured axis is labeled on the diagram itself — matched
+    // word by word, because a long name wraps onto two lines.
+    for label in configured_labels() {
+        for word in label.split_whitespace() {
+            assert!(
+                svg.contains(&format!(">{word}</text>")),
+                "diagram draws {word:?} from label {label:?}"
+            );
+        }
+    }
     insta::assert_snapshot!("radar_svg", svg);
 }
 
