@@ -349,13 +349,17 @@ fn selected_fragment_ranks_by_score_not_stars() {
     );
     assert!(md.contains("+2 more"), "topics cap at four");
     // The whole head line is bold — name and description read as one
-    // title — and every row ends with a forced break for breathing
-    // room between bullets.
+    // title — and every row ends with a clearing break that contains
+    // its floated radar (a short row would otherwise spill its float
+    // into the next bullet and jog that radar left).
     assert!(
         md.contains("**[r0](https://github.com/me/r0): "),
         "head line opens bold"
     );
-    assert!(md.contains("</sub><br>\n"), "row ends with a blank line");
+    assert!(
+        md.contains("</sub><br clear=\"both\">\n"),
+        "row ends with a clearing break"
+    );
     // `r2` carries neither: no topic line, no homepage in its proof.
     let r2_item = &md[pos("me/r2")..pos("me/r1")];
     assert!(!r2_item.contains("topic%3A"), "no topics, no topic line");

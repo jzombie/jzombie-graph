@@ -1440,10 +1440,15 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
         }
 
         // Join with literal `<br>`: markdown needs a hard break inside a
-        // list item, and GitHub keeps raw HTML tags. One more `<br>` at
-        // the end of every row for breathing room between bullets.
+        // list item, and GitHub keeps raw HTML tags. The row closes with
+        // `<br clear="both">`: the radar floats right at ~165px tall, so
+        // a short row would otherwise spill its float into the next
+        // bullet and shove that row's radar left (exactly the jog in
+        // the screenshot). The clearing break forces each `<li>` to
+        // contain its own float — GitHub's sanitizer keeps the `clear`
+        // attribute — plus breathing room between bullets.
         items.push_str(&lines.join("<br>"));
-        items.push_str("<br>");
+        items.push_str("<br clear=\"both\">");
         items.push('\n');
     }
     // The legend reads in dial order — the same order the vertices turn
