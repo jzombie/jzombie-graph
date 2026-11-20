@@ -357,8 +357,17 @@ fn selected_fragment_ranks_by_score_not_stars() {
         "head line opens bold"
     );
     assert!(
-        md.contains("</sub><br clear=\"both\">\n"),
+        md.contains("</sub><br clear=\"both\">"),
         "row ends with a clearing break"
+    );
+    // Horizontal rules separate rows — one per gap, none dangling after
+    // the last row. The rule lives inside the bullet (a column-0 `---`
+    // would split the `<ul>` in two).
+    let n_rows = md.matches("- **[").count();
+    assert_eq!(
+        md.matches("<hr>").count(),
+        n_rows - 1,
+        "a rule between every row"
     );
     // `r2` carries neither: no topic line, no homepage in its proof.
     let r2_item = &md[pos("me/r2")..pos("me/r1")];

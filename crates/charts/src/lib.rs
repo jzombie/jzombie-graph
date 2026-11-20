@@ -1296,7 +1296,7 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
     let plan = RadarPlan::load()?;
     let bust = bust_token(graph_json)?;
     let mut items = String::new();
-    for row in &rows {
+    for (row_idx, row) in rows.iter().enumerate() {
         let link = format!("[{}]({})", row.name, row.url);
         let head = if row.desc.is_empty() {
             format!("**{link}**")
@@ -1443,12 +1443,17 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
         // list item, and GitHub keeps raw HTML tags. The row closes with
         // `<br clear="both">`: the radar floats right at ~165px tall, so
         // a short row would otherwise spill its float into the next
-        // bullet and shove that row's radar left (exactly the jog in
-        // the screenshot). The clearing break forces each `<li>` to
-        // contain its own float — GitHub's sanitizer keeps the `clear`
-        // attribute — plus breathing room between bullets.
+        // bullet and shove that row's radar left. The clearing break
+        // forces each `<li>` to contain its own float — GitHub's
+        // sanitizer keeps the `clear` attribute. A `<hr>` inside the
+        // bullet separates rows (a rule at column 0 would split the
+        // `<ul>` in two, verified against the API); the last row skips
+        // it so no rule dangles before the next section.
         items.push_str(&lines.join("<br>"));
         items.push_str("<br clear=\"both\">");
+        if row_idx + 1 < rows.len() {
+            items.push_str("<hr>");
+        }
         items.push('\n');
     }
     // The legend reads in dial order — the same order the vertices turn
