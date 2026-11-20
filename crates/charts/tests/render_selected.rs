@@ -272,8 +272,8 @@ fn selected_fragment_ranks_by_score_not_stars() {
         "badge rides the shared indicator family"
     );
     assert!(
-        md.contains("width=\"24\" align=\"middle\""),
-        "badge sized and centered:\n{md}"
+        md.contains("width=\"24\" align=\"absmiddle\""),
+        "badge sized and truly centered (`middle` measures 4px low):\n{md}"
     );
     // Classification line: positional tags, identity, tree audit.
     assert!(
@@ -344,6 +344,9 @@ fn selected_fragment_ranks_by_score_not_stars() {
     let r2_item = &md[pos("me/r2")..pos("me/r1")];
     assert!(!r2_item.contains("topic%3A"), "no topics, no topic line");
     assert!(!r2_item.contains("crates.io"), "no homepage, no host");
+    // Every row ends with a forced break: seven-line rows otherwise
+    // run together under GitHub's quarter-em list spacing.
+    assert!(md.contains("</sub><br>\n"), "row ends with a blank line");
     insta::assert_snapshot!("selected_frag", md);
 }
 

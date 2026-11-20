@@ -1402,16 +1402,18 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
         // The proof line: gauge, volume, pull, backlog in one group,
         // then structure and the site in the next — the full URL, never
         // a truncated host. The badge file carries its own 44px design
-        // size; inline here it asks for 24 and centers on the text with
-        // the legacy `align` attribute, which is the only vertical
-        // alignment GitHub's sanitizer keeps (`style` is stripped).
+        // size; inline here it asks for 24. Vertical centering uses the
+        // legacy `absmiddle`, because GitHub strips `style` — and
+        // `middle` is not a synonym: browsers map it to middle-on-
+        // baseline, which measures ~4px low against the text, while
+        // `absmiddle` is true centering (measured within 0.5px).
         let commits = if row.commits_30d == 1 {
             "1 commit in 30d".to_string()
         } else {
             format!("{} commits in 30d", row.commits_30d)
         };
         let mut proof = format!(
-            "<img src=\"{badge}\" width=\"24\" align=\"middle\" alt=\"\"> {band} \u{b7} {commits} \u{b7} \u{2605}{stars} \u{b7} \u{2442}{forks} \u{b7} {open} open issues | used by {fan_in} \u{b7} uses {fan_out}",
+            "<img src=\"{badge}\" width=\"24\" align=\"absmiddle\" alt=\"\"> {band} \u{b7} {commits} \u{b7} \u{2605}{stars} \u{b7} \u{2442}{forks} \u{b7} {open} open issues | used by {fan_in} \u{b7} uses {fan_out}",
             badge = jzombie_graph::paths::indicator_url(row.band),
             band = row.band,
             commits = commits,
@@ -1471,8 +1473,12 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
         }
 
         // Join with literal `<br>`: markdown needs a hard break inside a
-        // list item, and GitHub keeps raw HTML tags.
+        // list item, and GitHub keeps raw HTML tags. One more `<br>` at
+        // the end of every row: rows are seven lines tall, GitHub's
+        // list spacing is a quarter em, and without the forced break
+        // they run together.
         items.push_str(&lines.join("<br>"));
+        items.push_str("<br>");
         items.push('\n');
     }
     // The legend reads in dial order — the same order the vertices turn
