@@ -1040,10 +1040,7 @@ pub fn render_flame_svg(graph_json: &str) -> anyhow::Result<String> {
 const SELECTED_TOPN: usize = 9;
 
 /// One list row: everything the fragment prints, shaped in Rust so the
-/// renderer below carries no graph access. Every displayable fact the
-/// JSON carries for a repo rides along — this is the "show me everything"
-/// pass, so the list is deliberately dense; prune in the renderer, never
-/// at collection.
+/// renderer below carries no graph access.
 #[derive(Debug, Clone, PartialEq)]
 struct SelectedRow {
     /// Canonical `owner/repo` id — the radar file stem derives from it,
@@ -1093,21 +1090,20 @@ struct SelectedRow {
     issue_comments_30d: u32,
     issue_heat: Option<f32>,
     labels: Vec<(String, u32)>,
-    /// Recent PRs: captured total, counts per state, a title sample.
+    /// Recent PRs: captured total, counts per state. Titles are never
+    /// rendered — this is a dashboard, not a `git log`.
     prs_total: usize,
     prs_states: Vec<(String, usize)>,
-    prs_sample: Vec<String>,
-    /// Sampled planning threads: captured total, state counts, and a
-    /// rendered `#n "title" (state, N comments)` sample.
+    /// Sampled planning threads: captured total and state counts.
+    /// Titles are never rendered.
     issues_total: usize,
     issues_states: Vec<(String, usize)>,
-    issues_sample: Vec<String>,
 }
 
-/// Titles kept per thread list before the `+N more` rollup, and how
-/// long each may run — a roadmap line, not a changelog.
-const THREAD_SAMPLE: usize = 3;
-const TITLE_MAX: usize = 60;
+/// Titles are gone: the review correctly called PR/issue titles signal
+/// destruction (a Dependabot bump teaches nothing at portfolio scale).
+/// Counts only.
+const SELECTED_TAG_MAX: usize = 4;
 
 /// Repo size as the API reports it (KB) in the units a reader expects.
 fn size_label(size_kb: u32) -> String {
@@ -1220,15 +1216,6 @@ fn selected_rows(graph: &jzombie_graph::graph::Graph) -> Vec<SelectedRow> {
                     .filter(|p| p.state.eq_ignore_ascii_case(s))
                     .count()
             });
-            let prs_sample = nd
-                .recent_prs
-                .iter()
-                .take(THREAD_SAMPLE)
-                // Quotes live with the title: the issue sample carries
-                // its own `#n "…" (…)` wrapper, and `thread_line` joins
-                // samples verbatim so nothing nests.
-                .map(|p| format!("\"{}\"", cell_text(&p.title, TITLE_MAX)))
-                .collect();
             let issues_total = nd.recent_issues.len();
             let issues_states = counts(&["open", "closed"], &|s| {
                 nd.recent_issues
@@ -1236,28 +1223,6 @@ fn selected_rows(graph: &jzombie_graph::graph::Graph) -> Vec<SelectedRow> {
                     .filter(|i| i.state.eq_ignore_ascii_case(s))
                     .count()
             });
-            let issues_sample = nd
-                .recent_issues
-                .iter()
-                .take(THREAD_SAMPLE)
-                .map(|i| {
-                    let mut meta = format!(
-                        "{} \u{b7} {} comment{}",
-                        i.state.to_lowercase(),
-                        i.comments,
-                        if i.comments == 1 { "" } else { "s" }
-                    );
-                    if !i.labels.is_empty() {
-                        meta.push_str(&format!(" \u{b7} {}", i.labels.join(", ")));
-                    }
-                    format!(
-                        "#{} \"{}\" ({})",
-                        i.number,
-                        cell_text(&i.title, TITLE_MAX),
-                        meta
-                    )
-                })
-                .collect();
             let fork_note = if nd.fork {
                 Some(match (nd.upstream.as_deref(), nd.ahead_by) {
                     (Some(up), Some(ahead)) if ahead > 0 => {
@@ -1305,10 +1270,8 @@ fn selected_rows(graph: &jzombie_graph::graph::Graph) -> Vec<SelectedRow> {
                 labels,
                 prs_total,
                 prs_states,
-                prs_sample,
                 issues_total,
                 issues_states,
-                issues_sample,
             }
         })
         .collect()
@@ -1316,11 +1279,15 @@ fn selected_rows(graph: &jzombie_graph::graph::Graph) -> Vec<SelectedRow> {
 
 /// Render the selected-work fragment: heading, the sentence that states
 /// what the order measures, the legend for the shape radars, then one
-/// bullet per row — a floated radar, description, topics,
-/// classification, proof, thread traffic. The markdown itself carries
-/// no cache-bust token (text re-renders with the commit); the radar
-/// images do, because they are proxied and cached like every other
-/// image on the page.
+/// markdown table — Repo (text) | Shape (radar). The table is the strict
+/// two-column grid: GitHub strips `style`/`class`, so flex-grid is not
+/// available, and a floated `align="right"` image lets seven lines of
+/// prose wrap around the SVG and destroys vertical scanning. A table
+/// column cannot wrap; the radar sits in its own cell.
+/// The markdown itself carries no cache-bust token (text re-renders with
+/// the commit); the radar images do, because they are proxied and cached
+/// like every other image on the page. No `|` inside cells — a raw pipe
+/// would split the table — so groups join with `·` and lines with `<br>`.
 pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
     let graph = jzombie_graph::graph::Graph::from_json(graph_json)?;
     let rows = selected_rows(&graph);
@@ -1329,39 +1296,37 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
     }
     let plan = RadarPlan::load()?;
     let bust = bust_token(graph_json)?;
-    let mut items = String::new();
+    let mut body = String::new();
     for row in &rows {
         let link = format!("[{}]({})", row.name, row.url);
         let head = if row.desc.is_empty() {
             format!("**{link}**")
         } else {
             // Descriptions are single-line on GitHub; flatten anyway so
-            // one stray newline cannot break the list.
+            // one stray newline cannot break the table row.
             let desc = row.desc.split_whitespace().collect::<Vec<_>>().join(" ");
             format!("**{link}**: {desc}")
         };
-        // One fact group per `<sub>` line: pruning is deleting a line,
-        // never rewording a sentence. The radar rides on the head line
-        // (no `<br>` before it — two breaks in a row would print a
-        // blank line) so every fact line flows around the float.
         let radar = radar_img(&plan, &graph, row, &bust)?;
-        let mut lines: Vec<String> = vec![format!("- {head} {radar}")];
-
+        // Topics capped: the first N links carry the architecture, the
+        // rest collapse to a `+N more` count instead of nine search links
+        // that bury the metrics.
+        let mut left: Vec<String> = vec![head];
         if !row.topics.is_empty() {
-            let tags: Vec<String> = row
+            let mut tags: Vec<String> = row
                 .topics
                 .iter()
+                .take(SELECTED_TAG_MAX)
                 .map(|t| topic_link(&row.owner, t))
                 .collect();
-            lines.push(format!("<sub>{}</sub>", tags.join(" ")));
+            if row.topics.len() > SELECTED_TAG_MAX {
+                tags.push(format!("+{} more", row.topics.len() - SELECTED_TAG_MAX));
+            }
+            left.push(format!("<sub>{}</sub>", tags.join(" ")));
         }
 
-        // Two groups on one line, split by a pipe: what the repo *is*
-        // (position, identity, tree audit) and how it *stands* (state).
-        // Within a group the middle dot separates facts; a label that
-        // needs one wears `label: value` so the colon rhythm matches
-        // the other lines. The layer value wears backticks because it
-        // carries its own middle dots.
+        // One classification line: what the repo *is* and how it *stands*,
+        // joined with dots only (no pipes — this lives in a table cell).
         let mut identity: Vec<String> = vec![format!("layer: `{}`", row.layer)];
         if let Some(lang) = &row.language {
             identity.push(lang.clone());
@@ -1375,35 +1340,26 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
         if !row.surfaces.is_empty() {
             identity.push(format!("docs: {}", row.surfaces.join(", ")));
         }
-        let mut state: Vec<String> = vec![];
         if let Some(f) = row.focus {
-            state.push(format!("focus: {f:+.2}"));
+            identity.push(format!("focus: {f:+.2}"));
         }
         if let Some(d) = &row.last_commit {
-            state.push(format!("last commit: {d}"));
+            identity.push(format!("last commit: {d}"));
         }
-        state.push(if row.branches == 1 {
+        identity.push(if row.branches == 1 {
             "branch: 1".to_string()
         } else {
             format!("branches: {}", row.branches)
         });
         if row.size_kb > 0 {
-            state.push(format!("size: {}", size_label(row.size_kb)));
+            identity.push(format!("size: {}", size_label(row.size_kb)));
         }
-        let mut groups: Vec<String> = vec![];
-        if !identity.is_empty() {
-            groups.push(identity.join(" \u{b7} "));
-        }
-        if !state.is_empty() {
-            groups.push(state.join(" \u{b7} "));
-        }
-        lines.push(format!("<sub>{}</sub>", groups.join(" | ")));
+        left.push(format!("<sub>{}</sub>", identity.join(" \u{b7} ")));
 
-        // The proof line: gauge, volume, pull, backlog in one group,
-        // then structure and the site in the next — the full URL, never
-        // a truncated host. The badge file carries its own 44px design
-        // size; inline here it asks for 24. Vertical centering uses the
-        // legacy `absmiddle`, because GitHub strips `style` — and
+        // The proof line: gauge, volume, pull, backlog, reuse, site — the
+        // full URL, never a truncated host. The badge file carries its own
+        // 44px design size; inline here it asks for 24. Vertical centering
+        // uses the legacy `absmiddle`, because GitHub strips `style` — and
         // `middle` is not a synonym: browsers map it to middle-on-
         // baseline, which measures ~4px low against the text, while
         // `absmiddle` is true centering (measured within 0.5px).
@@ -1413,7 +1369,7 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
             format!("{} commits in 30d", row.commits_30d)
         };
         let mut proof = format!(
-            "<img src=\"{badge}\" width=\"24\" align=\"absmiddle\" alt=\"\"> {band} \u{b7} {commits} \u{b7} \u{2605}{stars} \u{b7} \u{2442}{forks} \u{b7} {open} open issues | used by {fan_in} \u{b7} uses {fan_out}",
+            "<img src=\"{badge}\" width=\"24\" align=\"absmiddle\" alt=\"\"> {band} \u{b7} {commits} \u{b7} \u{2605}{stars} \u{b7} \u{2442}{forks} \u{b7} {open} open issues \u{b7} used by {fan_in} \u{b7} uses {fan_out}",
             badge = jzombie_graph::paths::indicator_url(row.band),
             band = row.band,
             commits = commits,
@@ -1426,60 +1382,51 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
         if let Some(home) = &row.homepage {
             proof.push_str(&format!(" \u{b7} [{home}]({home})"));
         }
-        lines.push(format!("<sub>{proof}</sub>"));
+        left.push(format!("<sub>{proof}</sub>"));
 
-        // Thread traffic in two groups: what moved in the window (with
-        // the gauge), then how the sampled threads are labelled.
-        let mut window = vec![format!(
-            "issues 30d: {} opened \u{b7} {} closed \u{b7} {} comments",
-            row.issues_open_30d, row.issues_closed_30d, row.issue_comments_30d
-        )];
-        if let Some(h) = row.issue_heat {
-            window.push(format!("issue heat: {h:.2}"));
-        }
-        let mut groups = vec![window.join(" \u{b7} ")];
-        if !row.labels.is_empty() {
-            let census: Vec<String> = row
-                .labels
-                .iter()
-                .map(|(l, c)| format!("{l}\u{d7}{c}"))
-                .collect();
-            groups.push(format!("label census: {}", census.join(", ")));
-        }
-        lines.push(format!("<sub>{}</sub>", groups.join(" | ")));
-
-        // The threads themselves: counts by state, then a short sample.
-        if row.prs_total > 0 {
-            lines.push(format!(
-                "<sub>{}</sub>",
-                thread_line(
+        // One consolidated thread line: window counts, gauge, census,
+        // then lifetime totals — counts only, never titles. The old
+        // layout printed the 30d window and the lifetime states as two
+        // near-identical lines plus literal PR/issue titles; this is the
+        // single unified metric.
+        if row.prs_total > 0
+            || row.issues_total > 0
+            || row.issues_open_30d > 0
+            || row.issues_closed_30d > 0
+        {
+            let mut threads: Vec<String> = vec![];
+            if row.prs_total > 0 {
+                threads.push(thread_counts(
                     &format!("PRs ({})", row.prs_total),
                     &row.prs_states,
-                    &row.prs_sample,
-                    row.prs_total,
-                )
-            ));
-        }
-        if row.issues_total > 0 {
-            lines.push(format!(
-                "<sub>{}</sub>",
-                thread_line(
+                ));
+            }
+            if row.issues_total > 0 {
+                threads.push(thread_counts(
                     &format!("issues ({})", row.issues_total),
                     &row.issues_states,
-                    &row.issues_sample,
-                    row.issues_total,
-                )
-            ));
+                ));
+            }
+            let mut window = vec![format!(
+                "issues 30d: {} opened \u{b7} {} closed \u{b7} {} comments",
+                row.issues_open_30d, row.issues_closed_30d, row.issue_comments_30d
+            )];
+            if let Some(h) = row.issue_heat {
+                window.push(format!("issue heat: {h:.2}"));
+            }
+            threads.push(window.join(" \u{b7} "));
+            if !row.labels.is_empty() {
+                let census: Vec<String> = row
+                    .labels
+                    .iter()
+                    .map(|(l, c)| format!("{l}\u{d7}{c}"))
+                    .collect();
+                threads.push(format!("label census: {}", census.join(", ")));
+            }
+            left.push(format!("<sub>{}</sub>", threads.join(" \u{b7} ")));
         }
 
-        // Join with literal `<br>`: markdown needs a hard break inside a
-        // list item, and GitHub keeps raw HTML tags. One more `<br>` at
-        // the end of every row: rows are seven lines tall, GitHub's
-        // list spacing is a quarter em, and without the forced break
-        // they run together.
-        items.push_str(&lines.join("<br>"));
-        items.push_str("<br>");
-        items.push('\n');
+        body.push_str(&format!("| {} | {} |\n", left.join("<br>"), radar));
     }
     // The legend reads in dial order — the same order the vertices turn
     // — so a reader can name a spoke without counting from the top.
@@ -1497,29 +1444,22 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
 
         Each row carries a shape radar: axes clockwise from top ({axis_legend}), and each vertex is that repo’s percentile among {pool_label}.
 
-        {items}"#})
+        | Repo | Shape |
+        | --- | --- |
+        {body}"#})
 }
 
-/// `label: 17 merged · 1 open · 2 closed | title · title · +17`,
-/// shared by the PR and issue lines so both read the same way: the
-/// pipe says "here come the samples". Samples arrive already rendered
-/// — the issue sample carries its own wrapper, so nothing nests.
-fn thread_line(label: &str, states: &[(String, usize)], sample: &[String], total: usize) -> String {
+/// `label: 17 merged · 1 open · 2 closed` — counts only. Titles were cut:
+/// a Dependabot bump teaches nothing at portfolio scale, and the samples
+/// doubled the row height while burying heat, reuse, and layer.
+fn thread_counts(label: &str, states: &[(String, usize)]) -> String {
     let counts: Vec<String> = states.iter().map(|(s, c)| format!("{c} {s}")).collect();
-    let mut out = format!("{label}: {}", counts.join(" \u{b7} "));
-    if !sample.is_empty() {
-        let mut titles: Vec<String> = sample.to_vec();
-        if total > sample.len() {
-            titles.push(format!("+{}", total - sample.len()));
-        }
-        out.push_str(&format!(" | {}", titles.join(" \u{b7} ")));
-    }
-    out
+    format!("{label}: {}", counts.join(" \u{b7} "))
 }
 
 // --- Shape radar -------------------------------------------------------
 //
-// One hexagon per selected repo, floated right in its list row. Same
+// One hexagon per selected repo, in its own table cell. Same
 // split as every chart here: Rust owns percentiles and geometry, the
 // embedded script owns markup emission only.
 
@@ -1528,7 +1468,7 @@ fn thread_line(label: &str, states: &[(String, usize)], sample: &[String], total
 /// should surface as a render error, never as a stale cached shape.
 #[derive(Debug, Clone, serde::Deserialize)]
 struct RadarConfig {
-    /// Floated image width in pixels (the GitHub `width` attribute).
+    /// Cell image width in pixels (the GitHub `width` attribute).
     width: u32,
     pool: RadarPool,
     axes: Vec<RadarAxisCfg>,
@@ -2087,13 +2027,12 @@ pub fn render_radars(graph_json: &str) -> anyhow::Result<Vec<(String, String)>> 
         .collect()
 }
 
-/// The floated radar on a row's head line: sized by config, aligned
-/// with the legacy `align` attribute (the only alignment GitHub's
-/// sanitizer keeps — `style` is stripped), sweep-stamped like every
-/// other image, and anchored to its own repo — a bare `<img>` gets
-/// auto-linked to the raw SVG bytes instead, which is a click nobody
-/// wants. The alt text spells the percentiles out, so a screen reader
-/// gets the same facts the vertices show.
+/// The radar in its own table cell: sized by config, no float (the
+/// table column is the grid — text can never wrap around the image),
+/// sweep-stamped like every other image, and anchored to its own repo —
+/// a bare `<img>` gets auto-linked to the raw SVG bytes instead, which
+/// is a click nobody wants. The alt text spells the percentiles out, so
+/// a screen reader gets the same facts the vertices show.
 fn radar_img(
     plan: &RadarPlan,
     graph: &jzombie_graph::graph::Graph,
@@ -2107,7 +2046,7 @@ fn radar_img(
         .ok_or_else(|| anyhow::anyhow!("selected row {} missing from the graph", row.id))?;
     let pcts = plan.percentiles(graph, node);
     Ok(format!(
-        "<a href=\"{url}\"><img src=\"{src}\" width=\"{width}\" align=\"right\" alt=\"{alt}\"></a>",
+        "<a href=\"{url}\"><img src=\"{src}\" width=\"{width}\" alt=\"{alt}\"></a>",
         url = row.url,
         src = jzombie_graph::paths::radar_url(&jzombie_graph::paths::radar_stem(&row.id), bust),
         width = plan.cfg.width,

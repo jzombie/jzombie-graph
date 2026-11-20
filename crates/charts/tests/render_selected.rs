@@ -145,10 +145,18 @@ fn eleven() -> Vec<Node> {
             5,
         ));
     }
-    // Identity data rides the graph too: `r0` carries topics plus a
-    // homepage, `r1` topics only, `r2` neither — so every branch of the
-    // render (topic line, line dropped) is covered.
-    nodes[0].topics = vec!["core".into(), "zero-copy".into()];
+    // Identity data rides the graph too: `r0` carries six topics plus a
+    // homepage, `r1` topics only, `r2` neither — so the cap branch (first
+    // four links plus a `+N more` count), the link branch, and the
+    // dropped-line branch are all covered.
+    nodes[0].topics = vec![
+        "core".into(),
+        "zero-copy".into(),
+        "storage".into(),
+        "engine".into(),
+        "mmap".into(),
+        "simd".into(),
+    ];
     nodes[0].homepage = Some("https://crates.io/crates/r0".into());
     nodes[1].topics = vec!["popular".into()];
     // `r0` gets the full fact set so every line the renderer can emit
@@ -260,8 +268,12 @@ fn selected_fragment_ranks_by_score_not_stars() {
     // Top-9 cut: the tail never renders.
     assert!(!md.contains("me/r9"), "cut tail");
     assert!(!md.contains("me/r10"), "cut tail");
-    // Dependents ride as text, zeros included — this is the "show me
-    // everything" pass, so nothing is suppressed for looking empty.
+    // Strict two-column grid: one markdown table, radar in its own
+    // cell — no float, so text can never wrap around the image.
+    assert!(md.contains("| Repo | Shape |"), "table headers");
+    assert!(!md.contains("align=\"right\""), "no floated radar");
+    // Dependents ride as text, zeros included — nothing is suppressed
+    // for looking empty.
     assert!(md.contains("used by 3"), "fan-in spelled out");
     assert!(md.contains("used by 0"), "zeros still print");
     assert!(md.contains("uses 1"), "fan-out spelled out");
@@ -284,12 +296,6 @@ fn selected_fragment_ranks_by_score_not_stars() {
     assert!(md.contains("last commit: 2026-11-15"), "recency date");
     assert!(md.contains("branches: 2"), "branch count");
     assert!(md.contains("size: 6.2 MB"), "size in reader units");
-    // The classification line groups as `identity | state`: the tree
-    // audit closes one group, the repo's state opens the next.
-    assert!(
-        md.contains("docs: readme, license, agents.md | focus: -99.00"),
-        "classification line groups"
-    );
     assert!(
         md.contains("docs: readme, license, agents.md"),
         "tree audit"
@@ -298,55 +304,62 @@ fn selected_fragment_ranks_by_score_not_stars() {
         md.contains("fork of other/Quiet (+12 own commits)"),
         "diverged fork says so"
     );
-    // Proof line: backlog and pull in one group, structure and the
-    // homepage in the next — the full URL, never a truncated host.
+    // Proof line: backlog, structure and the homepage — the full URL,
+    // never a truncated host. No pipes: a raw `|` would split the table.
     assert!(
-        md.contains("69 open issues | used by 3"),
-        "backlog closes its group"
+        md.contains("69 open issues · used by 3"),
+        "backlog joins with dots, not pipes"
     );
     assert!(
         md.contains("[https://crates.io/crates/r0](https://crates.io/crates/r0)"),
         "homepage printed in full, linked"
     );
-    // Thread traffic: window counts and gauge, then the census in its
-    // own group, then the threads themselves as counts plus samples.
+    // Thread traffic: one consolidated counts-only line. Titles were cut
+    // (signal destruction at portfolio scale); the 30d window and the
+    // lifetime states share a single metric.
     assert!(
         md.contains("issues 30d: 6 opened · 5 closed · 9 comments"),
         "issue window"
     );
     assert!(
-        md.contains("issue heat: 1.40 | label census: enhancement×5, bug×4"),
-        "gauge then census, grouped"
+        md.contains("issue heat: 1.40 · label census: enhancement×5, bug×4"),
+        "gauge then census"
     );
     assert!(
-        md.contains(
-            "PRs (3): 1 merged · 1 open · 1 closed | \"fix: Cut UI lag from mouse bursts\""
-        ),
-        "PR counts group, pipe, samples"
-    );
-    assert!(
-        md.contains("\"fix: Cut UI lag from mouse bursts\" · \"Bump deps\""),
-        "PR sample"
+        md.contains("PRs (3): 1 merged · 1 open · 1 closed"),
+        "PR counts only"
     );
     assert!(md.contains("issues (2): 2 open · 0 closed"), "issue states");
+    assert!(!md.contains("Cut UI lag"), "PR titles purged");
     assert!(
-        md.contains("#131 \"100-line app ergonomics\" (open · 1 comment · enhancement)"),
-        "issue sample"
+        !md.contains("100-line app ergonomics"),
+        "issue titles purged"
     );
-    // Topics render as user-scoped search links.
+    assert!(!md.contains("#131"), "no issue-number samples");
+    // Topics render as user-scoped search links, capped at four — the
+    // rest collapse to a count instead of burying the metrics.
     assert!(
         md.contains(
             "[#core](https://github.com/search?q=user%3Ame+topic%3Acore&type=repositories)"
         ),
         "topic linked to a user-scoped search"
     );
+    assert!(md.contains("+2 more"), "topics cap at four");
     // `r2` carries neither: no topic line, no homepage in its proof.
     let r2_item = &md[pos("me/r2")..pos("me/r1")];
     assert!(!r2_item.contains("topic%3A"), "no topics, no topic line");
     assert!(!r2_item.contains("crates.io"), "no homepage, no host");
-    // Every row ends with a forced break: seven-line rows otherwise
-    // run together under GitHub's quarter-em list spacing.
-    assert!(md.contains("</sub><br>\n"), "row ends with a blank line");
+    // No raw pipes inside cells: every `|` in the fragment is a table
+    // delimiter (header, separator, cell edges).
+    for line in md.lines().filter(|l| l.starts_with('|')) {
+        // Header + one row per repo + separator: exactly 3 pipes each
+        // (leading, middle, trailing).
+        assert_eq!(
+            line.matches('|').count(),
+            3,
+            "no pipes inside cells:\n{line}"
+        );
+    }
     insta::assert_snapshot!("selected_frag", md);
 }
 

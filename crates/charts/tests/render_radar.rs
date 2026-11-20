@@ -130,7 +130,7 @@ fn radar_family_covers_exactly_the_fragment_rows() {
     let radars = charts::render_radars(&g).expect("family renders");
     let md = charts::render_selected_md(&g).expect("fragment renders");
 
-    let rows = md.matches("- **[").count();
+    let rows = md.matches("| **[").count();
     assert_eq!(radars.len(), rows, "one radar per listed row");
     assert!(rows >= 2, "fixture compares repos, it is not a singleton");
     for (stem, svg) in &radars {
@@ -229,12 +229,14 @@ fn fragment_floats_the_radar_and_says_the_same_words_as_its_title() {
     let g = graph_json();
     let md = charts::render_selected_md(&g).expect("fragment renders");
 
-    // Floated, config-sized, sweep-stamped: the legacy `align` is the
-    // only alignment GitHub's sanitizer keeps (`style` is stripped).
+    // Tabled, config-sized, sweep-stamped: the table column is the grid
+    // (GitHub strips `style`, so flex-grid is unavailable, and a float
+    // lets prose wrap around the image). No `align="right"`.
     assert!(
-        md.contains(&format!("width=\"{}\" align=\"right\"", shipped_width())),
-        "radar floated on every row:\n{md}"
+        md.contains(&format!("width=\"{}\" alt=\"", shipped_width())),
+        "radar sized on every row:\n{md}"
     );
+    assert!(!md.contains("align=\"right\""), "no floated radar");
     assert!(
         md.contains("?v=202611142303"),
         "radar URLs carry the sweep bust token"
