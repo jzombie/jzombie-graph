@@ -7,11 +7,12 @@
 # one line in that registry.
 
 # Pixels the floated image asks GitHub for. The SVG fits its own
-# canvas to the labels, so this doubles as the zoom: leave it near the
-# design width (≈166 for the labels below) and labels draw at ~10px;
-# lower it and they shrink with everything else. It is also the mobile
-# cost — every pixel here is a pixel the fact lines lose on a phone.
-width = 160
+# canvas to the labels (≈156 wide for the labels below), so this is
+# the zoom: at 190 the labels draw at ~12px instead of ~10px. Two
+# costs ride with it — every pixel here is a pixel the fact lines lose
+# on a phone, and the float grows to ~165px tall, which must stay
+# under a row's fact lines or it overlaps the next item.
+width = 190
 
 # Peer group: every vertex is this repo's percentile among the pool
 # that survives these filters, so the shapes are only comparable to

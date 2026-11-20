@@ -239,6 +239,17 @@ fn fragment_floats_the_radar_and_says_the_same_words_as_its_title() {
         md.contains("?v=202611142303"),
         "radar URLs carry the sweep bust token"
     );
+    // Each radar is a click target for its own repo: a bare <img>
+    // would be auto-linked to the raw SVG bytes instead, which is a
+    // click nobody wants.
+    for name in ["alpha", "beta", "gamma"] {
+        assert!(
+            md.contains(&format!(
+                "<a href=\"https://github.com/me/{name}\"><img src=\"dashboard/charts/radar/me-{name}.svg"
+            )),
+            "{name}'s radar links to its repo:\n{md}"
+        );
+    }
     // The legend states the dial order and the peer group, so a reader
     // can name a spoke without counting from the top.
     assert!(md.contains("Each row carries a shape radar"), "legend");

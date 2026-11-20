@@ -2071,8 +2071,10 @@ pub fn render_radars(graph_json: &str) -> anyhow::Result<Vec<(String, String)>> 
 /// The floated radar on a row's head line: sized by config, aligned
 /// with the legacy `align` attribute (the only alignment GitHub's
 /// sanitizer keeps — `style` is stripped), sweep-stamped like every
-/// other image. The alt text spells the percentiles out, so a screen
-/// reader gets the same facts the vertices show.
+/// other image, and anchored to its own repo — a bare `<img>` gets
+/// auto-linked to the raw SVG bytes instead, which is a click nobody
+/// wants. The alt text spells the percentiles out, so a screen reader
+/// gets the same facts the vertices show.
 fn radar_img(
     plan: &RadarPlan,
     graph: &jzombie_graph::graph::Graph,
@@ -2086,7 +2088,8 @@ fn radar_img(
         .ok_or_else(|| anyhow::anyhow!("selected row {} missing from the graph", row.id))?;
     let pcts = plan.percentiles(graph, node);
     Ok(format!(
-        "<img src=\"{src}\" width=\"{width}\" align=\"right\" alt=\"{alt}\">",
+        "<a href=\"{url}\"><img src=\"{src}\" width=\"{width}\" align=\"right\" alt=\"{alt}\"></a>",
+        url = row.url,
         src = jzombie_graph::paths::radar_url(&jzombie_graph::paths::radar_stem(&row.id), bust),
         width = plan.cfg.width,
         alt = radar_readout(plan, &pcts),
