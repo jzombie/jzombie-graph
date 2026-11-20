@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-11-20T02:32:57.073858959Z",
+  "generated_at": "2026-11-20T04:37:27.465806589Z",
   "velocity_scope": "all",
   "velocity_owner": "jzombie",
   "nodes": [
@@ -1849,7 +1849,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -57.6,
+      "focus": -57.633335,
       "branch_heat": [
         {
           "branch": "BrianMouncer-CG-fix",
@@ -2592,7 +2592,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -28.133333,
+      "focus": -28.166666,
       "last_commit_at": "2024-07-28T02:34:31Z",
       "branch_heat": [
         {
@@ -3970,7 +3970,7 @@
       "stars": 0,
       "forks_count": 0,
       "open_issues": 2,
-      "size_kb": 102,
+      "size_kb": 112,
       "has_readme": true,
       "commits_1d": 0,
       "commits_5d": 6,
@@ -4050,7 +4050,7 @@
       "private": false,
       "upstream": null,
       "ahead_by": null,
-      "pushed_at": "2026-11-20T02:10:18Z",
+      "pushed_at": "2026-11-20T02:33:11Z",
       "description": "Nightly map of my GitHub portfolio: real dependency edges plus a self-normalized Developer Focus gauge ranking where attention is going.",
       "topics": [
         "automation",
@@ -4071,7 +4071,7 @@
       "forks_count": 0,
       "open_issues": 3,
       "license": "Apache-2.0",
-      "size_kb": 912,
+      "size_kb": 898,
       "has_readme": true,
       "has_license_file": true,
       "commits_1d": 2,
@@ -5418,7 +5418,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -51.866665,
+      "focus": -51.9,
       "branch_heat": [
         {
           "branch": "master",
@@ -6714,7 +6714,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -21.266666,
+      "focus": -21.3,
       "last_commit_at": "2025-02-19T04:19:11Z",
       "branch_heat": [
         {
@@ -6858,7 +6858,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -21.133333,
+      "focus": -21.166666,
       "last_commit_at": "2025-02-23T03:58:04Z",
       "branch_heat": [
         {
@@ -7528,7 +7528,7 @@
       "private": false,
       "upstream": null,
       "ahead_by": null,
-      "pushed_at": "2026-11-16T10:54:33Z",
+      "pushed_at": "2026-11-20T04:03:09Z",
       "description": "Rust toolkit for layered stream multiplexing and schemaless RPC communication.",
       "topics": [
         "rpc-framework",
@@ -7540,24 +7540,24 @@
       "homepage": "https://crates.io/crates/muxio",
       "stars": 37,
       "forks_count": 2,
-      "open_issues": 7,
+      "open_issues": 5,
       "license": "Apache-2.0",
-      "size_kb": 342,
+      "size_kb": 358,
       "has_readme": true,
       "has_agents_md": true,
       "has_license_file": true,
-      "commits_1d": 0,
-      "commits_5d": 0,
-      "commits_15d": 0,
-      "commits_30d": 1,
+      "commits_1d": 3,
+      "commits_5d": 3,
+      "commits_15d": 3,
+      "commits_30d": 4,
       "issues_open_1d": 0,
       "issues_open_5d": 0,
       "issues_open_15d": 0,
-      "issues_open_30d": 1,
-      "issues_closed_1d": 0,
-      "issues_closed_5d": 0,
-      "issues_closed_15d": 0,
-      "issues_closed_30d": 0,
+      "issues_open_30d": 0,
+      "issues_closed_1d": 1,
+      "issues_closed_5d": 1,
+      "issues_closed_15d": 1,
+      "issues_closed_30d": 1,
       "issue_comments_1d": 0,
       "issue_comments_5d": 0,
       "issue_comments_15d": 0,
@@ -7566,21 +7566,29 @@
         "enhancement": 8,
         "needs research": 3
       },
-      "commit_heat": 0.0,
-      "focus": -0.6333333,
-      "last_commit_at": "2026-11-01T00:17:31Z",
+      "commit_heat": 9.499999,
+      "focus": 9.499999,
+      "last_commit_at": "2026-11-20T04:03:06Z",
       "branch_heat": [
-        {
-          "branch": "dependabot/cargo/interprocess-2.4.8",
-          "is_default": false,
-          "commits_1d": 0,
-          "commits_5d": 0,
-          "commits_15d": 0,
-          "commits_30d": 1
-        },
         {
           "branch": "main",
           "is_default": true,
+          "commits_1d": 3,
+          "commits_5d": 3,
+          "commits_15d": 3,
+          "commits_30d": 4
+        },
+        {
+          "branch": "bump-deps",
+          "is_default": false,
+          "commits_1d": 1,
+          "commits_5d": 1,
+          "commits_15d": 1,
+          "commits_30d": 2
+        },
+        {
+          "branch": "dependabot/cargo/interprocess-2.4.8",
+          "is_default": false,
           "commits_1d": 0,
           "commits_5d": 0,
           "commits_15d": 0,
@@ -7589,10 +7597,28 @@
       ],
       "recent_prs": [
         {
+          "title": "Make bytes dependency optional under tokio_support feature",
+          "branch": "124--publish",
+          "base": "main",
+          "state": "MERGED"
+        },
+        {
+          "title": "v0.17.3-alpha (Bump deps; shared test-helper coverage)",
+          "branch": "fix/coverage-124",
+          "base": "main",
+          "state": "MERGED"
+        },
+        {
+          "title": "Revert \"Merge pull request #124\"",
+          "branch": "revert-124",
+          "base": "main",
+          "state": "CLOSED"
+        },
+        {
           "title": "Bump interprocess from 2.4.7 to 2.4.8",
           "branch": "dependabot/cargo/interprocess-2.4.8",
           "base": "main",
-          "state": "OPEN"
+          "state": "MERGED"
         },
         {
           "title": "0.17.2-alpha (Bump deps)",
@@ -7689,31 +7715,13 @@
           "branch": "dependabot/cargo/futures-0.3.34",
           "base": "v0.16.0-alpha",
           "state": "MERGED"
-        },
-        {
-          "title": "feat(core): [breaking-change] Remove frame timestamp and silence transport logs",
-          "branch": "fix/silence-tracing-log-spam",
-          "base": "main",
-          "state": "MERGED"
-        },
-        {
-          "title": "Bump tokio from 1.52.3 to 1.53.1",
-          "branch": "dependabot/cargo/tokio-1.53.1",
-          "base": "dev--draft--silence-log-spam",
-          "state": "MERGED"
-        },
-        {
-          "title": "Bump xxhash-rust from 0.8.17 to 0.8.18",
-          "branch": "dependabot/cargo/xxhash-rust-0.8.18",
-          "base": "dev--draft--silence-log-spam",
-          "state": "MERGED"
         }
       ],
       "recent_issues": [
         {
           "number": 122,
           "title": "CI: replace rustfmt workaround with components input, bump checkout to v7",
-          "state": "OPEN",
+          "state": "CLOSED",
           "labels": [],
           "comments": 0
         },
@@ -7816,7 +7824,7 @@
       "private": false,
       "upstream": null,
       "ahead_by": null,
-      "pushed_at": "2026-11-20T00:21:16Z",
+      "pushed_at": "2026-11-20T04:18:32Z",
       "description": "An experimental DSL used for building embeddable artifacts and orchestrating pipelines.",
       "topics": [
         "build-tools",
@@ -7837,10 +7845,10 @@
       "has_readme": true,
       "has_agents_md": true,
       "has_license_file": true,
-      "commits_1d": 9,
-      "commits_5d": 13,
-      "commits_15d": 22,
-      "commits_30d": 32,
+      "commits_1d": 12,
+      "commits_5d": 16,
+      "commits_15d": 25,
+      "commits_30d": 35,
       "issues_open_1d": 5,
       "issues_open_5d": 8,
       "issues_open_15d": 16,
@@ -7859,17 +7867,17 @@
         "needs research": 3
       },
       "issue_heat": 3.5,
-      "commit_heat": 4.0833335,
-      "focus": 3.7916667,
-      "last_commit_at": "2026-11-20T00:21:13Z",
+      "commit_heat": 4.819048,
+      "focus": 4.159524,
+      "last_commit_at": "2026-11-20T04:18:27Z",
       "branch_heat": [
         {
           "branch": "318-add-const-support-completely-immutable-bindings",
           "is_default": false,
-          "commits_1d": 7,
-          "commits_5d": 10,
-          "commits_15d": 15,
-          "commits_30d": 25
+          "commits_1d": 10,
+          "commits_5d": 13,
+          "commits_15d": 18,
+          "commits_30d": 28
         },
         {
           "branch": "311-audit-fail-cleanup",
@@ -9530,7 +9538,7 @@
       "issue_comments_1d": 0,
       "issue_comments_5d": 0,
       "issue_comments_15d": 0,
-      "issue_comments_30d": 3,
+      "issue_comments_30d": 2,
       "issue_labels": {
         "bug": 1,
         "enhancement": 8,
@@ -9965,7 +9973,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -67.76667,
+      "focus": -67.8,
       "last_commit_at": "2021-04-26T02:54:59Z",
       "branch_heat": [
         {
@@ -10777,7 +10785,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -35.733334,
+      "focus": -35.766666,
       "branch_heat": [
         {
           "branch": "master",
@@ -11439,7 +11447,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -10.9,
+      "focus": -10.933333,
       "last_commit_at": "2025-12-27T03:57:25Z",
       "branch_heat": [
         {
@@ -11638,7 +11646,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -11.733334,
+      "focus": -11.766666,
       "branch_heat": [
         {
           "branch": "main",
@@ -11691,7 +11699,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -109.166664,
+      "focus": -109.2,
       "last_commit_at": "2017-12-01T03:01:14Z",
       "branch_heat": [
         {
@@ -12670,7 +12678,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-20T02:10:18Z",
+      "recency": "2026-11-20T02:33:11Z",
       "version": "0.39.0-alpha"
     },
     {
@@ -12700,7 +12708,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-20T02:10:18Z",
+      "recency": "2026-11-20T02:33:11Z",
       "version": "0.13.5-alpha.1"
     },
     {
@@ -12790,7 +12798,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-20T00:21:16Z",
+      "recency": "2026-11-20T04:18:32Z",
       "version": "1.6.0"
     },
     {
@@ -12800,7 +12808,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-20T00:21:16Z",
+      "recency": "2026-11-20T04:18:32Z",
       "version": "0.17.0-alpha"
     },
     {
