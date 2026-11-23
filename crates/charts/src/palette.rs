@@ -7,12 +7,12 @@ use std::sync::OnceLock;
 fn tokens() -> &'static HashMap<String, String> {
     static TOKENS: OnceLock<HashMap<String, String>> = OnceLock::new();
     TOKENS.get_or_init(|| {
-        // The $tokens map literal, parsed once as JSON.
+        // The $TOKEN_MAP CONST map literal, parsed once as JSON.
         let text = include_str!("../style.oxfile");
         let at = text
             .lines()
-            .position(|l| l.trim_start().starts_with("LET $tokens: TOKENS"))
-            .expect("TOKENS map missing in style.oxfile");
+            .position(|l| l.trim_start().starts_with("CONST $TOKEN_MAP"))
+            .expect("TOKEN_MAP CONST missing in style.oxfile");
         let mut depth = 0;
         let mut body = String::new();
         for l in text.lines().skip(at) {

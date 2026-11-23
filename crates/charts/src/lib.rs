@@ -22,9 +22,12 @@ const STYLE_OXFILE: &str = include_str!("../style.oxfile");
 
 fn chart_style() -> anyhow::Result<String> {
     let text = STYLE_OXFILE;
-    let start = text
-        .find("RETURN \"\"\"")
-        .map(|i| i + "RETURN \"\"\"".len())
+    let at = text
+        .find("CONST $STYLE")
+        .ok_or_else(|| anyhow::anyhow!("STYLE CONST missing in style.oxfile"))?;
+    let start = text[at..]
+        .find("\"\"\"")
+        .map(|i| at + i + "\"\"\"".len())
         .ok_or_else(|| anyhow::anyhow!("CHART_STYLE payload missing in style.oxfile"))?;
     let end = text[start..]
         .find("\"\"\"")
