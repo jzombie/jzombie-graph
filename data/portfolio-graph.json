@@ -7661,8 +7661,8 @@
           "commits_30d": 4
         },
         {
-          "branch": "main",
-          "is_default": true,
+          "branch": "dependabot/cargo/interprocess-2.4.8",
+          "is_default": false,
           "commits_1d": 0,
           "commits_5d": 3,
           "commits_15d": 3,
@@ -8164,10 +8164,9 @@
           "title": "research: MCP push notification for ASYNC task completion (no manual TASK_POLL)",
           "state": "OPEN",
           "labels": [
-            "enhancement",
-            "needs research"
+            "enhancement"
           ],
-          "comments": 0
+          "comments": 2
         },
         {
           "number": 270,
@@ -8404,15 +8403,13 @@
           "commits_30d": 0
         },
         {
-          "branch": "main",
-          "is_default": true,
+          "branch": "dependabot/cargo/rand-0.10.4",
+          "is_default": false,
           "commits_1d": 0,
           "commits_5d": 0,
           "commits_15d": 0,
           "commits_30d": 0
-        }
-      ],
-      "recent_prs": [
+        },
         {
           "title": "Bump rand from 0.10.3 to 0.10.4",
           "branch": "dependabot/cargo/rand-0.10.4",
