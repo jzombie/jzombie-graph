@@ -145,7 +145,7 @@ checksum = "82f6aeea286b8eb4dd3431a1be1b59d290ace00f5bfd8e2a159bc2a05e2c1667"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -400,9 +400,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.6.7"
+version = "4.6.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa8876b300ab35ba921adea3dfd70157a46249b33f95c9084ae5709785478946"
+checksum = "844c5c0b65be192cb68d570cca1b21a6444431d24e39c084dc0336177015337c"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -422,14 +422,14 @@ dependencies = [
 
 [[package]]
 name = "clap_derive"
-version = "4.6.7"
+version = "4.6.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9c751b79415d4e559e3d1fcf128e09e720eb673a06d26cf6f392d37d75b66e0"
+checksum = "b4c174f11f949b9ca8c60580925e282b9cbd5454750e506f08648b2038080cd7"
 dependencies = [
  "heck",
  "proc-macro2",
  "quote",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -643,7 +643,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "strsim",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -654,7 +654,7 @@ checksum = "2ac7135c3ef02b2f7833bbeb1be5ba7f966dcde8a87c6b87f65a778d71a02785"
 dependencies = [
  "darling_core",
  "quote",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -749,7 +749,7 @@ checksum = "c6232dd377dcc64799954cbd3a9bb882e9cdc1308ccd87b1c098f1fb2eaf82a8"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -878,7 +878,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1018,7 +1018,7 @@ checksum = "9fb9654ba8355388abeb8dcb4fc62f511300867002afc858860463bdd9fe0c44"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -1583,7 +1583,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
- "syn 3.0.9",
+ "syn 3.0.10",
  "tempfile",
  "tokio",
  "toml",
@@ -1986,9 +1986,9 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
 name = "oxdock"
-version = "0.39.0-alpha"
+version = "0.44.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d8ef9c081c44ae8bba47dcda309196a2d70b1af41a18fc9311d91f7de99b56c"
+checksum = "6f523ec8a74508cac9998d2113b0cc14d69accb2464861676aa962083b900291"
 dependencies = [
  "oxdock-build",
  "oxdock-cli",
@@ -2001,9 +2001,9 @@ dependencies = [
 
 [[package]]
 name = "oxdock-build"
-version = "0.39.0-alpha"
+version = "0.44.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04d3631cfaaefb5993794bc70ec019b5bbd35ff3b38373019e47310f2582f7c6"
+checksum = "bfb6310a95e00dd0fcb279a5f43d9e3962adf611f136766b4a7c13cf3a8dcb79"
 dependencies = [
  "anyhow",
  "oxdock-core",
@@ -2014,14 +2014,14 @@ dependencies = [
  "oxdock-utils",
  "proc-macro2",
  "sha2",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
 name = "oxdock-cli"
-version = "0.39.0-alpha"
+version = "0.44.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3a1aedfb9993d17241217df3ef7157a5ee8c6dded772efdbff0531a550c49f1"
+checksum = "ba0e6f3a8a3b51df3ed0b1c260e4db1009e4088b11349fdf07f5269b070ba6d0"
 dependencies = [
  "anyhow",
  "futures-executor",
@@ -2049,14 +2049,15 @@ dependencies = [
 
 [[package]]
 name = "oxdock-core"
-version = "0.39.0-alpha"
+version = "0.44.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c956f2cf740414e9fb104f8a80145ac3808d3a96de78c45ace661137c90505e"
+checksum = "dc673aed94686e8def257c82a7babbd2e1b55676d221ed753ad4ace585f2ba79"
 dependencies = [
  "anyhow",
  "base64",
  "flate2",
  "indoc",
+ "lexopt",
  "line-ending",
  "oxdock-fs",
  "oxdock-func-macro",
@@ -2076,24 +2077,23 @@ dependencies = [
 
 [[package]]
 name = "oxdock-embed"
-version = "0.39.0-alpha"
+version = "0.44.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31ddd428ee70d81c1cdd8db2dadef9c087498ba31c1dd06690e8cd697ffe5278"
+checksum = "d94dccefdf9fc28983a514d390656f857a2e0eb32c76642a151b62c796c61c44"
 dependencies = [
  "anyhow",
  "oxdock-fs",
- "oxdock-utils",
  "proc-macro2",
  "quote",
  "sha2",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
 name = "oxdock-fs"
-version = "0.39.0-alpha"
+version = "0.44.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f05357a49eb22f2947ac895edc1d7e4b43249f9a9687bcbe93b0e34481eeb53a"
+checksum = "e73ec8756f25f008bf3ed4b040bffd148cc670dbbab5c32206cd3c136233c20e"
 dependencies = [
  "anyhow",
  "cache-manager",
@@ -2107,21 +2107,21 @@ dependencies = [
 
 [[package]]
 name = "oxdock-func-macro"
-version = "0.39.0-alpha"
+version = "0.44.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15003727fe6dd18dcc3ab834ae19f9d127b135633c48e1f193901000661a469d"
+checksum = "10978cefb34fd1d45ab6b6325f62c74d8438b7defdcff35265ac81379456fb29"
 dependencies = [
  "proc-macro2",
  "quote",
  "rand",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
 name = "oxdock-macros"
-version = "0.39.0-alpha"
+version = "0.44.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0164733d331d6210e3c41dcb12a1ebd0ce6a7ba4ad560e651778d14402eea1f"
+checksum = "5b60df83a230e9ac9340aee3de29a5673ef239d04cfdc2e92c9cf0f3f93a48e3"
 dependencies = [
  "anyhow",
  "oxdock-build",
@@ -2132,14 +2132,14 @@ dependencies = [
  "oxdock-process",
  "proc-macro2",
  "quote",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
 name = "oxdock-markdown-plugin"
-version = "0.39.0-alpha"
+version = "0.44.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d298b8150357971464314e5111d763f51a6f3fa6fce33b21bf6cd0e0fd94db80"
+checksum = "6910434aed92d483b4459560ce4d1ca5d9ffc6d39901516508bab091baca2581"
 dependencies = [
  "anyhow",
  "oxdock-core",
@@ -2152,9 +2152,9 @@ dependencies = [
 
 [[package]]
 name = "oxdock-mcp"
-version = "0.39.0-alpha"
+version = "0.44.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "607b75210682751bdeabb5f944eea42216f6436c15fa7c64a943d9136889b489"
+checksum = "1c299bf7bb9b513e8a978fa636ebe3beef659ee2be98f541fe9410620b986a09"
 dependencies = [
  "anyhow",
  "oxdock-core",
@@ -2172,9 +2172,9 @@ dependencies = [
 
 [[package]]
 name = "oxdock-net-plugin"
-version = "0.39.0-alpha"
+version = "0.44.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5453ffe6daf0c31cf9367e49b0ee905881212551520e06f48e75fdf07f1454f"
+checksum = "ff4c05261384b7fbc5a61105bd91bd30ce24bd433b1ce689b75464b7711a5c7b"
 dependencies = [
  "anyhow",
  "futures-executor",
@@ -2201,9 +2201,9 @@ dependencies = [
 
 [[package]]
 name = "oxdock-parser"
-version = "0.39.0-alpha"
+version = "0.44.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2cb555ad4e4c92b819c4a4f5b087dbf7d540a386076bd7be9a239adc7a7578b"
+checksum = "7a3aee8903188610709dc522afcfff0c63a3bc6df65ac83399dc5d4cd3a8be8e"
 dependencies = [
  "anyhow",
  "indoc",
@@ -2213,14 +2213,14 @@ dependencies = [
  "proc-macro2",
  "pulldown-cmark",
  "quote",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
 name = "oxdock-pipe"
-version = "0.39.0-alpha"
+version = "0.44.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d68347da2dadd4eaaba38e10a886c34f4dd497f7f66319adc4d3812dea73924"
+checksum = "90cc4d70a203ef29595e833282f7651938b4f57c5d00a52cc7eae11fed178297"
 dependencies = [
  "anyhow",
  "oxdock-fs",
@@ -2228,9 +2228,9 @@ dependencies = [
 
 [[package]]
 name = "oxdock-process"
-version = "0.39.0-alpha"
+version = "0.44.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0208df90eb50e90ec41dfd92f07ae12ca5702e7de3e39136270254eb3c87e36b"
+checksum = "dc971666a4372d0791df9e563ad0e9d22b4e69d545c1e6d11f3800f599e0a98f"
 dependencies = [
  "anyhow",
  "indoc",
@@ -2244,9 +2244,9 @@ dependencies = [
 
 [[package]]
 name = "oxdock-pty"
-version = "0.39.0-alpha"
+version = "0.44.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39645233b19c364b662628fb365ab8edbd9909706af03690befe94e4ec31dfdd"
+checksum = "f9adfedee3668b4036a451af734c28d645d0e59e3030f21a6f9bd46bf0c1c855"
 dependencies = [
  "anyhow",
  "libc",
@@ -2257,9 +2257,9 @@ dependencies = [
 
 [[package]]
 name = "oxdock-remote-proto"
-version = "0.39.0-alpha"
+version = "0.44.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54a4814e34d05511b51b3cfaecbea0c30a9526b4479803002a58f7f42de85f35"
+checksum = "3f7217f1bdffe82aa223d5453b92e7369a8b7937bf0c046c17aa65965bbdd494"
 dependencies = [
  "anyhow",
  "muxio-rpc-service",
@@ -2270,9 +2270,9 @@ dependencies = [
 
 [[package]]
 name = "oxdock-ssh-plugin"
-version = "0.39.0-alpha"
+version = "0.44.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a8a86fb68b0da91989496c5ea86eda5780b8c68bdc2da0b1e2917eb4ea7c5fc"
+checksum = "e2dd53fb46aaca8458d435399b5bdb25d4ae69d2242e1611ac163e03f43b1c37"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -2295,15 +2295,15 @@ dependencies = [
 
 [[package]]
 name = "oxdock-sys-test-utils"
-version = "0.39.0-alpha"
+version = "0.44.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae61bd91b878ff75c232fb8b695b84e07354c5ece503137c26c045c6fd2e4b55"
+checksum = "55432d432b986da210055b4d71bc1891f5266fd54d23fa1ea3d9f31e493664e5"
 
 [[package]]
 name = "oxdock-utils"
-version = "0.39.0-alpha"
+version = "0.44.0-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03cc7196cff51cc0bf1dedb9755afcc590448b2992ee928156f36519fa5ae098"
+checksum = "391795ec4114ce4a5c71c7b7c6ad9a6d2f8de48cca9357f0e6c1b0e867405763"
 dependencies = [
  "anyhow",
  "flate2",
@@ -2639,7 +2639,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2719,7 +2719,7 @@ checksum = "92ecd8964f8453721699a1ed72037b0db49ce2f5a5138486ee89bed6f67cdf3a"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -2885,7 +2885,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "serde_json",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -3005,7 +3005,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3064,7 +3064,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3142,7 +3142,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "serde_derive_internals",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -3233,7 +3233,7 @@ checksum = "e7a5d71263a5a7d47b41f6b3f06ba276f10cc18b0931f1799f710578e2309348"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -3244,7 +3244,7 @@ checksum = "f852137cce035d6a4df67ccce505ff6b3e9fd3a10e3e52b24dc71e650bb1a9bd"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -3577,9 +3577,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "3.0.9"
+version = "3.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d78c8dee4c7bf0e14673097256fed6142ce9d3b85a408189d07482442145823b"
+checksum = "4ae9ccbea3a7b0b09443036490c8f34a8b1b760fd345e5c0dae0aac718faea79"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3603,7 +3603,7 @@ checksum = "901704edd0dfe137f1987838ee4f259e4e063c31371bdb423f7ae38ec6f77f02"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -3648,7 +3648,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3688,7 +3688,7 @@ checksum = "fe5197923287db20a58125f0bc85c062f7f2c892de97b18c356f9efb14b28524"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -3739,7 +3739,7 @@ checksum = "78773a2a397f451582ce068015985c33193cf6dea8b74d2a639fe457b2f07b0e"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -4114,7 +4114,7 @@ dependencies = [
  "bumpalo",
  "proc-macro2",
  "quote",
- "syn 3.0.9",
+ "syn 3.0.10",
  "wasm-bindgen-shared",
 ]
 
@@ -4187,7 +4187,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -4470,7 +4470,7 @@ checksum = "ec8ebde2db3681e8c9980cc27822030e68752690ddfa9473e739aeb4dbde6d71"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.9",
+ "syn 3.0.10",
  "synstructure",
 ]
 
@@ -4491,7 +4491,7 @@ checksum = "f75b4683f6c7f45248d4d64056a24298c6281e0993356d7d1b4a1a962ef10d4a"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.9",
+ "syn 3.0.10",
  "synstructure",
 ]
 
@@ -4531,7 +4531,7 @@ checksum = "c3743ddbf47738d929cd1ae2e199d40d0162979dfe31aef8ae646d2bf00bf97a"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]

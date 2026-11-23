@@ -2824,7 +2824,10 @@ pub fn render_data_table_md(graph_json: &str) -> anyhow::Result<String> {
         IF $doc.empty {
             APPEND md.md "*{{ $doc.msg }}*\n"
         } ELSE {
-            APPEND md.md "{{ MARKDOWN::MAP_TO_MD_TABLE($doc.rows) }}"
+            # TODO(oxdock-254) rest marker would let us type the doc at load
+            # and drop this rebind
+            LET $rows: LIST<MAP<ANY>> = $doc.rows
+            APPEND md.md "{{ MARKDOWN::MAP_TO_MD_TABLE($rows) }}"
             APPEND md.md $doc.overflow
         }
         LET $check: STRING = READ md.md
