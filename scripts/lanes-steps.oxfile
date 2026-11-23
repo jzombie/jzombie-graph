@@ -1,19 +1,36 @@
 # Granular RUN lanes. Each name states its artifact: COLLECT_* sweeps,
 # RENDER_* writes one file, BUILD_* bundles, GATE_* fails closed.
+#
+# 0.44 module semantics: the top-level WORKSPACE + INHERIT_ENV below form
+# the jail every FUNC in this file restores on entry, so bodies declare
+# no WORKSPACE/WORKDIR/ENV of their own and take paths as arguments.
+# $CHARTS is a module CONST: visible inside every FUNC of this file and
+# exported for callers (single source for the proof-input family).
 
 INHERIT_ENV [JZOMBIE_GRAPH_TOKEN]
 WORKSPACE LOCAL
 
+IMPORT [STD]
+
+CONST $CHARTS: LIST<STRING> = [
+    "share",
+    "focus",
+    "flame",
+    "radar",
+    "selected",
+    "indicators",
+    "data",
+    "languages"
+]
+
 # CollectGraph: live sweep into data/, schema rides along.
 FUNC COLLECT_GRAPH(): VOID {
-    WORKSPACE LOCAL
     ECHO "lanes: collect graph + schema into data/"
     RUN ["cargo", "run", "--release", "--", "--user", "jzombie", "--format", "json"]
 }
 
 # RenderMapFragment: staged JSON to the map fragment.
 FUNC RENDER_MAP_FRAGMENT(): VOID {
-    WORKSPACE LOCAL
     ECHO "lanes: render proof/dashboard/fragments/portfolio-graph.md"
     RUN ["cargo", "run", "--release", "-p", "jzombie-graph-cartographer"]
 }
@@ -22,23 +39,9 @@ FUNC RENDER_MAP_FRAGMENT(): VOID {
 # per artifact family. Sequencing lives here — the binary only computes.
 # The proof page itself is assembled by the outer oxdock-render.
 FUNC BUILD_PROOF_INPUTS(): VOID {
-    WORKSPACE LOCAL
-    IMPORT [STD]
+    ECHO "lanes: render {{ STD::LEN($CHARTS) }} proof inputs (page assembly is ASSEMBLE_PROOF_PAGE)"
 
-    LET $charts: LIST<STRING> = [
-        "share",
-        "focus",
-        "flame",
-        "radar",
-        "selected",
-        "indicators",
-        "data",
-        "languages"
-    ]
-
-    ECHO "lanes: render {{ STD::LEN($charts) }} proof inputs (page assembly is ASSEMBLE_PROOF_PAGE)"
-
-    FOR $chart: STRING IN $charts {
+    FOR $chart: STRING IN $CHARTS {
         RUN [
             "cargo",
             "run",
@@ -54,14 +57,12 @@ FUNC BUILD_PROOF_INPUTS(): VOID {
 
 # AssembleProofPage: run the renderer over the committed inputs.
 FUNC ASSEMBLE_PROOF_PAGE(): VOID {
-    WORKSPACE LOCAL
     ECHO "lanes: assemble proof/README.md"
     RUN ["oxdock-render"]
 }
 
 # GateProofDrift: fail when generated outputs differ from the commit.
 FUNC GATE_PROOF_DRIFT(): VOID {
-    WORKSPACE LOCAL
     ECHO "lanes: drift gate over proof/ data/"
     RUN ["git", "diff", "--exit-code", "--", "proof/", "data/"]
 }
@@ -72,7 +73,6 @@ FUNC GATE_PROOF_DRIFT(): VOID {
 # commit is conditional; a bare `git commit` would fail the lane on
 # quiet nights.
 FUNC COMMIT_PROOF(): VOID {
-    WORKSPACE LOCAL
     ECHO "lanes: commit rebuilt proof + data"
     RUN ["git", "config", "user.name", "github-actions[bot]"]
     RUN ["git", "config", "user.email", "github-actions[bot]@users.noreply.github.com"]
@@ -87,5 +87,6 @@ EXPORT [
     FUNC BUILD_PROOF_INPUTS,
     FUNC ASSEMBLE_PROOF_PAGE,
     FUNC GATE_PROOF_DRIFT,
-    FUNC COMMIT_PROOF
+    FUNC COMMIT_PROOF,
+    CONST $CHARTS
 ]

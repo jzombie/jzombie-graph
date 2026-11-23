@@ -49,7 +49,7 @@ cargo run -p jzombie-graph-charts
 cargo run -p jzombie-graph-charts -- --chart focus
 ```
 
-Local only, no API calls. Each `--chart` selection writes its fixed artifact path(s) under `proof/` (share pie by default; `focus` bars, `flame`, `indicators` + badges + table, `data` table fragment, `selected` ranked work list). The `BUILD_PROOF_INPUTS` lane runs every selection listed in `scripts/lanes-steps.oxfile`. Colors come from the shared `charts::palette` module so every chart reads as one family; bytes pinned by snapshot tests.
+Local only, no API calls. Each `--chart` selection writes its fixed artifact path(s) under `proof/` (share pie by default; `focus` bars, `flame`, `indicators` + badges + table, `data` table fragment, `selected` ranked work list). The `BUILD_PROOF_INPUTS` lane runs every selection in the exported `$CHARTS` const in `scripts/lanes-steps.oxfile`. Colors come from the shared `charts::palette` module (values live once as `CONST`s in `crates/charts/style.oxfile`) so every chart reads as one family; bytes pinned by snapshot tests.
 
 ## Developer focus (offline, no API calls)
 

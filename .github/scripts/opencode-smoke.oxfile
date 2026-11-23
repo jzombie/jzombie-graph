@@ -14,15 +14,15 @@ IMPORT [STD]
 }
 
 [family:unix] {
-    # Block-top-level PATH seed: ENV is block-scoped and unwinds on exit,
-    # so seeding inside ENSURE_OPENCODE would vanish before QUERY runs
-    # (spawn ENOENT despite IS_EXEC passing inside the FUNC).
-    # The installer also appends to $GITHUB_PATH, which only affects later
-    # GitHub steps, not this process.
-    ENV PATH="{{ env:HOME }}/.opencode/bin:{{ env:PATH }}"
+    # 0.44 callee isolation: only explicit arguments cross a FUNC boundary
+    # — no ambient ENV or outer-variable leakage. The install dir rides in
+    # as a parameter and every binary path is absolute, so no FUNC depends
+    # on the caller's PATH (no block-top-level ENV seed to vanish).
+    LET $bindir: STRING = "{{ env:HOME }}/.opencode/bin"
 
-    FUNC ENSURE_OPENCODE($include_version_check?: BOOL): VOID {
-        LET $has: BOOL = IS_EXEC("opencode")
+    FUNC ENSURE_OPENCODE($bindir: STRING, $include_version_check?: BOOL): VOID {
+        LET $bin: STRING = "{{ $bindir }}/opencode"
+        LET $has: BOOL = IS_EXEC($bin)
         ECHO "opencode present: {{ $has }}"
 
         # Pinned opencode release. Bump $release and the four sha256 digests
@@ -98,38 +98,38 @@ IMPORT [STD]
             """]
         }
 
-        LET $now: BOOL = IS_EXEC("opencode")
+        LET $now: BOOL = IS_EXEC($bin)
         ECHO "opencode present after install: {{ $now }}"
         IF !$now {
-            ECHO "opencode install failed: not on PATH after install"
+            ECHO "opencode install failed: missing at {{ $bin }} after install"
             EXIT 1
         }
 
         IF $include_version_check {
-            LET $version: STRING = RUN ["opencode", "--version"]
+            LET $version: STRING = RUN [$bin, "--version"]
             ECHO "opencode version: {{ $version }}"
         }
 
     }
 
-    FUNC QUERY($query: STRING): STRING {
-        LET $response: STRING = RUN ["opencode", "run", "--standalone", $query]
+    FUNC QUERY($bindir: STRING, $query: STRING): STRING {
+        LET $bin: STRING = "{{ $bindir }}/opencode"
+        LET $response: STRING = RUN [$bin, "run", "--standalone", $query]
 
         RETURN $response
     }
 
-    ENSURE_OPENCODE()
+    ENSURE_OPENCODE($bindir)
 
     # Anonymous free-model quota is IP-scoped and shared runner IPs burn
     # it, so the model call runs only with a credential. Without one the
     # smoke still proves install + executable and exits green.
     IF "{{ env:OPENCODE_API_KEY }}" != "" {
         LET $query: STRING = "Hello model!"
-        LET $response: STRING = QUERY($query)
+        LET $response: STRING = QUERY($bindir, $query)
 
         ECHO "model reply: {{ $response }}"
-    }
-    IF "{{ env:OPENCODE_API_KEY }}" == "" {
+    } ELSE {
         ECHO "OPENCODE_API_KEY unset: model call skipped (install + exec proven)"
     }
 }

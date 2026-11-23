@@ -1,13 +1,15 @@
 # Composed lanes. Ordering lives here once; callers make one call.
-# TODO(oxdock): same as lanes-steps — in-FUNC WORKSPACE LOCAL lines go
-# away once imported FUNCs bind to their own module scope.
+#
+# 0.44 module semantics: the top-level WORKSPACE below is the jail every
+# FUNC in this file restores on entry. STEPS carries its own jail (plus
+# its own INHERIT_ENV for the token), so no ENV or paths cross here —
+# only the explicit call and its arguments.
 WORKSPACE LOCAL
 
 IMPORT ["./lanes-steps.oxfile" AS STEPS]
 
 # CollectGraph: the live sweep alone.
 FUNC COLLECT_GRAPH(): VOID {
-    WORKSPACE LOCAL
     STEPS::COLLECT_GRAPH()
 }
 
@@ -15,7 +17,6 @@ FUNC COLLECT_GRAPH(): VOID {
 # the outer oxdock-render's job — never call STEPS::ASSEMBLE_PROOF_PAGE()
 # here, or the pre-hook re-enters the renderer forever.
 FUNC REFRESH_PROOF_INPUTS(): VOID {
-    WORKSPACE LOCAL
     STEPS::RENDER_MAP_FRAGMENT()
     STEPS::BUILD_PROOF_INPUTS()
     ECHO "proof complete"
@@ -23,7 +24,6 @@ FUNC REFRESH_PROOF_INPUTS(): VOID {
 
 # VerifyProof: tokenless rebuild + drift gate (CI render-check).
 FUNC VERIFY_PROOF(): VOID {
-    WORKSPACE LOCAL
     STEPS::RENDER_MAP_FRAGMENT()
     STEPS::BUILD_PROOF_INPUTS()
     STEPS::ASSEMBLE_PROOF_PAGE()
@@ -33,7 +33,6 @@ FUNC VERIFY_PROOF(): VOID {
 
 # NightlySweep: fragment + charts + proof page, collecting first when $collect.
 FUNC NIGHTLY_SWEEP($collect: BOOL): VOID {
-    WORKSPACE LOCAL
     IF $collect {
         STEPS::COLLECT_GRAPH()
     }

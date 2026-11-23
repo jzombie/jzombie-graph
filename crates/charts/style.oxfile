@@ -1,4 +1,11 @@
 # Chart tokens + shared CSS. Edit here, never in .rs.
+#
+# Single-sourced as module CONSTs ($TOKEN_MAP, $STYLE): deeply immutable,
+# visible inside every FUNC of this file, and exported for DSL importers
+# (`$ALIAS::TOKEN_MAP` alias reads, no CALL overhead). The FUNC wrappers stay
+# for the host-registered `CHARTS::CHART_STYLE()` call path in
+# `crates/charts` — they return the CONSTs, so both spellings serve one
+# definition. Rust (`palette.rs`, `lib.rs`) parses the CONST payloads.
 WORKSPACE LOCAL
 
 TYPE TOKENS = MAP<
@@ -18,32 +25,24 @@ TYPE TOKENS = MAP<
     family: STRING
 >
 
-FUNC CHART_TOKENS(): TOKENS {
-    WORKSPACE LOCAL
-
-    LET $tokens: TOKENS = {
-        "heating": "#D55E00",
-        "steady": "#E69F00",
-        "cooling": "#56B4E9",
-        "dormant": "#BBBBBB",
-        "cat3": "#F0E442",
-        "cat4": "#0072B2",
-        "cat5": "#009E73",
-        "cat6": "#CC79A7",
-        "cat7": "#999999",
-        "ink": "#767676",
-        "ink_on_bar": "#1a1a1a",
-        "dim": "#333",
-        "portfolio_bar": "#222",
-        "family": "Helvetica, Arial, sans-serif"
-    }
-
-    RETURN $tokens
+CONST $TOKEN_MAP: TOKENS = {
+    "heating": "#D55E00",
+    "steady": "#E69F00",
+    "cooling": "#56B4E9",
+    "dormant": "#BBBBBB",
+    "cat3": "#F0E442",
+    "cat4": "#0072B2",
+    "cat5": "#009E73",
+    "cat6": "#CC79A7",
+    "cat7": "#999999",
+    "ink": "#767676",
+    "ink_on_bar": "#1a1a1a",
+    "dim": "#333",
+    "portfolio_bar": "#222",
+    "family": "Helvetica, Arial, sans-serif"
 }
 
-FUNC CHART_STYLE(): STRING {
-    WORKSPACE LOCAL
-    RETURN """
+CONST $STYLE: STRING = """
         <style>
             .bar {
                 stroke: #fff;
@@ -115,10 +114,19 @@ FUNC CHART_STYLE(): STRING {
             }
         </style>
         """
+
+FUNC CHART_TOKENS(): TOKENS {
+    RETURN $TOKEN_MAP
+}
+
+FUNC CHART_STYLE(): STRING {
+    RETURN $STYLE
 }
 
 EXPORT [
     TYPE TOKENS,
-    CHART_TOKENS,
-    CHART_STYLE
+    FUNC CHART_TOKENS,
+    FUNC CHART_STYLE,
+    CONST $TOKEN_MAP,
+    CONST $STYLE
 ]
