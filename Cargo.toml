@@ -29,7 +29,7 @@ indoc = "2"
 insta = { version = "1", features = ["json"] }
 oxdock = "=0.39.0-alpha"
 oxdock-core = "=0.39.0-alpha"
-oxdock-markdown-plugin = "=0.39.0-alpha"
+oxdock-markdown-plugin = "=0.43.0-alpha"
 regex = "1"
 reqwest = { version = "0.13.5", features = ["json", "rustls"] }
 reqwest-drive = "0.13.5-alpha.1"
