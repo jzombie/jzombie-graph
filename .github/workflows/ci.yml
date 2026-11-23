@@ -2,6 +2,7 @@ name: ci
 on:
   push:
   pull_request:
+  workflow_dispatch: {}
 # Ensure only one run per branch or PR at a time. If new commits are
 # pushed, older jobs cancel automatically.
 concurrency:
@@ -29,3 +30,27 @@ jobs:
           RUN ["cargo", "fmt", "--all", "--check"]
           RUN ["cargo", "clippy", "--workspace", "--all-targets", "--", "-D", "warnings"]
           RUN ["cargo", "test", "--workspace"]
+  render:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      # Warm-cache rebuilds: same checked-in source, seconds instead of
+      # minutes. Cache-only — no extra workflows, permissions, or binaries.
+      - uses: Swatinem/rust-cache@v2
+      # The proof page is renderer-owned: VERIFY_PROOF rebuilds the
+      # inputs, assembles via the renderer, then the drift gate
+      # (GATE_PROOF_DRIFT: git diff --exit-code -- proof/ data/) fires
+      # on any hand-edit or stale artifact. Tokenless: renders whatever
+      # data/ holds, never collects.
+      # Engine + renderer installs: unified action on the default branch.
+      # (The old @feat/render-action ref never existed.)
+      - uses: jzombie/rust-oxdock@main
+        with:
+          product: oxdock
+      - uses: jzombie/rust-oxdock@main
+        with:
+          product: oxdock-render
+      - run: oxdock .github/scripts/render-check.oxfile
