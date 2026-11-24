@@ -18,12 +18,7 @@ jobs:
     env:
       JZOMBIE_GRAPH_TOKEN: ${{ secrets.JZOMBIE_GRAPH_TOKEN }}
     steps:
-      # PAT checkout so `git push` in COMMIT_PROOF authenticates as the
-      # ruleset bypass user (jzombie), not GITHUB_TOKEN (Integration 15368
-      # bypass is rejected on personal repos).
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.JZOMBIE_GRAPH_TOKEN }}
       - uses: dtolnay/rust-toolchain@stable
       # Warm-cache rebuilds: same checked-in source, seconds instead of
       # minutes. Cache-only — no extra workflows, permissions, or binaries.
