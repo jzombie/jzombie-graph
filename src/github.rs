@@ -3,6 +3,7 @@ use chrono::{DateTime, Utc};
 use reqwest::header::{ACCEPT, AUTHORIZATION, HeaderMap, HeaderValue, USER_AGENT};
 use reqwest_drive::{ClientBuilder, ClientWithMiddleware, DriveThrottleBackoff, ThrottlePolicy};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::time::Duration;
 
 /// Minimal repo metadata from the REST API. `fork` rides along as fact.
@@ -782,6 +783,153 @@ impl GitHubClient {
     }
 }
 
+/// One Actions job's CI footprint: runner labels carry the platform
+/// (`ubuntu-latest`, `macos-14`, `self-hosted`); the timestamps carry
+/// the wall-clock cost. Undated (missing either end) still counts as
+/// a job for inventory, but adds no minutes.
+#[derive(Debug, Clone)]
+pub struct CiJob {
+    pub labels: Vec<String>,
+    pub started_at: Option<DateTime<Utc>>,
+    pub completed_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ApiRunsList {
+    #[serde(default)]
+    total_count: u32,
+    #[serde(default)]
+    workflow_runs: Vec<ApiRunEntry>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ApiRunEntry {
+    #[serde(default)]
+    id: u64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ApiJobsList {
+    #[serde(default)]
+    jobs: Vec<ApiCiJob>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ApiCiJob {
+    #[serde(default)]
+    labels: Vec<String>,
+    #[serde(default)]
+    started_at: Option<DateTime<Utc>>,
+    #[serde(default)]
+    completed_at: Option<DateTime<Utc>>,
+}
+
+/// One job's raw label-set key: labels sorted and `+`-joined exactly
+/// as the API gave them (no OS/arch parsing). Empty labels read as
+/// `unlabeled`, never dropped.
+pub fn ci_label_key(labels: &[String]) -> String {
+    if labels.is_empty() {
+        return "unlabeled".to_string();
+    }
+    let mut sorted = labels.to_vec();
+    sorted.sort();
+    sorted.join("+")
+}
+
+/// Sum wall-clock minutes per raw label-set, rounded to 1-decimal
+/// (snapshot stable). Every job inserts its key — even at 0.0 when
+/// timestamps are missing — so the key set is the inventory.
+pub fn aggregate_ci_jobs(jobs: &[CiJob]) -> (u32, BTreeMap<String, f32>) {
+    let mut minutes: BTreeMap<String, f32> = BTreeMap::new();
+    for j in jobs {
+        let entry = minutes.entry(ci_label_key(&j.labels)).or_insert(0.0);
+        if let (Some(s), Some(c)) = (j.started_at, j.completed_at) {
+            *entry += (c - s).num_seconds().max(0) as f32 / 60.0;
+        }
+    }
+    for v in minutes.values_mut() {
+        *v = (*v * 10.0).round() / 10.0;
+    }
+    (jobs.len() as u32, minutes)
+}
+
+impl GitHubClient {
+    /// Completed workflow run ids created since `since` (newest first,
+    /// capped at `per_page`), plus the window's total count for the
+    /// digest's sampled-of-N note. `status=completed` keeps minutes
+    /// clean — in-progress runs have no `completed_at` to sum.
+    /// Repos without Actions read as empty (fail-open is the caller).
+    pub async fn list_workflow_runs(
+        &self,
+        full_name: &str,
+        since: &DateTime<Utc>,
+        per_page: usize,
+    ) -> Result<(Vec<u64>, u32)> {
+        let day = since.format("%Y-%m-%d");
+        let url = format!(
+            "{}/repos/{full_name}/actions/runs?created=>{day}&status=completed&per_page={per_page}",
+            self.api_base
+        );
+        let list: ApiRunsList = self.get_json(&url).await?;
+        Ok((
+            list.workflow_runs.iter().map(|r| r.id).collect(),
+            list.total_count,
+        ))
+    }
+
+    /// One run's jobs: labels + wall-clock windows. One page
+    /// (`per_page=100`) covers every realistic matrix; overflow
+    /// fail-opens per run in the caller.
+    pub async fn list_run_jobs(&self, full_name: &str, run_id: u64) -> Result<Vec<CiJob>> {
+        let url = format!(
+            "{}/repos/{full_name}/actions/runs/{run_id}/jobs?per_page=100",
+            self.api_base
+        );
+        let list: ApiJobsList = self.get_json(&url).await?;
+        Ok(list
+            .jobs
+            .into_iter()
+            .map(|j| CiJob {
+                labels: j.labels,
+                started_at: j.started_at,
+                completed_at: j.completed_at,
+            })
+            .collect())
+    }
+
+    /// CI usage for one repo over the window: newest completed runs
+    /// (capped), jobs summed per raw label-set. Per-run jobs fail open —
+    /// one missing run never zeroes the repo. `runs_sampled` counts
+    /// runs whose jobs were actually read.
+    pub async fn repo_ci_usage(
+        &self,
+        full_name: &str,
+        since: &DateTime<Utc>,
+        runs_cap: usize,
+    ) -> Result<crate::graph::CiUsage> {
+        let (ids, _) = self
+            .list_workflow_runs(full_name, since, runs_cap.max(1))
+            .await?;
+        let mut jobs_all = vec![];
+        let mut sampled = 0u32;
+        for id in ids.iter().take(runs_cap.max(1)) {
+            match self.list_run_jobs(full_name, *id).await {
+                Ok(j) => {
+                    sampled += 1;
+                    jobs_all.extend(j);
+                }
+                Err(_) => continue,
+            }
+        }
+        let (jobs, minutes_by_label) = aggregate_ci_jobs(&jobs_all);
+        Ok(crate::graph::CiUsage {
+            runs_sampled: sampled,
+            jobs,
+            minutes_by_label,
+        })
+    }
+}
+
 /// Pure parse for the PR connection: title + head-ref branch + base +
 /// state, newest first. Lenient (skips blank titles/branches) — a bad
 /// PR node must not fail the velocity it rode in with.
@@ -1184,6 +1332,62 @@ mod tests {
         ];
         assert_eq!(own_ahead_commits(&commits, "jzombie"), 2);
         assert_eq!(own_ahead_commits(&[], "jzombie"), 0);
+    }
+
+    #[test]
+    fn ci_label_key_uses_raw_labels() {
+        use super::ci_label_key;
+        // Raw, as the API gave them: sorted + `+`-joined, no parsing.
+        assert_eq!(ci_label_key(&["ubuntu-latest".into()]), "ubuntu-latest");
+        assert_eq!(
+            ci_label_key(&["X64".into(), "self-hosted".into(), "Linux".into()]),
+            "Linux+X64+self-hosted"
+        );
+        assert_eq!(ci_label_key(&[]), "unlabeled");
+        assert_eq!(
+            ci_label_key(&["my-custom-runner".into()]),
+            "my-custom-runner"
+        );
+    }
+
+    #[test]
+    fn ci_aggregation_sums_minutes_per_label_set() {
+        use super::{CiJob, aggregate_ci_jobs};
+        use chrono::TimeZone;
+        let at = |m: i64| {
+            chrono::Utc.with_ymd_and_hms(2026, 11, 8, 12, 0, 0).unwrap()
+                - chrono::Duration::minutes(m)
+        };
+        let jobs = vec![
+            CiJob {
+                labels: vec!["ubuntu-latest".into()],
+                started_at: Some(at(30)),
+                completed_at: Some(at(0)),
+            },
+            CiJob {
+                labels: vec!["ubuntu-latest".into()],
+                started_at: Some(at(15)),
+                completed_at: Some(at(0)),
+            },
+            CiJob {
+                labels: vec!["macos-14".into()],
+                started_at: Some(at(10)),
+                completed_at: Some(at(0)),
+            },
+            // Undated: counts as a job (inventory), adds no minutes.
+            CiJob {
+                labels: vec!["windows-2022".into()],
+                started_at: None,
+                completed_at: None,
+            },
+        ];
+        let (n, minutes) = aggregate_ci_jobs(&jobs);
+        assert_eq!(n, 4);
+        assert!((minutes["ubuntu-latest"] - 45.0).abs() < 1e-6);
+        assert!((minutes["macos-14"] - 10.0).abs() < 1e-6);
+        // Inventory key exists even at zero minutes.
+        assert!(minutes.contains_key("windows-2022"));
+        assert_eq!(minutes["windows-2022"], 0.0);
     }
 
     #[test]

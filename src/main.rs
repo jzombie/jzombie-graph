@@ -16,6 +16,12 @@ enum Format {
     /// JSON Schema for the graph contract, derived from the Rust types.
     /// Static — no selector, no API, no graph data.
     Schema,
+    /// CI-only merge: read a stored graph, collect Actions usage per
+    /// repo (1 list + 1 jobs call per sampled run, tree-gated), and
+    /// merge `ci_usage_30d` back in. Testing lane — iterates on CI
+    /// without burning a full sweep (~1+R calls/repo). Needs a token
+    /// like any live lane; reads `--input` or the default JSON file.
+    Ci,
 }
 
 #[derive(Parser, Debug)]
@@ -42,8 +48,9 @@ struct Cli {
     #[arg(long)]
     input: Option<PathBuf>,
 
-    /// Output format: json (default) | dump (full debug) | dot (dev eyeballing)
-    /// | focus (offline ranking) | schema (JSON Schema, no selector needed).
+    /// Output format: json (default) | dump (full debug) | dot (dev
+    /// eyeballing) | focus (offline ranking) | schema (JSON Schema, no
+    /// selector needed) | ci (live CI-only merge into a stored graph).
     #[arg(long, value_enum, default_value = "json")]
     format: Format,
 
@@ -107,12 +114,37 @@ async fn main() -> Result<()> {
         !(has_input && has_live),
         "--input is offline: it takes no --repos/--user/--org"
     );
+    // `--format ci` is a live merge lane, not an offline render: it
+    // reads a stored graph and hits the API for CI usage only.
+    let is_ci_merge = cli.format == Format::Ci;
     anyhow::ensure!(
         !has_live || (has_list ^ has_enum),
         "pass exactly one of --repos OR --user/--org"
     );
+    anyhow::ensure!(
+        !(is_ci_merge && has_live),
+        "--format ci merges into a stored graph: it takes no --repos/--user/--org"
+    );
 
-    let graph = if let Some(path) = &cli.input {
+    let graph = if cli.format == Format::Ci {
+        if std::env::var("JZOMBIE_GRAPH_OFFLINE").is_ok() {
+            anyhow::bail!("offline mode: --format ci needs the API for Actions usage");
+        }
+        let path = cli
+            .input
+            .clone()
+            .unwrap_or_else(|| paths::graph_json().into());
+        let text = std::fs::read_to_string(&path)
+            .with_context(|| format!("reading {}", path.display()))?;
+        let mut graph = jzombie_graph::graph::Graph::from_json(&text)?;
+        let client = jzombie_graph::github::GitHubClient::with_base_optional(
+            cli.token.clone(),
+            "https://api.github.com".into(),
+            cli.allow_unauthenticated,
+        )?;
+        pipeline::merge_ci_usage(&client, &mut graph, 30, 10).await;
+        graph
+    } else if let Some(path) = &cli.input {
         let text =
             std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
         jzombie_graph::graph::Graph::from_json(&text)?
@@ -150,6 +182,9 @@ async fn main() -> Result<()> {
 
     let text = match cli.format {
         Format::Json => output::render_json(&rendered)?,
+        // CI merge renders the same JSON artifact as a sweep: merged
+        // fields ride the same contract, same file.
+        Format::Ci => output::render_json(&rendered)?,
         Format::Dump => output::render_dump(&rendered),
         Format::Dot => output::render_dot(&rendered),
         Format::Focus => output::render_focus(&rendered, &chrono::Utc::now()),
@@ -173,11 +208,11 @@ async fn main() -> Result<()> {
     let graph_path = paths::graph_json();
     let schema_path = paths::schema_json();
     let default = match cli.format {
-        Format::Json => Some(graph_path.as_str()),
+        Format::Json | Format::Ci => Some(graph_path.as_str()),
         Format::Dump | Format::Dot | Format::Focus => None,
         Format::Schema => Some(schema_path.as_str()),
     };
-    if cli.format == Format::Json && !cli.stdout && cli.output.is_none() {
+    if matches!(cli.format, Format::Json | Format::Ci) && !cli.stdout && cli.output.is_none() {
         output::write_file(
             std::path::Path::new(schema_path.as_str()),
             &output::render_schema(),

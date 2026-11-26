@@ -84,6 +84,35 @@
         "commits_30d"
       ]
     },
+    "CiUsage": {
+      "description": "CI usage over the trailing 30d, sampled from recent completed\nworkflow runs (REST `actions/runs` + per-run `jobs`). Wall-clock\nminutes per raw runner label-set, never billed minutes: the billable\ntiming endpoint is closing down and was private-only anyway, and\nGraphQL exposes no runner labels at all. Keys are the job's labels\nsorted and `+`-joined as-is (`ubuntu-latest`,\n`Linux+self-hosted+X64`); empty labels read as `unlabeled`.\nFail-open empty — most repos run no CI, and `—` renders for empty,\nnever `0 min`.",
+      "type": "object",
+      "properties": {
+        "jobs": {
+          "description": "Jobs seen across the sampled runs.",
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "minutes_by_label": {
+          "description": "Wall-clock minutes per raw label-set, 1-decimal. The key set is\nthe inventory (OS + arch together, exactly as the API gave them).",
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "float"
+          },
+          "default": {}
+        },
+        "runs_sampled": {
+          "description": "Completed runs sampled (capped at collection; newest first).",
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        }
+      }
+    },
     "Edge": {
       "type": "object",
       "properties": {
@@ -169,6 +198,15 @@
           "default": [],
           "items": {
             "$ref": "#/$defs/BranchHeat"
+          }
+        },
+        "ci_usage_30d": {
+          "description": "CI usage over the trailing 30d (sampled completed runs, per-label\nwall-clock minutes). Display only, never scored.",
+          "$ref": "#/$defs/CiUsage",
+          "default": {
+            "jobs": 0,
+            "minutes_by_label": {},
+            "runs_sampled": 0
           }
         },
         "commit_heat": {

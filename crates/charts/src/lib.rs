@@ -2500,11 +2500,12 @@ fn indicators(graph_json: String, only: String) -> anyhow::Result<Value> {
 
 /// One data-table row: about (description + topic tags), proof
 /// (commits with the method shrunk beneath, heat badge beside it),
+/// CI labels (raw runner label-sets with wall-clock minutes beneath),
 /// reuse (one portfolio-internal column, both directions labeled —
 /// never GitHub's external "used by"; the JSON edges stay the machine
 /// surface). Stars fold into the repo cell (`★ N`) instead of spending
 /// a column on 0s. Keys sort alphabetically in the rendered table
-/// (`about, commits/30d, heat, layer, repo, reuse (portfolio)`) —
+/// (`about, ci, commits/30d, heat, layer, repo, reuse (portfolio)`) —
 /// Rust shapes the values, the MARKDOWN module owns the markup.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 struct DataRow {
@@ -2519,6 +2520,7 @@ struct DataRow {
     repo: String,
     layer: String,
     about: String,
+    ci: String,
     #[serde(rename = "commits/30d")]
     commits: String,
     heat: String,
@@ -2553,6 +2555,22 @@ fn heat_cell(band: &str) -> String {
     format!(
         "<div align=\"center\">![{band}]({})<br><sub>{band}</sub></div>",
         jzombie_graph::paths::indicator_url(band)
+    )
+}
+
+/// CI cell: raw runner label-sets `·`-joined, wall-clock minutes plus
+/// job/run counts shrunk beneath. Empty (no CI) reads `—`, never
+/// `0 min` — absence of CI is not zero-cost CI.
+fn ci_cell(u: &jzombie_graph::graph::CiUsage) -> String {
+    if u.minutes_by_label.is_empty() {
+        return "—".to_string();
+    }
+    format!(
+        "{}<br><sub>{:.1} min · {} jobs · {} runs</sub>",
+        u.label_sets().join(" · "),
+        u.total_minutes(),
+        u.jobs,
+        u.runs_sampled,
     )
 }
 
@@ -2729,6 +2747,7 @@ fn data_rows(graph_json: &str) -> anyhow::Result<DataDoc> {
                     };
                     format!("{}<br><sub>{method}</sub>", n.commits_30d)
                 },
+                ci: ci_cell(&n.ci_usage_30d),
                 heat: heat_cell(heat_band(heat)),
                 // One reuse column: stacked labeled lines split by `<hr>`
                 // (`---` would split the row). Empty sides drop out;
@@ -2950,6 +2969,7 @@ mod tests {
                 visible_reason: None,
                 layer: std::collections::BTreeSet::from([Layer::Isolated]),
                 has_default_binary: false,
+                ci_usage_30d: Default::default(),
             })
             .collect();
         jzombie_graph::output::render_json(&Graph::new(nodes, vec![])).unwrap()
@@ -3011,6 +3031,7 @@ mod tests {
                 visible_reason: None,
                 layer: std::collections::BTreeSet::from([Layer::Isolated]),
                 has_default_binary: false,
+                ci_usage_30d: Default::default(),
             })
             .collect();
         jzombie_graph::output::render_json(&Graph::new(nodes, vec![])).unwrap()
@@ -3349,6 +3370,7 @@ mod tests {
             vec![
                 "repo",
                 "about",
+                "ci",
                 "commits/30d",
                 "heat",
                 "layer",
@@ -3459,6 +3481,7 @@ mod tests {
             visible_reason: None,
             layer: std::collections::BTreeSet::from([Layer::Isolated]),
             has_default_binary: false,
+            ci_usage_30d: Default::default(),
         };
         let g = jzombie_graph::output::render_json(&Graph::new(
             vec![
@@ -3481,6 +3504,105 @@ mod tests {
             md.contains("5<br><sub>single branch</sub>"),
             "singular reads right:\n{md}"
         );
+    }
+
+    #[test]
+    fn data_table_ci_cell_names_labels_and_minutes() {
+        // CI cell: raw label-sets `·`-joined, minutes/jobs/runs shrunk
+        // beneath; no CI reads `—`, never `0 min`.
+        use jzombie_graph::graph::CiUsage;
+        let mut used = CiUsage {
+            runs_sampled: 4,
+            jobs: 9,
+            ..Default::default()
+        };
+        used.minutes_by_label.insert("macos-14".into(), 12.5);
+        used.minutes_by_label.insert("ubuntu-latest".into(), 30.0);
+        assert_eq!(
+            ci_cell(&used),
+            "macos-14 · ubuntu-latest<br><sub>42.5 min · 9 jobs · 4 runs</sub>"
+        );
+        assert_eq!(ci_cell(&CiUsage::default()), "—");
+    }
+
+    #[test]
+    fn data_table_ci_column_rides_along() {
+        // The column exists in the rendered table: a repo with CI shows
+        // its raw label-sets, one without shows the em-dash.
+        use jzombie_graph::graph::{Graph, Layer, Node};
+        let node = |name: &str, ci: bool| Node {
+            id: format!("me/{name}"),
+            owner: "me".into(),
+            name: name.into(),
+            fork: false,
+            private: false,
+            upstream: None,
+            ahead_by: None,
+            pushed_at: None,
+            description: None,
+            topics: vec![],
+            language: None,
+            homepage: None,
+            stars: 0,
+            forks_count: 0,
+            open_issues: 0,
+            license: None,
+            archived: false,
+            disabled: false,
+            size_kb: 0,
+            has_readme: false,
+            has_llms_txt: false,
+            has_agents_md: false,
+            has_license_file: false,
+            commits_1d: 0,
+            commits_5d: 0,
+            commits_15d: 0,
+            commits_30d: 5,
+            issues_open_1d: 0,
+            issues_open_5d: 0,
+            issues_open_15d: 0,
+            issues_open_30d: 0,
+            issues_closed_1d: 0,
+            issues_closed_5d: 0,
+            issues_closed_15d: 0,
+            issues_closed_30d: 0,
+            issue_comments_1d: 0,
+            issue_comments_5d: 0,
+            issue_comments_15d: 0,
+            issue_comments_30d: 0,
+            issue_labels: Default::default(),
+            recent_issues: vec![],
+            issue_heat: None,
+            commit_heat: None,
+            focus: None,
+            last_commit_at: None,
+            branch_heat: vec![],
+            recent_prs: vec![],
+            visible: true,
+            visible_reason: None,
+            layer: std::collections::BTreeSet::from([Layer::Isolated]),
+            has_default_binary: false,
+            ci_usage_30d: if ci {
+                jzombie_graph::graph::CiUsage {
+                    runs_sampled: 2,
+                    jobs: 3,
+                    minutes_by_label: [("ubuntu-latest".to_string(), 7.5)].into_iter().collect(),
+                }
+            } else {
+                Default::default()
+            },
+        };
+        let g = jzombie_graph::output::render_json(&Graph::new(
+            vec![node("ci", true), node("no", false)],
+            vec![],
+        ))
+        .unwrap();
+        let md = render_data_table_md(&g).unwrap();
+        assert!(
+            md.contains("ubuntu-latest<br><sub>7.5 min · 3 jobs · 2 runs</sub>"),
+            "labels + minutes in cell:\n{md}"
+        );
+        assert!(md.contains('|'), "still a table:\n{md}");
     }
 
     #[test]
@@ -3540,6 +3662,7 @@ mod tests {
             visible_reason: None,
             layer: std::collections::BTreeSet::from([Layer::Isolated]),
             has_default_binary: false,
+            ci_usage_30d: Default::default(),
         }];
         let g = jzombie_graph::output::render_json(&Graph::new(nodes, vec![])).unwrap();
         let md = render_data_table_md(&g).unwrap();
@@ -3615,6 +3738,7 @@ mod tests {
             visible_reason: None,
             layer: tags.iter().copied().collect(),
             has_default_binary: false,
+            ci_usage_30d: Default::default(),
         };
         let both = [Layer::Middleware, Layer::Application];
         let bin_g =
@@ -3693,6 +3817,7 @@ mod tests {
             visible_reason: None,
             layer: std::collections::BTreeSet::from([Layer::Isolated]),
             has_default_binary: false,
+            ci_usage_30d: Default::default(),
         };
         let edge = |s: &str, t: &str, kind: EdgeKind| Edge {
             source: s.into(),
@@ -3724,6 +3849,7 @@ mod tests {
             vec![
                 "repo",
                 "about",
+                "ci",
                 "commits/30d",
                 "heat",
                 "layer",
@@ -3828,6 +3954,7 @@ mod tests {
             visible_reason: None,
             layer: std::collections::BTreeSet::from([Layer::Isolated]),
             has_default_binary: false,
+            ci_usage_30d: Default::default(),
         };
         let many: Vec<&str> = vec!["a", "b", "c", "d", "e", "f"];
         let g = jzombie_graph::output::render_json(&Graph::new(
@@ -4013,6 +4140,7 @@ mod tests {
                     recent_prs: vec![],
                     layer: std::collections::BTreeSet::from([Layer::Isolated]),
                     has_default_binary: false,
+                    ci_usage_30d: Default::default(),
                 }
             };
         let nodes = vec![

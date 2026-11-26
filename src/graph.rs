@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Stable schema version. Bump only with a documented migration.
-pub const SCHEMA_VERSION: u32 = 7;
+pub const SCHEMA_VERSION: u32 = 9;
 
 fn is_false(b: &bool) -> bool {
     !*b
@@ -133,6 +133,43 @@ pub struct RecentIssue {
     pub labels: Vec<String>,
     #[serde(default)]
     pub comments: u32,
+}
+
+/// CI usage over the trailing 30d, sampled from recent completed
+/// workflow runs (REST `actions/runs` + per-run `jobs`). Wall-clock
+/// minutes per raw runner label-set, never billed minutes: the billable
+/// timing endpoint is closing down and was private-only anyway, and
+/// GraphQL exposes no runner labels at all. Keys are the job's labels
+/// sorted and `+`-joined as-is (`ubuntu-latest`,
+/// `Linux+self-hosted+X64`); empty labels read as `unlabeled`.
+/// Fail-open empty — most repos run no CI, and `—` renders for empty,
+/// never `0 min`.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct CiUsage {
+    /// Completed runs sampled (capped at collection; newest first).
+    #[serde(default)]
+    pub runs_sampled: u32,
+    /// Jobs seen across the sampled runs.
+    #[serde(default)]
+    pub jobs: u32,
+    /// Wall-clock minutes per raw label-set, 1-decimal. The key set is
+    /// the inventory (OS + arch together, exactly as the API gave them).
+    #[serde(default)]
+    pub minutes_by_label: BTreeMap<String, f32>,
+}
+
+impl CiUsage {
+    /// Label-sets seen, sorted. Keys exist for every set seen (even at
+    /// 0.0 minutes, when jobs lacked timestamps), so this doubles as
+    /// the runner inventory.
+    pub fn label_sets(&self) -> Vec<String> {
+        self.minutes_by_label.keys().cloned().collect()
+    }
+
+    /// Total wall-clock minutes across label-sets.
+    pub fn total_minutes(&self) -> f32 {
+        self.minutes_by_label.values().sum()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -275,6 +312,10 @@ pub struct Node {
     /// Display only, never scored.
     #[serde(default)]
     pub recent_prs: Vec<RecentPr>,
+    /// CI usage over the trailing 30d (sampled completed runs, per-label
+    /// wall-clock minutes). Display only, never scored.
+    #[serde(default)]
+    pub ci_usage_30d: CiUsage,
     /// Sampled planning threads (GraphQL, updated-desc, capped at 10).
     /// Titles plus labels plus state say what is being planned, prepped,
     /// or scheduled outside the code — bugs vs enhancements vs research
@@ -721,6 +762,7 @@ mod tests {
             has_license_file: false,
             branch_heat: vec![],
             recent_prs: vec![],
+            ci_usage_30d: Default::default(),
             visible: false,
             visible_reason: None,
             layer: std::collections::BTreeSet::from([Layer::Isolated]),
@@ -973,6 +1015,28 @@ mod tests {
         // Fresh (activity, no baseline): still None — check commits_5d.
         n.commits_5d = 3;
         assert_eq!(n.commit_heat(), None);
+    }
+
+    #[test]
+    fn ci_usage_labels_and_total() {
+        let mut u = CiUsage::default();
+        assert!(u.label_sets().is_empty());
+        assert_eq!(u.total_minutes(), 0.0);
+        u.runs_sampled = 3;
+        u.jobs = 5;
+        u.minutes_by_label.insert("ubuntu-latest".into(), 12.5);
+        u.minutes_by_label.insert("macos-14".into(), 4.0);
+        u.minutes_by_label
+            .insert("Linux+self-hosted+X64".into(), 0.0);
+        assert_eq!(
+            u.label_sets(),
+            vec![
+                "Linux+self-hosted+X64".to_string(),
+                "macos-14".to_string(),
+                "ubuntu-latest".to_string()
+            ]
+        );
+        assert!((u.total_minutes() - 16.5).abs() < 1e-6);
     }
 
     #[test]

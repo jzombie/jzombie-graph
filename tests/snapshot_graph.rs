@@ -61,6 +61,7 @@ fn node(id: &str, fork: bool, private: bool, ahead_by: Option<u32>) -> Node {
         visible_reason: None,
         layer: std::collections::BTreeSet::new(),
         has_default_binary: false,
+        ci_usage_30d: Default::default(),
     }
 }
 
