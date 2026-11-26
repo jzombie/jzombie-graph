@@ -282,10 +282,15 @@ fn selected_fragment_ranks_by_score_not_stars() {
     assert!(md.contains("align=\"right\""), "radar floated on every row");
     // Dependents ride as text, zeros included — nothing is suppressed
     // for looking empty.
-    assert!(md.contains("used by 3 repos"), "fan-in spelled out");
-    assert!(md.contains("used by 0 repos"), "zeros still print");
-    assert!(md.contains("uses 1 repo"), "singular fan-out");
-    assert!(md.contains("uses 1"), "fan-out spelled out");
+    assert!(
+        md.contains("reuse: 3 in-graph dependents"),
+        "fan-in spelled out"
+    );
+    assert!(
+        md.contains("reuse: 0 in-graph dependents"),
+        "zeros still print"
+    );
+    assert!(md.contains("· 1 in-graph dependency"), "singular fan-out");
     // The heat badge is the committed indicator file, sized and centered
     // on the text — `align` is the only vertical alignment GitHub keeps.
     assert!(
@@ -314,16 +319,19 @@ fn selected_fragment_ranks_by_score_not_stars() {
         md.contains("fork of other/Quiet (+12 own commits)"),
         "diverged fork says so"
     );
-    // Proof line: backlog, structure and the homepage — the full URL,
-    // never a truncated host. Back in a list, pipes are safe again, so
-    // the backlog closes one group and reuse opens the next.
+    // Proof line: backlog closes its own group now — reuse rides
+    // branched under the classification line above.
     assert!(
-        md.contains("69 open issues | used by 3 repos"),
-        "backlog closes its group"
+        md.contains("69 open issues</sub>"),
+        "proof line ends at backlog"
     );
     assert!(
-        md.contains("[crates.io/crates/r0](https://crates.io/crates/r0)"),
-        "homepage rides the discovery line, display trimmed"
+        md.contains("\u{2514} reuse: 3 in-graph dependents \u{b7} 0 in-graph dependencies</sub>"),
+        "reuse branched under layer"
+    );
+    assert!(
+        md.contains("<sub>[crates.io/crates/r0](https://crates.io/crates/r0)</sub>"),
+        "homepage leads discovery, display trimmed"
     );
     assert!(
         !md.contains("[https://crates.io/crates/r0](https://crates.io/crates/r0)"),

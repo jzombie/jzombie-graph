@@ -1332,33 +1332,45 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
         // Topics capped: the first N links carry the architecture, the
         // rest collapse to a `+N more` count instead of nine search links
         // that bury the metrics.
-        // Discovery line: topic search links (capped), then the site
-        // link with a trimmed display (scheme and trailing slash off,
-        // full URL kept in the href). The site used to dangle off the
-        // proof line, where a 60-char docs URL wrapped mid-link.
-        let mut discover: Vec<String> = row
-            .topics
-            .iter()
-            .take(SELECTED_TAG_MAX)
-            .map(|t| topic_link(&row.owner, t))
-            .collect();
-        if row.topics.len() > SELECTED_TAG_MAX {
-            discover.push(format!("+{} more", row.topics.len() - SELECTED_TAG_MAX));
-        }
+        // Discovery: the site link first, topic search links (capped)
+        // stepped in beneath it. The long docs URL used to trail the
+        // topic list and wrap mid-list; leading with it keeps the
+        // wrap-prone item on its own line.
         if let Some(home) = row
             .homepage
             .as_deref()
             .map(str::trim)
             .filter(|h| !h.is_empty())
         {
+            // Trimmed display (scheme and trailing slash off, full
+            // URL kept in the href).
             let display = home
                 .trim_start_matches("https://")
                 .trim_start_matches("http://")
                 .trim_end_matches('/');
-            discover.push(format!("[{display}]({home})"));
+            lines.push(format!("<sub>[{display}]({home})</sub>"));
         }
-        if !discover.is_empty() {
-            lines.push(format!("<sub>{}</sub>", discover.join(" ")));
+        if !row.topics.is_empty() {
+            let mut discover: Vec<String> = row
+                .topics
+                .iter()
+                .take(SELECTED_TAG_MAX)
+                .map(|t| topic_link(&row.owner, t))
+                .collect();
+            if row.topics.len() > SELECTED_TAG_MAX {
+                discover.push(format!("+{} more", row.topics.len() - SELECTED_TAG_MAX));
+            }
+            let joined = discover.join(" ");
+            if row
+                .homepage
+                .as_deref()
+                .map(str::trim)
+                .is_some_and(|h| !h.is_empty())
+            {
+                lines.push(format!("<sub>\u{2514} {joined}</sub>"));
+            } else {
+                lines.push(format!("<sub>{joined}</sub>"));
+            }
         }
 
         // One classification line: what the repo *is* and how it
@@ -1396,7 +1408,8 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
         }
         lines.push(format!("<sub>{}</sub>", groups.join(" | ")));
 
-        // The proof line: gauge, volume, pull, backlog, reuse. The
+        // The proof line: gauge, volume, pull, backlog. The
+        // badge file carries its own 44px design size; inline here it
         // badge file carries its own 44px design size; inline here it
         // asks for 24. Vertical centering uses the legacy `absmiddle`,
         // because GitHub strips `style` — and `middle` is not a synonym:
@@ -1409,20 +1422,33 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
         } else {
             format!("{} commits in 30d", row.commits_30d)
         };
-        // Portfolio-graph reuse, never people: counts name repos so
-        // the line can't read as users or stargazers.
+        // In-graph edges only — never totals, never people: the
+        // counts name the graph so they can't read as world-wide
+        // dependents or GitHub's global "Used by". Rides its own
+        // branched line under the classification it qualifies.
         let fan_in = format!(
-            "used by {} {}",
+            "{} {}",
             row.fan_in,
-            if row.fan_in == 1 { "repo" } else { "repos" }
+            if row.fan_in == 1 {
+                "in-graph dependent"
+            } else {
+                "in-graph dependents"
+            }
         );
         let fan_out = format!(
-            "uses {} {}",
+            "{} {}",
             row.fan_out,
-            if row.fan_out == 1 { "repo" } else { "repos" }
+            if row.fan_out == 1 {
+                "in-graph dependency"
+            } else {
+                "in-graph dependencies"
+            }
         );
+        lines.push(format!(
+            "<sub>\u{2514} reuse: {fan_in} \u{b7} {fan_out}</sub>"
+        ));
         let proof = format!(
-            "<img src=\"{badge}\" width=\"24\" align=\"absmiddle\" alt=\"\"> {band} \u{b7} {commits} \u{b7} \u{2605}{stars} \u{b7} \u{2442}{forks} \u{b7} {open} open issues | {fan_in} \u{b7} {fan_out}",
+            "<img src=\"{badge}\" width=\"24\" align=\"absmiddle\" alt=\"\"> {band} \u{b7} {commits} \u{b7} \u{2605}{stars} \u{b7} \u{2442}{forks} \u{b7} {open} open issues",
             badge = jzombie_graph::paths::indicator_url(row.band),
             band = row.band,
             commits = commits,
