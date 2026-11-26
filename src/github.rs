@@ -625,6 +625,10 @@ pub struct RepoVelocity {
     pub issues_closed_15d: u32,
     pub issues_closed_30d: u32,
     pub recent_issues: Vec<RecentIssue>,
+    /// GitHub's own label colors over the sampled threads
+    /// (`enhancement -> "0e8a16"`), first-seen wins. Repo-scoped by
+    /// construction — one map per velocity call, merged per node.
+    pub issue_label_colors: BTreeMap<String, String>,
 }
 
 /// GitTimestamp shape GitHub accepts: seconds precision, Zulu suffix.
@@ -673,7 +677,7 @@ const VELOCITY_QUERY_TEMPLATE: &str = r#"query($owner: String!, $name: String!__
         number
         title
         state
-        labels(first: 10) { nodes { name } }
+        labels(first: 10) { nodes { name color } }
         comments(first: 20, orderBy: {field: UPDATED_AT, direction: DESC}) {
           nodes { createdAt author { login } }
         }
@@ -779,6 +783,7 @@ impl GitHubClient {
             issues_closed_15d: issues[6],
             issues_closed_30d: issues[7],
             recent_issues: parse_recent_issues(&value),
+            issue_label_colors: parse_issue_label_colors(&value),
         })
     }
 }
@@ -986,6 +991,36 @@ fn parse_issue_windows(value: &serde_json::Value) -> [u32; 8] {
 /// Lenient throughout — missing connections are no threads, unparseable
 /// dates are undated (excluded from windows), nameless labels dropped.
 /// Caps are the query's (10 × 20 × 10); parsing never truncates further.
+/// GitHub's own label colors over the sampled threads: name to hex
+/// (`enhancement -> "0e8a16"`), first-seen wins. Only well-formed
+/// 6-hex colors ride — anything else fails open to absent, and the
+/// renderer falls back to grey. Same nodes `parse_recent_issues`
+/// walks, so the two can never disagree on the set.
+fn parse_issue_label_colors(value: &serde_json::Value) -> BTreeMap<String, String> {
+    let mut out = BTreeMap::new();
+    let nodes = value
+        .pointer("/data/repository/recentIssues/nodes")
+        .and_then(|n| n.as_array());
+    for n in nodes.into_iter().flatten() {
+        let labels = n.pointer("/labels/nodes").and_then(|l| l.as_array());
+        for l in labels.into_iter().flatten() {
+            let name = l
+                .get("name")
+                .and_then(|s| s.as_str())
+                .map(str::trim)
+                .unwrap_or_default();
+            let color = l.get("color").and_then(|s| s.as_str()).unwrap_or_default();
+            if name.is_empty() || color.len() != 6 || !color.bytes().all(|b| b.is_ascii_hexdigit())
+            {
+                continue;
+            }
+            out.entry(name.to_string())
+                .or_insert_with(|| color.to_ascii_lowercase());
+        }
+    }
+    out
+}
+
 fn parse_recent_issues(value: &serde_json::Value) -> Vec<RecentIssue> {
     let mut out = Vec::new();
     let nodes = value
@@ -1242,6 +1277,36 @@ mod tests {
         let bare = serde_json::json!({"data": {"repository": {}}});
         assert!(parse_recent_issues(&bare).is_empty());
         assert_eq!(parse_issue_windows(&bare), [0; 8]);
+    }
+
+    #[test]
+    fn issue_label_colors_keep_github_hex_first_seen_wins() {
+        use super::parse_issue_label_colors;
+        let v = serde_json::json!({
+            "data": {"repository": {
+                "recentIssues": {"nodes": [
+                    {"number": 7, "title": "Ship labels", "state": "OPEN",
+                     "labels": {"nodes": [
+                        {"name": "enhancement", "color": "0E8A16"},
+                        {"name": "bug", "color": "d73a4a"},
+                        {"name": "enhancement", "color": "ffffff"},
+                        {"name": "bogus", "color": "zzz"},
+                        {"name": "short", "color": "abc"},
+                        {"name": "", "color": "0e8a16"},
+                        {"name": "nocolor"},
+                        {},
+                     ]}},
+                ]}}}
+        });
+        let got = parse_issue_label_colors(&v);
+        assert_eq!(got.get("enhancement").map(String::as_str), Some("0e8a16"));
+        assert_eq!(got.get("bug").map(String::as_str), Some("d73a4a"));
+        assert!(!got.contains_key("bogus"), "bad hex fails open to absent");
+        assert!(!got.contains_key("short"), "short hex fails open to absent");
+        assert!(!got.contains_key("nocolor"), "missing color fails open");
+        assert_eq!(got.len(), 2);
+        let bare = serde_json::json!({"data": {"repository": {}}});
+        assert!(parse_issue_label_colors(&bare).is_empty());
     }
 
     #[test]

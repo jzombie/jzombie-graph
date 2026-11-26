@@ -1093,6 +1093,9 @@ struct SelectedRow {
     issue_comments_30d: u32,
     issue_heat: Option<f32>,
     labels: Vec<(String, u32)>,
+    /// GitHub's own hex per label name, repo-scoped. Census chips
+    /// paint with these; missing names fall back to grey.
+    label_colors: std::collections::BTreeMap<String, String>,
     /// Recent PRs: captured total, counts per state. Titles are never
     /// rendered — this is a dashboard, not a `git log`.
     prs_total: usize,
@@ -1268,6 +1271,7 @@ fn selected_rows(graph: &jzombie_graph::graph::Graph) -> Vec<SelectedRow> {
                 issue_comments_30d: nd.issue_comments_30d,
                 issue_heat: nd.issue_heat,
                 labels,
+                label_colors: nd.issue_label_colors.clone(),
                 prs_total,
                 prs_states,
                 issues_total,
@@ -1328,6 +1332,38 @@ fn shield_param(s: &str) -> String {
         }
     }
     out
+}
+
+/// One shield per census label: left side names the exact label,
+/// right side carries its count, painted with GitHub's own stored
+/// hex — never inferred. Missing or malformed colors fall back to
+/// grey (old graphs predate the field). Each badge links to that
+/// repo's issue list filtered to the label.
+fn label_census_badges(
+    repo_url: &str,
+    labels: &[(String, u32)],
+    colors: &std::collections::BTreeMap<String, String>,
+) -> String {
+    labels
+        .iter()
+        .map(|(label, count)| {
+            let stored = colors.get(label).map(String::as_str).unwrap_or_default();
+            let color = if stored.len() == 6 && stored.bytes().all(|b| b.is_ascii_hexdigit()) {
+                stored
+            } else {
+                "555555"
+            };
+            let msg = format!("\u{d7}{count}");
+            format!(
+                "<a href=\"{repo_url}/labels/{}\"><img src=\"https://img.shields.io/static/v1?label={}&message={}&color={}&style=flat-square\" align=\"absmiddle\" alt=\"label {label} {msg}\"></a>",
+                shield_param(label),
+                shield_param(label),
+                shield_param(&msg),
+                color,
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// One shield badge per runner label-set: left side names the
@@ -1505,22 +1541,24 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
             }
             threads.push(window.join(" \u{b7} "));
             if !row.labels.is_empty() {
-                let census: Vec<String> = row
-                    .labels
-                    .iter()
-                    .map(|(l, c)| format!("{l}\u{d7}{c}"))
-                    .collect();
-                threads.push(format!("label census: {}", census.join(", ")));
+                // Census chips paint with GitHub's own stored hex and
+                // link to the repo's issue list for that label — the
+                // text form (`enhancement×5`) hid both.
+                threads.push(format!(
+                    "label census: {}",
+                    label_census_badges(&row.url, &row.labels, &row.label_colors)
+                ));
             }
             lines.push(format!("<sub>{}</sub>", threads.join(" \u{b7} ")));
         }
 
         // CI badges last: one shield per runner label-set on its own
-        // shrunk line. Skipped entirely when the repo ran no sampled
+        // shrunk line, under a `CI/30d` flag that says what the
+        // minutes are. Skipped entirely when the repo ran no sampled
         // CI, so empty rows don't grow a line that says nothing.
         if !row.ci.minutes_by_label.is_empty() {
             lines.push(format!(
-                "<sub>CI: {}</sub>",
+                "<sub>CI/30d: {}</sub>",
                 ci_badges(&format!("{}/actions", row.url), &row.ci)
             ));
         }
@@ -2588,7 +2626,7 @@ fn indicators(graph_json: String, only: String) -> anyhow::Result<Value> {
 /// never GitHub's external "used by"; the JSON edges stay the machine
 /// surface). Stars fold into the repo cell (`★ N`) instead of spending
 /// a column on 0s. Keys sort alphabetically in the rendered table
-/// (`about, ci, commits/30d, heat, layer, repo, reuse (portfolio)`) —
+/// (`about, ci/30d, commits/30d, heat, layer, repo, reuse (portfolio)`) —
 /// Rust shapes the values, the MARKDOWN module owns the markup.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 struct DataRow {
@@ -2603,7 +2641,8 @@ struct DataRow {
     repo: String,
     layer: String,
     about: String,
-    ci: String,
+    #[serde(rename = "ci/30d")]
+    ci_30d: String,
     #[serde(rename = "commits/30d")]
     commits: String,
     heat: String,
@@ -2835,7 +2874,7 @@ fn data_rows(graph_json: &str) -> anyhow::Result<DataDoc> {
                     };
                     format!("{}<br><sub>{method}</sub>", n.commits_30d)
                 },
-                ci: ci_cell(&n.ci_usage_30d),
+                ci_30d: ci_cell(&n.ci_usage_30d),
                 heat: heat_cell(heat_band(heat)),
                 // One reuse column: stacked labeled lines split by `<hr>`
                 // (`---` would split the row). Empty sides drop out;
@@ -3058,6 +3097,7 @@ mod tests {
                 layer: std::collections::BTreeSet::from([Layer::Isolated]),
                 has_default_binary: false,
                 ci_usage_30d: Default::default(),
+                issue_label_colors: Default::default(),
             })
             .collect();
         jzombie_graph::output::render_json(&Graph::new(nodes, vec![])).unwrap()
@@ -3120,6 +3160,7 @@ mod tests {
                 layer: std::collections::BTreeSet::from([Layer::Isolated]),
                 has_default_binary: false,
                 ci_usage_30d: Default::default(),
+                issue_label_colors: Default::default(),
             })
             .collect();
         jzombie_graph::output::render_json(&Graph::new(nodes, vec![])).unwrap()
@@ -3458,7 +3499,7 @@ mod tests {
             vec![
                 "repo",
                 "about",
-                "ci",
+                "ci/30d",
                 "commits/30d",
                 "heat",
                 "layer",
@@ -3570,6 +3611,7 @@ mod tests {
             layer: std::collections::BTreeSet::from([Layer::Isolated]),
             has_default_binary: false,
             ci_usage_30d: Default::default(),
+            issue_label_colors: Default::default(),
         };
         let g = jzombie_graph::output::render_json(&Graph::new(
             vec![
@@ -3659,6 +3701,7 @@ mod tests {
             issue_comments_15d: 0,
             issue_comments_30d: 0,
             issue_labels: Default::default(),
+            issue_label_colors: Default::default(),
             recent_issues: vec![],
             issue_heat: None,
             commit_heat: None,
@@ -3751,6 +3794,7 @@ mod tests {
             layer: std::collections::BTreeSet::from([Layer::Isolated]),
             has_default_binary: false,
             ci_usage_30d: Default::default(),
+            issue_label_colors: Default::default(),
         }];
         let g = jzombie_graph::output::render_json(&Graph::new(nodes, vec![])).unwrap();
         let md = render_data_table_md(&g).unwrap();
@@ -3827,6 +3871,7 @@ mod tests {
             layer: tags.iter().copied().collect(),
             has_default_binary: false,
             ci_usage_30d: Default::default(),
+            issue_label_colors: Default::default(),
         };
         let both = [Layer::Middleware, Layer::Application];
         let bin_g =
@@ -3906,6 +3951,7 @@ mod tests {
             layer: std::collections::BTreeSet::from([Layer::Isolated]),
             has_default_binary: false,
             ci_usage_30d: Default::default(),
+            issue_label_colors: Default::default(),
         };
         let edge = |s: &str, t: &str, kind: EdgeKind| Edge {
             source: s.into(),
@@ -3937,7 +3983,7 @@ mod tests {
             vec![
                 "repo",
                 "about",
-                "ci",
+                "ci/30d",
                 "commits/30d",
                 "heat",
                 "layer",
@@ -4043,6 +4089,7 @@ mod tests {
             layer: std::collections::BTreeSet::from([Layer::Isolated]),
             has_default_binary: false,
             ci_usage_30d: Default::default(),
+            issue_label_colors: Default::default(),
         };
         let many: Vec<&str> = vec!["a", "b", "c", "d", "e", "f"];
         let g = jzombie_graph::output::render_json(&Graph::new(
@@ -4229,6 +4276,7 @@ mod tests {
                     layer: std::collections::BTreeSet::from([Layer::Isolated]),
                     has_default_binary: false,
                     ci_usage_30d: Default::default(),
+                    issue_label_colors: Default::default(),
                 }
             };
         let nodes = vec![

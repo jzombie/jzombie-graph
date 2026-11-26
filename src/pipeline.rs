@@ -433,7 +433,12 @@ pub async fn collect_live(
         };
         let (cc1, cc5, cc15, cc30) = (in_window(1), in_window(5), in_window(15), in_window(30));
         let mut issue_labels: BTreeMap<String, u32> = BTreeMap::new();
+        // Backlog only: labels on currently-open threads. Closed
+        // threads are resolved work, not scheduling mix.
         for ri in &velocity.recent_issues {
+            if !ri.state.eq_ignore_ascii_case("open") {
+                continue;
+            }
             for l in &ri.labels {
                 *issue_labels.entry(l.clone()).or_insert(0) += 1;
             }
@@ -1005,6 +1010,7 @@ pub async fn collect_live(
             issue_comments_15d: cc15,
             issue_comments_30d: cc30,
             issue_labels,
+            issue_label_colors: velocity.issue_label_colors,
             recent_issues,
             issue_heat,
             commit_heat,
@@ -1232,6 +1238,7 @@ mod tests {
                 issue_comments_15d: 0,
                 issue_comments_30d: 0,
                 issue_labels: Default::default(),
+                issue_label_colors: Default::default(),
                 recent_issues: vec![],
                 issue_heat: None,
                 commit_heat: None,
@@ -1286,6 +1293,7 @@ mod tests {
                 issue_comments_15d: 0,
                 issue_comments_30d: 0,
                 issue_labels: Default::default(),
+                issue_label_colors: Default::default(),
                 recent_issues: vec![],
                 issue_heat: None,
                 commit_heat: None,
@@ -1377,6 +1385,7 @@ mod tests {
             issue_comments_15d: 0,
             issue_comments_30d: 0,
             issue_labels: Default::default(),
+            issue_label_colors: Default::default(),
             recent_issues: vec![],
             issue_heat: None,
             commit_heat: None,

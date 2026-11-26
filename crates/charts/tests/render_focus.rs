@@ -57,6 +57,7 @@ fn node(name: &str, focus: Option<f32>) -> Node {
         layer: std::collections::BTreeSet::from([Layer::Isolated]),
         has_default_binary: false,
         ci_usage_30d: Default::default(),
+        issue_label_colors: Default::default(),
     }
 }
 

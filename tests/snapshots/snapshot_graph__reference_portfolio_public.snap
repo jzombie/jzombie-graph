@@ -3,7 +3,7 @@ source: tests/snapshot_graph.rs
 expression: "&pub_g"
 ---
 {
-  "schema_version": 9,
+  "schema_version": 10,
   "generated_at": "1970-01-01T00:00:00Z",
   "velocity_scope": "all",
   "nodes": [
@@ -49,6 +49,7 @@ expression: "&pub_g"
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
+      "issue_label_colors": {},
       "commit_heat": 3.6078432,
       "focus": 3.6078432,
       "last_commit_at": "1970-01-01T00:00:00Z",
@@ -115,6 +116,7 @@ expression: "&pub_g"
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
+      "issue_label_colors": {},
       "branch_heat": [],
       "recent_prs": [],
       "ci_usage_30d": {
@@ -161,6 +163,7 @@ expression: "&pub_g"
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
+      "issue_label_colors": {},
       "branch_heat": [],
       "recent_prs": [],
       "ci_usage_30d": {
@@ -207,6 +210,7 @@ expression: "&pub_g"
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
+      "issue_label_colors": {},
       "branch_heat": [],
       "recent_prs": [],
       "ci_usage_30d": {

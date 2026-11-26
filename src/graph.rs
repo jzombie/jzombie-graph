@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Stable schema version. Bump only with a documented migration.
-pub const SCHEMA_VERSION: u32 = 9;
+pub const SCHEMA_VERSION: u32 = 10;
 
 fn is_false(b: &bool) -> bool {
     !*b
@@ -265,11 +265,21 @@ pub struct Node {
     pub issue_comments_15d: u32,
     #[serde(default)]
     pub issue_comments_30d: u32,
-    /// Label census over the sampled recent threads (`enhancement: 3`).
+    /// Label census over the sampled open threads (`enhancement: 3`).
     /// Logged so scheduling mix (bugs vs features vs research) is minable
-    /// from the JSON; never scored, never weighted.
+    /// from the JSON; never scored, never weighted. Closed threads are
+    /// resolved work, not backlog, so they never count.
     #[serde(default)]
     pub issue_labels: BTreeMap<String, u32>,
+    /// GitHub's own hex color per label name (`enhancement: "0e8a16"`),
+    /// repo-scoped — the same name may differ across repos, so this
+    /// rides the node, never a global table. Display only: census
+    /// chips paint themselves with the stored color instead of an
+    /// inferred one. Absent for labels the sweep never saw a color
+    /// for (old graphs, colorless API replies); renderers fall back
+    /// to grey.
+    #[serde(default)]
+    pub issue_label_colors: BTreeMap<String, String>,
     /// Captured issue heat as of `generated_at` (same pro-rata shape as
     /// `commit_heat`, over open+closed touches). Stored so the JSON
     /// carries the gauge directly; frozen at collection.
@@ -776,6 +786,7 @@ mod tests {
             issue_comments_15d: 0,
             issue_comments_30d: 0,
             issue_labels: Default::default(),
+            issue_label_colors: Default::default(),
             recent_issues: vec![],
             issue_heat: None,
             commit_heat: None,

@@ -81,6 +81,7 @@ fn node(
         layer: std::collections::BTreeSet::from([Layer::Isolated]),
         has_default_binary: false,
         ci_usage_30d: Default::default(),
+        issue_label_colors: Default::default(),
     }
 }
 
@@ -180,6 +181,10 @@ fn eleven() -> Vec<Node> {
         ("bug".to_string(), 4u32),
         ("enhancement".to_string(), 5u32),
     ]);
+    // `enhancement` carries GitHub's own green; `bug` has none, so
+    // the renderer falls back to grey.
+    n0.issue_label_colors =
+        std::collections::BTreeMap::from([("enhancement".to_string(), "0e8a16".to_string())]);
     n0.recent_prs = vec![
         RecentPr {
             title: "fix: Cut UI lag from mouse bursts".into(),
@@ -325,8 +330,16 @@ fn selected_fragment_ranks_by_score_not_stars() {
         "issue window"
     );
     assert!(
-        md.contains("issue heat: 1.40 · label census: enhancement×5, bug×4"),
-        "gauge then census"
+        md.contains("issue heat: 1.40 · label census:"),
+        "gauge then census prefix"
+    );
+    assert!(
+        md.contains("<a href=\"https://github.com/me/r0/labels/enhancement\"><img src=\"https://img.shields.io/static/v1?label=enhancement&message=%C3%975&color=0e8a16"),
+        "census chip wears GitHub's own green and links to the label"
+    );
+    assert!(
+        md.contains("<a href=\"https://github.com/me/r0/labels/bug\"><img src=\"https://img.shields.io/static/v1?label=bug&message=%C3%974&color=555555"),
+        "uncolored labels fall back to grey"
     );
     assert!(
         md.contains("PRs (3): 1 merged · 1 open · 1 closed"),
@@ -412,7 +425,7 @@ fn selected_fragment_emits_ci_badges_per_label_set() {
         "badges link to the repo Actions tab:\n{md}"
     );
     assert!(
-        md.find("<sub>CI:").expect("CI line") > md.find("label census").expect("threads line"),
+        md.find("<sub>CI/30d:").expect("CI line") > md.find("label census:").expect("threads line"),
         "CI badges ride last, after the thread counts"
     );
     let color_of = |label: &str| -> String {
@@ -431,7 +444,7 @@ fn selected_fragment_emits_ci_badges_per_label_set() {
     );
     // One CI line on the row that ran, none on the row that didn't.
     assert_eq!(
-        md.matches("<sub>CI:").count(),
+        md.matches("<sub>CI/30d:").count(),
         1,
         "only CI rows grow a line"
     );
