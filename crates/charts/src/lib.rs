@@ -1080,6 +1080,12 @@ struct SelectedRow {
     language: Option<String>,
     license: Option<String>,
     focus: Option<f32>,
+    /// Rank of this row's focus among every focus-bearing node in the
+    /// graph (1 = hottest), plus the pool size. Focus is unbounded —
+    /// heat caps while dormancy sinks — so a raw `+0.06` means nothing
+    /// without its rank; the top outlier would flatten a `/max` share.
+    focus_rank: Option<usize>,
+    focus_total: usize,
     size_kb: u32,
     /// Agent-parseability audit from the default-branch tree:
     /// llms.txt presence. Readme, license, and agents.md never print.
@@ -1160,6 +1166,31 @@ fn is_profile_repo(id: &str) -> bool {
 /// parsed graph: the fragment shares one parse with the radar readouts.
 fn selected_rows(graph: &jzombie_graph::graph::Graph) -> Vec<SelectedRow> {
     let fan_in = graph.node_fan_in();
+    // Focus rank pool: every focus-bearing node, hottest first. Stored
+    // value first, computed fallback second — same source the focus
+    // chart ranks, so the `#n/m` denominator matches the chart's world.
+    let now = graph.generated_at;
+    let mut focus_sorted: Vec<(String, f32)> = graph
+        .nodes
+        .iter()
+        .filter_map(|nd| {
+            nd.focus
+                .or_else(|| nd.focus(&now))
+                .map(|f| (nd.id.clone(), f))
+        })
+        .collect();
+    focus_sorted.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.0.cmp(&b.0))
+    });
+    let focus_total = focus_sorted.len();
+    let focus_rank_of = |id: &str| -> Option<usize> {
+        focus_sorted
+            .iter()
+            .position(|(nid, _)| nid == id)
+            .map(|i| i + 1)
+    };
     let mut scored: Vec<(f64, &jzombie_graph::graph::Node)> = graph
         .nodes
         .iter()
@@ -1259,7 +1290,9 @@ fn selected_rows(graph: &jzombie_graph::graph::Graph) -> Vec<SelectedRow> {
                 layer: jzombie_graph::graph::Graph::layer_string(&nd.layer),
                 language: nd.language.clone(),
                 license: nd.license.clone(),
-                focus: nd.focus,
+                focus: nd.focus.or_else(|| nd.focus(&now)),
+                focus_rank: focus_rank_of(&nd.id),
+                focus_total,
                 size_kb: nd.size_kb,
                 surfaces,
                 issues_open_30d: nd.issues_open_30d,
@@ -1392,12 +1425,18 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
         if !row.surfaces.is_empty() {
             identity.push(format!("docs: {}", row.surfaces.join(", ")));
         }
-        // State is focus only: recency and branch count already read
-        // through the proof line (30d commits) and the radar, so the
-        // classification line stays one concept.
+        // State is focus rank: the raw score is unbounded (heat caps,
+        // dormancy sinks), so it prints with its rank — `#n/m` is the
+        // denominator the number alone never gives. Recency and branch
+        // count already read through the proof line (30d commits) and
+        // the radar, so the classification line stays one concept.
         let mut state: Vec<String> = vec![];
         if let Some(f) = row.focus {
-            state.push(format!("focus: {f:+.2}"));
+            if let Some(rank) = row.focus_rank {
+                state.push(format!("focus: {f:+.2} (#{rank}/{})", row.focus_total));
+            } else {
+                state.push(format!("focus: {f:+.2}"));
+            }
         }
         let mut groups: Vec<String> = vec![];
         if !identity.is_empty() {

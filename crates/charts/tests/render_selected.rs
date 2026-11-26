@@ -306,9 +306,9 @@ fn selected_fragment_ranks_by_score_not_stars() {
     // commits already carry what's live.
     assert!(
         md.contains(
-            "layer: `middleware · application` · Rust · Apache-2.0 · size: 6.2 MB | focus: -99.00"
+            "layer: `middleware · application` · Rust · Apache-2.0 · size: 6.2 MB | focus: -99.00 (#11/11)"
         ),
-        "identity then focus:\n{md}"
+        "identity then ranked focus:\n{md}"
     );
     assert!(!md.contains("last commit:"), "recency stays out");
     assert!(!md.contains("branches:"), "branch count stays out");
