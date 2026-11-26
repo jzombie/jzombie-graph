@@ -1083,8 +1083,8 @@ struct SelectedRow {
     last_commit: Option<String>,
     branches: usize,
     size_kb: u32,
-    /// Agent-parseability audit from the default-branch tree: which of
-    /// readme / license / llms.txt / agents.md exist.
+    /// Agent-parseability audit from the default-branch tree:
+    /// llms.txt presence. Readme, license, and agents.md never print.
     surfaces: Vec<&'static str>,
     /// Thread traffic in the trailing 30d, the issue gauge, and the
     /// label census over the sampled threads (bugs vs enhancements).
@@ -1193,17 +1193,11 @@ fn selected_rows(graph: &jzombie_graph::graph::Graph) -> Vec<SelectedRow> {
         .into_iter()
         .map(|(_, nd)| {
             let mut surfaces = vec![];
-            if nd.has_readme {
-                surfaces.push("readme");
-            }
-            if nd.has_license_file {
-                surfaces.push("license");
-            }
+            // Only llms.txt prints: readme, license, and agents.md are
+            // either ubiquitous or unwanted noise — the row stays busy
+            // enough without an audit that adds nothing.
             if nd.has_llms_txt {
                 surfaces.push("llms.txt");
-            }
-            if nd.has_agents_md {
-                surfaces.push("agents.md");
             }
             let mut labels: Vec<(String, u32)> = nd
                 .issue_labels
@@ -1347,7 +1341,7 @@ fn ci_badges(actions_url: &str, ci: &jzombie_graph::graph::CiUsage) -> String {
         .map(|(label, min)| {
             let msg = format!("{min:.1} min");
             format!(
-                "<a href=\"{actions_url}\"><img src=\"https://img.shields.io/static/v1?label={}&message={}&color={}&style=flat-square\" alt=\"CI {}: {}\"></a>",
+                "<a href=\"{actions_url}\"><img src=\"https://img.shields.io/static/v1?label={}&message={}&color={}&style=flat-square\" align=\"absmiddle\" alt=\"CI {}: {}\"></a>",
                 shield_param(label),
                 shield_param(&msg),
                 ci_badge_color(label),

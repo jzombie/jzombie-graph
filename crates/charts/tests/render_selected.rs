@@ -299,10 +299,9 @@ fn selected_fragment_ranks_by_score_not_stars() {
     assert!(md.contains("last commit: 2026-11-15"), "recency date");
     assert!(md.contains("branches: 2"), "branch count");
     assert!(md.contains("size: 6.2 MB"), "size in reader units");
-    assert!(
-        md.contains("docs: readme, license, agents.md"),
-        "tree audit"
-    );
+    // No fixture node carries llms.txt, so no row prints a docs
+    // segment at all.
+    assert!(!md.contains("docs:"), "docs audit stays out:\n{md}");
     assert!(
         md.contains("fork of other/Quiet (+12 own commits)"),
         "diverged fork says so"
