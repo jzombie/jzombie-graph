@@ -378,6 +378,67 @@ fn selected_fragment_ranks_by_score_not_stars() {
 }
 
 #[test]
+fn selected_fragment_emits_ci_badges_per_label_set() {
+    let mut nodes = eleven();
+    // `r0` ran CI on two runner sets; `r1` ran none (empty map reads
+    // as no CI, never `0 min`).
+    nodes[0].ci_usage_30d = jzombie_graph::graph::CiUsage {
+        runs_sampled: 10,
+        jobs: 4,
+        minutes_by_label: std::collections::BTreeMap::from([
+            ("ubuntu-latest".to_string(), 12.5),
+            ("ubuntu-24.04-arm".to_string(), 30.0),
+            ("windows-11-arm".to_string(), 3.0),
+        ]),
+    };
+    let g = jzombie_graph::output::render_json(&Graph::new(nodes, vec![])).unwrap();
+    let md = charts::render_selected_md(&g).unwrap();
+    // Raw keys verbatim on the left, that key's minutes on the
+    // right, nothing inferred.
+    assert!(
+        md.contains("label=ubuntu-latest&message=12.5%20min"),
+        "raw key, raw minutes:\n{md}"
+    );
+    assert!(
+        md.contains("label=ubuntu-24.04-arm&message=30.0%20min"),
+        "raw ARM key untouched:\n{md}"
+    );
+    assert!(
+        md.contains("label=windows-11-arm&message=3.0%20min"),
+        "raw ARM key untouched:\n{md}"
+    );
+    assert!(!md.contains("arm64"), "no invented arch tags");
+    assert!(
+        md.contains("<a href=\"https://github.com/me/r0/actions\"><img src=\"https://img.shields.io/static/v1?label=ubuntu-latest"),
+        "badges link to the repo Actions tab:\n{md}"
+    );
+    assert!(
+        md.find("<sub>CI:").expect("CI line") > md.find("label census").expect("threads line"),
+        "CI badges ride last, after the thread counts"
+    );
+    let color_of = |label: &str| -> String {
+        let needle = format!("label={label}&message=");
+        let at = md
+            .find(&needle)
+            .unwrap_or_else(|| panic!("missing {label}"));
+        let rest = &md[at + needle.len()..];
+        let c = rest.find("&color=").expect("badge has color") + "&color=".len();
+        rest[c..c + 6].to_string()
+    };
+    assert_ne!(
+        color_of("ubuntu-latest"),
+        color_of("ubuntu-24.04-arm"),
+        "same OS, different keys, different colors"
+    );
+    // One CI line on the row that ran, none on the row that didn't.
+    assert_eq!(
+        md.matches("<sub>CI:").count(),
+        1,
+        "only CI rows grow a line"
+    );
+}
+
+#[test]
 fn selected_fragment_skips_the_profile_readme_repo() {
     let mut nodes = eleven();
     // A profile README (`owner` == `name`) with the loudest stats in the

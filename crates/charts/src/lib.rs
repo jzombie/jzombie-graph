@@ -1101,6 +1101,9 @@ struct SelectedRow {
     /// Titles are never rendered.
     issues_total: usize,
     issues_states: Vec<(String, usize)>,
+    /// CI usage, trailing 30d: wall-clock minutes per raw runner
+    /// label-set. Empty when the repo ran no sampled CI.
+    ci: jzombie_graph::graph::CiUsage,
 }
 
 /// Titles are gone: the review correctly called PR/issue titles signal
@@ -1275,9 +1278,85 @@ fn selected_rows(graph: &jzombie_graph::graph::Graph) -> Vec<SelectedRow> {
                 prs_states,
                 issues_total,
                 issues_states,
+                ci: nd.ci_usage_30d.clone(),
             }
         })
         .collect()
+}
+
+/// Shield color: a visual distinguisher derived from the exact
+/// label-set string (FNV-1a hue, lightness from higher bits so
+/// near-identical keys still separate), nothing more. It carries no
+/// OS/arch meaning — the text beside it is the raw key, verbatim.
+/// Equal keys always read equal.
+fn ci_badge_color(label_set: &str) -> String {
+    let mut hash: u64 = 0xcbf29ce484222325;
+    for b in label_set.bytes() {
+        hash ^= u64::from(b);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    let hue = (hash % 360) as f64;
+    let light = 0.38 + ((hash >> 24) % 3) as f64 * 0.08;
+    const SAT: f64 = 0.70;
+    let c = (1.0 - (2.0 * light - 1.0).abs()) * SAT;
+    let x = c * (1.0 - ((hue / 60.0) % 2.0 - 1.0).abs());
+    let (r, g, b) = if hue < 60.0 {
+        (c, x, 0.0)
+    } else if hue < 120.0 {
+        (x, c, 0.0)
+    } else if hue < 180.0 {
+        (0.0, c, x)
+    } else if hue < 240.0 {
+        (0.0, x, c)
+    } else if hue < 300.0 {
+        (x, 0.0, c)
+    } else {
+        (c, 0.0, x)
+    };
+    let m = light - c / 2.0;
+    format!(
+        "{:02X}{:02X}{:02X}",
+        ((r + m) * 255.0) as u8,
+        ((g + m) * 255.0) as u8,
+        ((b + m) * 255.0) as u8,
+    )
+}
+
+/// Percent-encode a shields.io query value: alphanumerics plus
+/// `-_.~` ride through, everything else becomes `%XX`.
+fn shield_param(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for b in s.bytes() {
+        if b.is_ascii_alphanumeric() || b == b'-' || b == b'_' || b == b'.' || b == b'~' {
+            out.push(b as char);
+        } else {
+            out.push_str(&format!("%{b:02X}"));
+        }
+    }
+    out
+}
+
+/// One shield badge per runner label-set: left side names the
+/// exact stored key, right side carries that key's minutes, nothing
+/// inferred. Each badge links to the repo's Actions tab (per-run
+/// URLs aren't stored — only aggregates). Empty CI renders no line
+/// at all — absence of CI is not zero-cost CI.
+fn ci_badges(actions_url: &str, ci: &jzombie_graph::graph::CiUsage) -> String {
+    ci.minutes_by_label
+        .iter()
+        .map(|(label, min)| {
+            let msg = format!("{min:.1} min");
+            format!(
+                "<a href=\"{actions_url}\"><img src=\"https://img.shields.io/static/v1?label={}&message={}&color={}&style=flat-square\" alt=\"CI {}: {}\"></a>",
+                shield_param(label),
+                shield_param(&msg),
+                ci_badge_color(label),
+                label,
+                msg,
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// Render the selected-work fragment: heading, the sentence that states
@@ -1440,6 +1519,16 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
                 threads.push(format!("label census: {}", census.join(", ")));
             }
             lines.push(format!("<sub>{}</sub>", threads.join(" \u{b7} ")));
+        }
+
+        // CI badges last: one shield per runner label-set on its own
+        // shrunk line. Skipped entirely when the repo ran no sampled
+        // CI, so empty rows don't grow a line that says nothing.
+        if !row.ci.minutes_by_label.is_empty() {
+            lines.push(format!(
+                "<sub>CI: {}</sub>",
+                ci_badges(&format!("{}/actions", row.url), &row.ci)
+            ));
         }
 
         // Join with literal `<br>`: markdown needs a hard break inside a
@@ -2558,16 +2647,21 @@ fn heat_cell(band: &str) -> String {
     )
 }
 
-/// CI cell: raw runner label-sets `·`-joined, wall-clock minutes plus
-/// job/run counts shrunk beneath. Empty (no CI) reads `—`, never
+/// CI cell: every stored label-set key verbatim with its own
+/// minutes, totals shrunk beneath. Empty (no CI) reads `—`, never
 /// `0 min` — absence of CI is not zero-cost CI.
 fn ci_cell(u: &jzombie_graph::graph::CiUsage) -> String {
     if u.minutes_by_label.is_empty() {
         return "—".to_string();
     }
+    let sets: Vec<String> = u
+        .minutes_by_label
+        .iter()
+        .map(|(label, min)| format!("{label} {min:.1}"))
+        .collect();
     format!(
         "{}<br><sub>{:.1} min · {} jobs · {} runs</sub>",
-        u.label_sets().join(" · "),
+        sets.join(" · "),
         u.total_minutes(),
         u.jobs,
         u.runs_sampled,
@@ -3508,8 +3602,8 @@ mod tests {
 
     #[test]
     fn data_table_ci_cell_names_labels_and_minutes() {
-        // CI cell: raw label-sets `·`-joined, minutes/jobs/runs shrunk
-        // beneath; no CI reads `—`, never `0 min`.
+        // CI cell: every stored key verbatim with its own minutes,
+        // totals shrunk beneath; no CI reads `—`, never `0 min`.
         use jzombie_graph::graph::CiUsage;
         let mut used = CiUsage {
             runs_sampled: 4,
@@ -3520,7 +3614,7 @@ mod tests {
         used.minutes_by_label.insert("ubuntu-latest".into(), 30.0);
         assert_eq!(
             ci_cell(&used),
-            "macos-14 · ubuntu-latest<br><sub>42.5 min · 9 jobs · 4 runs</sub>"
+            "macos-14 12.5 · ubuntu-latest 30.0<br><sub>42.5 min · 9 jobs · 4 runs</sub>"
         );
         assert_eq!(ci_cell(&CiUsage::default()), "—");
     }
@@ -3599,7 +3693,7 @@ mod tests {
         .unwrap();
         let md = render_data_table_md(&g).unwrap();
         assert!(
-            md.contains("ubuntu-latest<br><sub>7.5 min · 3 jobs · 2 runs</sub>"),
+            md.contains("ubuntu-latest 7.5<br><sub>7.5 min · 3 jobs · 2 runs</sub>"),
             "labels + minutes in cell:\n{md}"
         );
         assert!(md.contains('|'), "still a table:\n{md}");
