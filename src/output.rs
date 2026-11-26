@@ -176,6 +176,13 @@ pub fn render_dump(graph: &Graph) -> String {
                 .unwrap_or("-".into()),
             n.open_issues,
         ));
+        s.push_str(&format!(
+            "  ci: runs_sampled={} jobs={} labels=[{}] minutes={:.1}\n",
+            n.ci_usage_30d.runs_sampled,
+            n.ci_usage_30d.jobs,
+            n.ci_usage_30d.label_sets().join(", "),
+            n.ci_usage_30d.total_minutes(),
+        ));
         match incoming.get(n.id.as_str()) {
             Some(v) if !v.is_empty() => {
                 s.push_str("  in:\n");
@@ -309,6 +316,7 @@ mod tests {
                 issue_comments_15d: 0,
                 issue_comments_30d: 0,
                 issue_labels: Default::default(),
+                issue_label_colors: Default::default(),
                 recent_issues: vec![],
                 issue_heat: None,
                 commit_heat: None,
@@ -316,6 +324,7 @@ mod tests {
                 last_commit_at: None,
                 branch_heat: vec![],
                 recent_prs: vec![],
+                ci_usage_30d: Default::default(),
                 visible: true,
                 visible_reason: Some("tier3: >=1 portfolio edge".into()),
                 layer: std::collections::BTreeSet::new(),
@@ -362,6 +371,7 @@ mod tests {
                 issue_comments_15d: 0,
                 issue_comments_30d: 0,
                 issue_labels: Default::default(),
+                issue_label_colors: Default::default(),
                 recent_issues: vec![],
                 issue_heat: None,
                 commit_heat: None,
@@ -370,6 +380,7 @@ mod tests {
                 branch_heat: vec![],
                 visible: true,
                 recent_prs: vec![],
+                ci_usage_30d: Default::default(),
                 visible_reason: Some("tier3: >=1 portfolio edge".into()),
                 layer: std::collections::BTreeSet::new(),
                 has_default_binary: false,

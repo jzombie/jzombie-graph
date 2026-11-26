@@ -84,6 +84,35 @@
         "commits_30d"
       ]
     },
+    "CiUsage": {
+      "description": "CI usage, trailing 30d: wall-clock minutes per raw runner\nlabel-set (`+`-joined).",
+      "type": "object",
+      "properties": {
+        "jobs": {
+          "description": "Jobs seen across the sampled runs.",
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "minutes_by_label": {
+          "description": "Minutes per label-set.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "float"
+          },
+          "default": {}
+        },
+        "runs_sampled": {
+          "description": "Completed runs sampled (capped, newest first).",
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        }
+      }
+    },
     "Edge": {
       "type": "object",
       "properties": {
@@ -169,6 +198,15 @@
           "default": [],
           "items": {
             "$ref": "#/$defs/BranchHeat"
+          }
+        },
+        "ci_usage_30d": {
+          "description": "CI usage over the trailing 30d (sampled completed runs, per-label\nwall-clock minutes). Display only, never scored.",
+          "$ref": "#/$defs/CiUsage",
+          "default": {
+            "jobs": 0,
+            "minutes_by_label": {},
+            "runs_sampled": 0
           }
         },
         "commit_heat": {
@@ -293,8 +331,16 @@
           ],
           "format": "float"
         },
+        "issue_label_colors": {
+          "description": "GitHub's own hex color per label name (`enhancement: \"0e8a16\"`),\nrepo-scoped — the same name may differ across repos, so this\nrides the node, never a global table. Display only: census\nchips paint themselves with the stored color instead of an\ninferred one. Absent for labels the sweep never saw a color\nfor (old graphs, colorless API replies); renderers fall back\nto grey.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {}
+        },
         "issue_labels": {
-          "description": "Label census over the sampled recent threads (`enhancement: 3`).\nLogged so scheduling mix (bugs vs features vs research) is minable\nfrom the JSON; never scored, never weighted.",
+          "description": "Label census over the sampled open threads (`enhancement: 3`).\nLogged so scheduling mix (bugs vs features vs research) is minable\nfrom the JSON; never scored, never weighted. Closed threads are\nresolved work, not backlog, so they never count.",
           "type": "object",
           "additionalProperties": {
             "type": "integer",

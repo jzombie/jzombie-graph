@@ -80,6 +80,8 @@ fn node(
         visible_reason: None,
         layer: std::collections::BTreeSet::from([Layer::Isolated]),
         has_default_binary: false,
+        ci_usage_30d: Default::default(),
+        issue_label_colors: Default::default(),
     }
 }
 
@@ -179,6 +181,10 @@ fn eleven() -> Vec<Node> {
         ("bug".to_string(), 4u32),
         ("enhancement".to_string(), 5u32),
     ]);
+    // `enhancement` carries GitHub's own green; `bug` has none, so
+    // the renderer falls back to grey.
+    n0.issue_label_colors =
+        std::collections::BTreeMap::from([("enhancement".to_string(), "0e8a16".to_string())]);
     n0.recent_prs = vec![
         RecentPr {
             title: "fix: Cut UI lag from mouse bursts".into(),
@@ -298,10 +304,9 @@ fn selected_fragment_ranks_by_score_not_stars() {
     assert!(md.contains("last commit: 2026-11-15"), "recency date");
     assert!(md.contains("branches: 2"), "branch count");
     assert!(md.contains("size: 6.2 MB"), "size in reader units");
-    assert!(
-        md.contains("docs: readme, license, agents.md"),
-        "tree audit"
-    );
+    // No fixture node carries llms.txt, so no row prints a docs
+    // segment at all.
+    assert!(!md.contains("docs:"), "docs audit stays out:\n{md}");
     assert!(
         md.contains("fork of other/Quiet (+12 own commits)"),
         "diverged fork says so"
@@ -325,8 +330,16 @@ fn selected_fragment_ranks_by_score_not_stars() {
         "issue window"
     );
     assert!(
-        md.contains("issue heat: 1.40 · label census: enhancement×5, bug×4"),
-        "gauge then census"
+        md.contains("issue heat: 1.40 · label census:"),
+        "gauge then census prefix"
+    );
+    assert!(
+        md.contains("<a href=\"https://github.com/me/r0/labels/enhancement\"><img src=\"https://img.shields.io/static/v1?label=enhancement&message=%C3%975&color=0e8a16"),
+        "census chip wears GitHub's own green and links to the label"
+    );
+    assert!(
+        md.contains("<a href=\"https://github.com/me/r0/labels/bug\"><img src=\"https://img.shields.io/static/v1?label=bug&message=%C3%974&color=555555"),
+        "uncolored labels fall back to grey"
     );
     assert!(
         md.contains("PRs (3): 1 merged · 1 open · 1 closed"),
@@ -374,6 +387,67 @@ fn selected_fragment_ranks_by_score_not_stars() {
     assert!(!r2_item.contains("topic%3A"), "no topics, no topic line");
     assert!(!r2_item.contains("crates.io"), "no homepage, no host");
     insta::assert_snapshot!("selected_frag", md);
+}
+
+#[test]
+fn selected_fragment_emits_ci_badges_per_label_set() {
+    let mut nodes = eleven();
+    // `r0` ran CI on two runner sets; `r1` ran none (empty map reads
+    // as no CI, never `0 min`).
+    nodes[0].ci_usage_30d = jzombie_graph::graph::CiUsage {
+        runs_sampled: 10,
+        jobs: 4,
+        minutes_by_label: std::collections::BTreeMap::from([
+            ("ubuntu-latest".to_string(), 12.5),
+            ("ubuntu-24.04-arm".to_string(), 30.0),
+            ("windows-11-arm".to_string(), 3.0),
+        ]),
+    };
+    let g = jzombie_graph::output::render_json(&Graph::new(nodes, vec![])).unwrap();
+    let md = charts::render_selected_md(&g).unwrap();
+    // Raw keys verbatim on the left, that key's minutes on the
+    // right, nothing inferred.
+    assert!(
+        md.contains("label=ubuntu-latest&message=12.5%20min"),
+        "raw key, raw minutes:\n{md}"
+    );
+    assert!(
+        md.contains("label=ubuntu-24.04-arm&message=30.0%20min"),
+        "raw ARM key untouched:\n{md}"
+    );
+    assert!(
+        md.contains("label=windows-11-arm&message=3.0%20min"),
+        "raw ARM key untouched:\n{md}"
+    );
+    assert!(!md.contains("arm64"), "no invented arch tags");
+    assert!(
+        md.contains("<a href=\"https://github.com/me/r0/actions\"><img src=\"https://img.shields.io/static/v1?label=ubuntu-latest"),
+        "badges link to the repo Actions tab:\n{md}"
+    );
+    assert!(
+        md.find("<sub>CI/30d:").expect("CI line") > md.find("label census:").expect("threads line"),
+        "CI badges ride last, after the thread counts"
+    );
+    let color_of = |label: &str| -> String {
+        let needle = format!("label={label}&message=");
+        let at = md
+            .find(&needle)
+            .unwrap_or_else(|| panic!("missing {label}"));
+        let rest = &md[at + needle.len()..];
+        let c = rest.find("&color=").expect("badge has color") + "&color=".len();
+        rest[c..c + 6].to_string()
+    };
+    assert_ne!(
+        color_of("ubuntu-latest"),
+        color_of("ubuntu-24.04-arm"),
+        "same OS, different keys, different colors"
+    );
+    // One CI line on the row that ran, none on the row that didn't.
+    assert_eq!(
+        md.matches("<sub>CI/30d:").count(),
+        1,
+        "only CI rows grow a line"
+    );
 }
 
 #[test]

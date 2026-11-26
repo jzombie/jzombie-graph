@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Stable schema version. Bump only with a documented migration.
-pub const SCHEMA_VERSION: u32 = 7;
+pub const SCHEMA_VERSION: u32 = 10;
 
 fn is_false(b: &bool) -> bool {
     !*b
@@ -135,6 +135,35 @@ pub struct RecentIssue {
     pub comments: u32,
 }
 
+/// CI usage, trailing 30d: wall-clock minutes per raw runner
+/// label-set (`+`-joined).
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct CiUsage {
+    /// Completed runs sampled (capped, newest first).
+    #[serde(default)]
+    pub runs_sampled: u32,
+    /// Jobs seen across the sampled runs.
+    #[serde(default)]
+    pub jobs: u32,
+    /// Minutes per label-set.
+    #[serde(default)]
+    pub minutes_by_label: BTreeMap<String, f32>,
+}
+
+impl CiUsage {
+    /// Label-sets seen, sorted. Keys exist for every set seen (even at
+    /// 0.0 minutes, when jobs lacked timestamps), so this doubles as
+    /// the runner inventory.
+    pub fn label_sets(&self) -> Vec<String> {
+        self.minutes_by_label.keys().cloned().collect()
+    }
+
+    /// Total wall-clock minutes across label-sets.
+    pub fn total_minutes(&self) -> f32 {
+        self.minutes_by_label.values().sum()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Node {
     /// Canonical id: `owner/repo` full name.
@@ -236,11 +265,21 @@ pub struct Node {
     pub issue_comments_15d: u32,
     #[serde(default)]
     pub issue_comments_30d: u32,
-    /// Label census over the sampled recent threads (`enhancement: 3`).
+    /// Label census over the sampled open threads (`enhancement: 3`).
     /// Logged so scheduling mix (bugs vs features vs research) is minable
-    /// from the JSON; never scored, never weighted.
+    /// from the JSON; never scored, never weighted. Closed threads are
+    /// resolved work, not backlog, so they never count.
     #[serde(default)]
     pub issue_labels: BTreeMap<String, u32>,
+    /// GitHub's own hex color per label name (`enhancement: "0e8a16"`),
+    /// repo-scoped — the same name may differ across repos, so this
+    /// rides the node, never a global table. Display only: census
+    /// chips paint themselves with the stored color instead of an
+    /// inferred one. Absent for labels the sweep never saw a color
+    /// for (old graphs, colorless API replies); renderers fall back
+    /// to grey.
+    #[serde(default)]
+    pub issue_label_colors: BTreeMap<String, String>,
     /// Captured issue heat as of `generated_at` (same pro-rata shape as
     /// `commit_heat`, over open+closed touches). Stored so the JSON
     /// carries the gauge directly; frozen at collection.
@@ -275,6 +314,10 @@ pub struct Node {
     /// Display only, never scored.
     #[serde(default)]
     pub recent_prs: Vec<RecentPr>,
+    /// CI usage over the trailing 30d (sampled completed runs, per-label
+    /// wall-clock minutes). Display only, never scored.
+    #[serde(default)]
+    pub ci_usage_30d: CiUsage,
     /// Sampled planning threads (GraphQL, updated-desc, capped at 10).
     /// Titles plus labels plus state say what is being planned, prepped,
     /// or scheduled outside the code — bugs vs enhancements vs research
@@ -721,6 +764,7 @@ mod tests {
             has_license_file: false,
             branch_heat: vec![],
             recent_prs: vec![],
+            ci_usage_30d: Default::default(),
             visible: false,
             visible_reason: None,
             layer: std::collections::BTreeSet::from([Layer::Isolated]),
@@ -742,6 +786,7 @@ mod tests {
             issue_comments_15d: 0,
             issue_comments_30d: 0,
             issue_labels: Default::default(),
+            issue_label_colors: Default::default(),
             recent_issues: vec![],
             issue_heat: None,
             commit_heat: None,
@@ -973,6 +1018,28 @@ mod tests {
         // Fresh (activity, no baseline): still None — check commits_5d.
         n.commits_5d = 3;
         assert_eq!(n.commit_heat(), None);
+    }
+
+    #[test]
+    fn ci_usage_labels_and_total() {
+        let mut u = CiUsage::default();
+        assert!(u.label_sets().is_empty());
+        assert_eq!(u.total_minutes(), 0.0);
+        u.runs_sampled = 3;
+        u.jobs = 5;
+        u.minutes_by_label.insert("ubuntu-latest".into(), 12.5);
+        u.minutes_by_label.insert("macos-14".into(), 4.0);
+        u.minutes_by_label
+            .insert("Linux+self-hosted+X64".into(), 0.0);
+        assert_eq!(
+            u.label_sets(),
+            vec![
+                "Linux+self-hosted+X64".to_string(),
+                "macos-14".to_string(),
+                "ubuntu-latest".to_string()
+            ]
+        );
+        assert!((u.total_minutes() - 16.5).abs() < 1e-6);
     }
 
     #[test]

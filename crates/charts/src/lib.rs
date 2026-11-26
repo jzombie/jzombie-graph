@@ -1083,8 +1083,8 @@ struct SelectedRow {
     last_commit: Option<String>,
     branches: usize,
     size_kb: u32,
-    /// Agent-parseability audit from the default-branch tree: which of
-    /// readme / license / llms.txt / agents.md exist.
+    /// Agent-parseability audit from the default-branch tree:
+    /// llms.txt presence. Readme, license, and agents.md never print.
     surfaces: Vec<&'static str>,
     /// Thread traffic in the trailing 30d, the issue gauge, and the
     /// label census over the sampled threads (bugs vs enhancements).
@@ -1093,6 +1093,9 @@ struct SelectedRow {
     issue_comments_30d: u32,
     issue_heat: Option<f32>,
     labels: Vec<(String, u32)>,
+    /// GitHub's own hex per label name, repo-scoped. Census chips
+    /// paint with these; missing names fall back to grey.
+    label_colors: std::collections::BTreeMap<String, String>,
     /// Recent PRs: captured total, counts per state. Titles are never
     /// rendered — this is a dashboard, not a `git log`.
     prs_total: usize,
@@ -1101,6 +1104,9 @@ struct SelectedRow {
     /// Titles are never rendered.
     issues_total: usize,
     issues_states: Vec<(String, usize)>,
+    /// CI usage, trailing 30d: wall-clock minutes per raw runner
+    /// label-set. Empty when the repo ran no sampled CI.
+    ci: jzombie_graph::graph::CiUsage,
 }
 
 /// Titles are gone: the review correctly called PR/issue titles signal
@@ -1190,17 +1196,11 @@ fn selected_rows(graph: &jzombie_graph::graph::Graph) -> Vec<SelectedRow> {
         .into_iter()
         .map(|(_, nd)| {
             let mut surfaces = vec![];
-            if nd.has_readme {
-                surfaces.push("readme");
-            }
-            if nd.has_license_file {
-                surfaces.push("license");
-            }
+            // Only llms.txt prints: readme, license, and agents.md are
+            // either ubiquitous or unwanted noise — the row stays busy
+            // enough without an audit that adds nothing.
             if nd.has_llms_txt {
                 surfaces.push("llms.txt");
-            }
-            if nd.has_agents_md {
-                surfaces.push("agents.md");
             }
             let mut labels: Vec<(String, u32)> = nd
                 .issue_labels
@@ -1271,13 +1271,122 @@ fn selected_rows(graph: &jzombie_graph::graph::Graph) -> Vec<SelectedRow> {
                 issue_comments_30d: nd.issue_comments_30d,
                 issue_heat: nd.issue_heat,
                 labels,
+                label_colors: nd.issue_label_colors.clone(),
                 prs_total,
                 prs_states,
                 issues_total,
                 issues_states,
+                ci: nd.ci_usage_30d.clone(),
             }
         })
         .collect()
+}
+
+/// Shield color: a visual distinguisher derived from the exact
+/// label-set string (FNV-1a hue, lightness from higher bits so
+/// near-identical keys still separate), nothing more. It carries no
+/// OS/arch meaning — the text beside it is the raw key, verbatim.
+/// Equal keys always read equal.
+fn ci_badge_color(label_set: &str) -> String {
+    let mut hash: u64 = 0xcbf29ce484222325;
+    for b in label_set.bytes() {
+        hash ^= u64::from(b);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    let hue = (hash % 360) as f64;
+    let light = 0.38 + ((hash >> 24) % 3) as f64 * 0.08;
+    const SAT: f64 = 0.70;
+    let c = (1.0 - (2.0 * light - 1.0).abs()) * SAT;
+    let x = c * (1.0 - ((hue / 60.0) % 2.0 - 1.0).abs());
+    let (r, g, b) = if hue < 60.0 {
+        (c, x, 0.0)
+    } else if hue < 120.0 {
+        (x, c, 0.0)
+    } else if hue < 180.0 {
+        (0.0, c, x)
+    } else if hue < 240.0 {
+        (0.0, x, c)
+    } else if hue < 300.0 {
+        (x, 0.0, c)
+    } else {
+        (c, 0.0, x)
+    };
+    let m = light - c / 2.0;
+    format!(
+        "{:02X}{:02X}{:02X}",
+        ((r + m) * 255.0) as u8,
+        ((g + m) * 255.0) as u8,
+        ((b + m) * 255.0) as u8,
+    )
+}
+
+/// Percent-encode a shields.io query value: alphanumerics plus
+/// `-_.~` ride through, everything else becomes `%XX`.
+fn shield_param(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for b in s.bytes() {
+        if b.is_ascii_alphanumeric() || b == b'-' || b == b'_' || b == b'.' || b == b'~' {
+            out.push(b as char);
+        } else {
+            out.push_str(&format!("%{b:02X}"));
+        }
+    }
+    out
+}
+
+/// One shield per census label: left side names the exact label,
+/// right side carries its count, painted with GitHub's own stored
+/// hex — never inferred. Missing or malformed colors fall back to
+/// grey (old graphs predate the field). Each badge links to that
+/// repo's issue list filtered to the label.
+fn label_census_badges(
+    repo_url: &str,
+    labels: &[(String, u32)],
+    colors: &std::collections::BTreeMap<String, String>,
+) -> String {
+    labels
+        .iter()
+        .map(|(label, count)| {
+            let stored = colors.get(label).map(String::as_str).unwrap_or_default();
+            let color = if stored.len() == 6 && stored.bytes().all(|b| b.is_ascii_hexdigit()) {
+                stored
+            } else {
+                "555555"
+            };
+            let msg = format!("\u{d7}{count}");
+            format!(
+                "<a href=\"{repo_url}/labels/{}\"><img src=\"https://img.shields.io/static/v1?label={}&message={}&color={}&style=flat-square\" align=\"absmiddle\" alt=\"label {label} {msg}\"></a>",
+                shield_param(label),
+                shield_param(label),
+                shield_param(&msg),
+                color,
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// One shield badge per runner label-set: left side names the
+/// exact stored key, right side carries that key's minutes, nothing
+/// inferred. Each badge links to the repo's Actions tab (per-run
+/// URLs aren't stored — only aggregates). Empty CI renders no line
+/// at all — absence of CI is not zero-cost CI.
+fn ci_badges(actions_url: &str, ci: &jzombie_graph::graph::CiUsage) -> String {
+    ci.minutes_by_label
+        .iter()
+        .map(|(label, min)| {
+            let msg = format!("{min:.1} min");
+            format!(
+                "<a href=\"{actions_url}\"><img src=\"https://img.shields.io/static/v1?label={}&message={}&color={}&style=flat-square\" align=\"absmiddle\" alt=\"CI {}: {}\"></a>",
+                shield_param(label),
+                shield_param(&msg),
+                ci_badge_color(label),
+                label,
+                msg,
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// Render the selected-work fragment: heading, the sentence that states
@@ -1432,14 +1541,26 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
             }
             threads.push(window.join(" \u{b7} "));
             if !row.labels.is_empty() {
-                let census: Vec<String> = row
-                    .labels
-                    .iter()
-                    .map(|(l, c)| format!("{l}\u{d7}{c}"))
-                    .collect();
-                threads.push(format!("label census: {}", census.join(", ")));
+                // Census chips paint with GitHub's own stored hex and
+                // link to the repo's issue list for that label — the
+                // text form (`enhancement×5`) hid both.
+                threads.push(format!(
+                    "label census: {}",
+                    label_census_badges(&row.url, &row.labels, &row.label_colors)
+                ));
             }
             lines.push(format!("<sub>{}</sub>", threads.join(" \u{b7} ")));
+        }
+
+        // CI badges last: one shield per runner label-set on its own
+        // shrunk line, under a `CI/30d` flag that says what the
+        // minutes are. Skipped entirely when the repo ran no sampled
+        // CI, so empty rows don't grow a line that says nothing.
+        if !row.ci.minutes_by_label.is_empty() {
+            lines.push(format!(
+                "<sub>CI/30d: {}</sub>",
+                ci_badges(&format!("{}/actions", row.url), &row.ci)
+            ));
         }
 
         // Join with literal `<br>`: markdown needs a hard break inside a
@@ -2500,11 +2621,12 @@ fn indicators(graph_json: String, only: String) -> anyhow::Result<Value> {
 
 /// One data-table row: about (description + topic tags), proof
 /// (commits with the method shrunk beneath, heat badge beside it),
+/// CI labels (raw runner label-sets with wall-clock minutes beneath),
 /// reuse (one portfolio-internal column, both directions labeled —
 /// never GitHub's external "used by"; the JSON edges stay the machine
 /// surface). Stars fold into the repo cell (`★ N`) instead of spending
 /// a column on 0s. Keys sort alphabetically in the rendered table
-/// (`about, commits/30d, heat, layer, repo, reuse (portfolio)`) —
+/// (`about, ci/30d, commits/30d, heat, layer, repo, reuse (portfolio)`) —
 /// Rust shapes the values, the MARKDOWN module owns the markup.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 struct DataRow {
@@ -2519,6 +2641,8 @@ struct DataRow {
     repo: String,
     layer: String,
     about: String,
+    #[serde(rename = "ci/30d")]
+    ci_30d: String,
     #[serde(rename = "commits/30d")]
     commits: String,
     heat: String,
@@ -2553,6 +2677,27 @@ fn heat_cell(band: &str) -> String {
     format!(
         "<div align=\"center\">![{band}]({})<br><sub>{band}</sub></div>",
         jzombie_graph::paths::indicator_url(band)
+    )
+}
+
+/// CI cell: every stored label-set key verbatim with its own
+/// minutes, totals shrunk beneath. Empty (no CI) reads `—`, never
+/// `0 min` — absence of CI is not zero-cost CI.
+fn ci_cell(u: &jzombie_graph::graph::CiUsage) -> String {
+    if u.minutes_by_label.is_empty() {
+        return "—".to_string();
+    }
+    let sets: Vec<String> = u
+        .minutes_by_label
+        .iter()
+        .map(|(label, min)| format!("{label} {min:.1}"))
+        .collect();
+    format!(
+        "{}<br><sub>{:.1} min · {} jobs · {} runs</sub>",
+        sets.join(" · "),
+        u.total_minutes(),
+        u.jobs,
+        u.runs_sampled,
     )
 }
 
@@ -2729,6 +2874,7 @@ fn data_rows(graph_json: &str) -> anyhow::Result<DataDoc> {
                     };
                     format!("{}<br><sub>{method}</sub>", n.commits_30d)
                 },
+                ci_30d: ci_cell(&n.ci_usage_30d),
                 heat: heat_cell(heat_band(heat)),
                 // One reuse column: stacked labeled lines split by `<hr>`
                 // (`---` would split the row). Empty sides drop out;
@@ -2950,6 +3096,8 @@ mod tests {
                 visible_reason: None,
                 layer: std::collections::BTreeSet::from([Layer::Isolated]),
                 has_default_binary: false,
+                ci_usage_30d: Default::default(),
+                issue_label_colors: Default::default(),
             })
             .collect();
         jzombie_graph::output::render_json(&Graph::new(nodes, vec![])).unwrap()
@@ -3011,6 +3159,8 @@ mod tests {
                 visible_reason: None,
                 layer: std::collections::BTreeSet::from([Layer::Isolated]),
                 has_default_binary: false,
+                ci_usage_30d: Default::default(),
+                issue_label_colors: Default::default(),
             })
             .collect();
         jzombie_graph::output::render_json(&Graph::new(nodes, vec![])).unwrap()
@@ -3349,6 +3499,7 @@ mod tests {
             vec![
                 "repo",
                 "about",
+                "ci/30d",
                 "commits/30d",
                 "heat",
                 "layer",
@@ -3459,6 +3610,8 @@ mod tests {
             visible_reason: None,
             layer: std::collections::BTreeSet::from([Layer::Isolated]),
             has_default_binary: false,
+            ci_usage_30d: Default::default(),
+            issue_label_colors: Default::default(),
         };
         let g = jzombie_graph::output::render_json(&Graph::new(
             vec![
@@ -3481,6 +3634,106 @@ mod tests {
             md.contains("5<br><sub>single branch</sub>"),
             "singular reads right:\n{md}"
         );
+    }
+
+    #[test]
+    fn data_table_ci_cell_names_labels_and_minutes() {
+        // CI cell: every stored key verbatim with its own minutes,
+        // totals shrunk beneath; no CI reads `—`, never `0 min`.
+        use jzombie_graph::graph::CiUsage;
+        let mut used = CiUsage {
+            runs_sampled: 4,
+            jobs: 9,
+            ..Default::default()
+        };
+        used.minutes_by_label.insert("macos-14".into(), 12.5);
+        used.minutes_by_label.insert("ubuntu-latest".into(), 30.0);
+        assert_eq!(
+            ci_cell(&used),
+            "macos-14 12.5 · ubuntu-latest 30.0<br><sub>42.5 min · 9 jobs · 4 runs</sub>"
+        );
+        assert_eq!(ci_cell(&CiUsage::default()), "—");
+    }
+
+    #[test]
+    fn data_table_ci_column_rides_along() {
+        // The column exists in the rendered table: a repo with CI shows
+        // its raw label-sets, one without shows the em-dash.
+        use jzombie_graph::graph::{Graph, Layer, Node};
+        let node = |name: &str, ci: bool| Node {
+            id: format!("me/{name}"),
+            owner: "me".into(),
+            name: name.into(),
+            fork: false,
+            private: false,
+            upstream: None,
+            ahead_by: None,
+            pushed_at: None,
+            description: None,
+            topics: vec![],
+            language: None,
+            homepage: None,
+            stars: 0,
+            forks_count: 0,
+            open_issues: 0,
+            license: None,
+            archived: false,
+            disabled: false,
+            size_kb: 0,
+            has_readme: false,
+            has_llms_txt: false,
+            has_agents_md: false,
+            has_license_file: false,
+            commits_1d: 0,
+            commits_5d: 0,
+            commits_15d: 0,
+            commits_30d: 5,
+            issues_open_1d: 0,
+            issues_open_5d: 0,
+            issues_open_15d: 0,
+            issues_open_30d: 0,
+            issues_closed_1d: 0,
+            issues_closed_5d: 0,
+            issues_closed_15d: 0,
+            issues_closed_30d: 0,
+            issue_comments_1d: 0,
+            issue_comments_5d: 0,
+            issue_comments_15d: 0,
+            issue_comments_30d: 0,
+            issue_labels: Default::default(),
+            issue_label_colors: Default::default(),
+            recent_issues: vec![],
+            issue_heat: None,
+            commit_heat: None,
+            focus: None,
+            last_commit_at: None,
+            branch_heat: vec![],
+            recent_prs: vec![],
+            visible: true,
+            visible_reason: None,
+            layer: std::collections::BTreeSet::from([Layer::Isolated]),
+            has_default_binary: false,
+            ci_usage_30d: if ci {
+                jzombie_graph::graph::CiUsage {
+                    runs_sampled: 2,
+                    jobs: 3,
+                    minutes_by_label: [("ubuntu-latest".to_string(), 7.5)].into_iter().collect(),
+                }
+            } else {
+                Default::default()
+            },
+        };
+        let g = jzombie_graph::output::render_json(&Graph::new(
+            vec![node("ci", true), node("no", false)],
+            vec![],
+        ))
+        .unwrap();
+        let md = render_data_table_md(&g).unwrap();
+        assert!(
+            md.contains("ubuntu-latest 7.5<br><sub>7.5 min · 3 jobs · 2 runs</sub>"),
+            "labels + minutes in cell:\n{md}"
+        );
+        assert!(md.contains('|'), "still a table:\n{md}");
     }
 
     #[test]
@@ -3540,6 +3793,8 @@ mod tests {
             visible_reason: None,
             layer: std::collections::BTreeSet::from([Layer::Isolated]),
             has_default_binary: false,
+            ci_usage_30d: Default::default(),
+            issue_label_colors: Default::default(),
         }];
         let g = jzombie_graph::output::render_json(&Graph::new(nodes, vec![])).unwrap();
         let md = render_data_table_md(&g).unwrap();
@@ -3615,6 +3870,8 @@ mod tests {
             visible_reason: None,
             layer: tags.iter().copied().collect(),
             has_default_binary: false,
+            ci_usage_30d: Default::default(),
+            issue_label_colors: Default::default(),
         };
         let both = [Layer::Middleware, Layer::Application];
         let bin_g =
@@ -3693,6 +3950,8 @@ mod tests {
             visible_reason: None,
             layer: std::collections::BTreeSet::from([Layer::Isolated]),
             has_default_binary: false,
+            ci_usage_30d: Default::default(),
+            issue_label_colors: Default::default(),
         };
         let edge = |s: &str, t: &str, kind: EdgeKind| Edge {
             source: s.into(),
@@ -3724,6 +3983,7 @@ mod tests {
             vec![
                 "repo",
                 "about",
+                "ci/30d",
                 "commits/30d",
                 "heat",
                 "layer",
@@ -3828,6 +4088,8 @@ mod tests {
             visible_reason: None,
             layer: std::collections::BTreeSet::from([Layer::Isolated]),
             has_default_binary: false,
+            ci_usage_30d: Default::default(),
+            issue_label_colors: Default::default(),
         };
         let many: Vec<&str> = vec!["a", "b", "c", "d", "e", "f"];
         let g = jzombie_graph::output::render_json(&Graph::new(
@@ -4013,6 +4275,8 @@ mod tests {
                     recent_prs: vec![],
                     layer: std::collections::BTreeSet::from([Layer::Isolated]),
                     has_default_binary: false,
+                    ci_usage_30d: Default::default(),
+                    issue_label_colors: Default::default(),
                 }
             };
         let nodes = vec![

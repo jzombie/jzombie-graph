@@ -50,6 +50,7 @@ fn node(id: &str, fork: bool, private: bool, ahead_by: Option<u32>) -> Node {
         issue_comments_15d: 0,
         issue_comments_30d: 0,
         issue_labels: Default::default(),
+        issue_label_colors: Default::default(),
         recent_issues: vec![],
         issue_heat: None,
         commit_heat: None,
@@ -61,6 +62,7 @@ fn node(id: &str, fork: bool, private: bool, ahead_by: Option<u32>) -> Node {
         visible_reason: None,
         layer: std::collections::BTreeSet::new(),
         has_default_binary: false,
+        ci_usage_30d: Default::default(),
     }
 }
 

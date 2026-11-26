@@ -66,6 +66,8 @@ fn node(name: &str, c1: u32, c5: u32, c15: u32, c30: u32, branches: Vec<BranchHe
         visible_reason: None,
         layer: std::collections::BTreeSet::from([Layer::Isolated]),
         has_default_binary: false,
+        ci_usage_30d: Default::default(),
+        issue_label_colors: Default::default(),
     }
 }
 

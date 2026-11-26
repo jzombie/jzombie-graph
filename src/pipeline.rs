@@ -194,6 +194,11 @@ pub async fn collect_live(
     const MEMBER_MANIFEST_CAP: usize = 10;
     const RS_FILES_CAP: usize = 10;
     const GO_BIN_CAP: usize = 10;
+    /// CI lane: newest completed runs sampled per repo (1 list call +
+    /// 1 jobs call per run). Tree-gated on `.github/workflows/` like
+    /// the uses-scan, so repos without CI cost zero calls.
+    const CI_RUNS_CAP: usize = 10;
+    const CI_SINCE_DAYS: i64 = 30;
     {
         let n_repos = repos.len();
         // Providers pass: 1 SHA + 1 tree + ~4 roots + members (uncapped, ~10 typical).
@@ -210,10 +215,10 @@ pub async fn collect_live(
                 + RS_FILES_CAP
                 + GO_BIN_CAP);
         let est_worst = n_repos * per_repo_worst;
-        let est_typ = n_repos * 26;
+        let est_typ = n_repos * 29;
         eprintln!(
             "budget: {n_repos} repos (default branch only): ~{est_typ} API calls typical, ~{est_worst} worst-case \
-             (two passes: live provider map + tree-gated structure; no 404-retry mult; rate limit 5000/hr)"
+             (two passes: live provider map + tree-gated structure; CI lane adds 1+R capped for workflow repos; no 404-retry mult; rate limit 5000/hr)"
         );
     }
 
@@ -428,7 +433,12 @@ pub async fn collect_live(
         };
         let (cc1, cc5, cc15, cc30) = (in_window(1), in_window(5), in_window(15), in_window(30));
         let mut issue_labels: BTreeMap<String, u32> = BTreeMap::new();
+        // Backlog only: labels on currently-open threads. Closed
+        // threads are resolved work, not scheduling mix.
         for ri in &velocity.recent_issues {
+            if !ri.state.eq_ignore_ascii_case("open") {
+                continue;
+            }
             for l in &ri.labels {
                 *issue_labels.entry(l.clone()).or_insert(0) += 1;
             }
@@ -477,6 +487,10 @@ pub async fn collect_live(
         // already-fetched tree below — zero new calls.
         let mut has_default_binary = false;
         let mut autobin_pkgs: Vec<(String, String)> = vec![];
+        // Tree-gated CI gate, hoisted out of the probe scope below: the
+        // CI lane reuses it, so repos without `.github/workflows/` cost
+        // zero CI calls (no extra tree call to decide).
+        let has_ci_workflows: bool;
         // Default-branch-only: edge recency is the source repo's own
         // freshness signal (`pushed_at`, free in enumerate/get). No extra
         // commit-date fetch; single branch means max() is identity.
@@ -834,11 +848,12 @@ pub async fn collect_live(
 
             // Workflows: list .github/workflows, scan `uses: owner/repo`.
             // Tree-gated: skip the list call when no workflow prefix in tree.
-            let has_workflows = match &tree_set {
+            // The CI lane reuses the same gate (no extra tree call).
+            has_ci_workflows = match &tree_set {
                 Some(set) => set.iter().any(|p| p.starts_with(".github/workflows/")),
                 None => true,
             };
-            if has_workflows
+            if has_ci_workflows
                 && let Ok(files) = client
                     .list_dir(&repo.full_name, ".github/workflows", &b_name)
                     .await
@@ -870,6 +885,20 @@ pub async fn collect_live(
                 }
             }
         }
+
+        // CI usage (REST runs + jobs, tree-gated above): raw label-set
+        // inventory + wall-clock minutes. Fail-open empty —
+        // most repos run no CI, and a missing endpoint reads as none.
+        // Cost: 1 list call + 1 jobs call per sampled run, capped.
+        let ci_usage_30d = if has_ci_workflows {
+            let since = now - chrono::Duration::days(CI_SINCE_DAYS);
+            client
+                .repo_ci_usage(&repo.full_name, &since, CI_RUNS_CAP)
+                .await
+                .unwrap_or_default()
+        } else {
+            graph::CiUsage::default()
+        };
 
         // Manifest edges (one per target, default branch).
         let lock_gate: Option<BTreeSet<String>> =
@@ -981,6 +1010,7 @@ pub async fn collect_live(
             issue_comments_15d: cc15,
             issue_comments_30d: cc30,
             issue_labels,
+            issue_label_colors: velocity.issue_label_colors,
             recent_issues,
             issue_heat,
             commit_heat,
@@ -988,6 +1018,7 @@ pub async fn collect_live(
             last_commit_at,
             branch_heat,
             recent_prs: velocity.prs,
+            ci_usage_30d,
             has_default_binary,
             visible: false, // computed below
             visible_reason: None,
@@ -1041,6 +1072,29 @@ pub async fn collect_live(
         }
     }
     Ok(g)
+}
+
+/// CI-only merge lane: collect Actions usage for every node in an
+/// already-swept graph and fill `ci_usage_30d` in place. Testing lane —
+/// ~1+R calls/repo instead of a full sweep, gated by the caller on
+/// `--format ci`. Order, gauges, and `generated_at` are preserved;
+/// only the CI fields move. Per-repo fail-open to empty.
+pub async fn merge_ci_usage(
+    client: &GitHubClient,
+    graph: &mut Graph,
+    since_days: i64,
+    runs_cap: usize,
+) {
+    let since = chrono::Utc::now() - chrono::Duration::days(since_days);
+    let n = graph.nodes.len();
+    for (i, node) in graph.nodes.iter_mut().enumerate() {
+        eprintln!("[ci {}/{}] {} …", i + 1, n, node.id);
+        match client.repo_ci_usage(&node.id, &since, runs_cap).await {
+            Ok(u) => node.ci_usage_30d = u,
+            Err(_) => node.ci_usage_30d = graph::CiUsage::default(),
+        }
+    }
+    eprintln!("ci merge done: {n} repos");
 }
 
 /// Drop edges targeting pristine forks (`ahead_by == Some(0)`).
@@ -1184,6 +1238,7 @@ mod tests {
                 issue_comments_15d: 0,
                 issue_comments_30d: 0,
                 issue_labels: Default::default(),
+                issue_label_colors: Default::default(),
                 recent_issues: vec![],
                 issue_heat: None,
                 commit_heat: None,
@@ -1192,6 +1247,7 @@ mod tests {
                 branch_heat: vec![],
                 visible: true,
                 recent_prs: vec![],
+                ci_usage_30d: Default::default(),
                 visible_reason: None,
                 layer: std::collections::BTreeSet::new(),
                 has_default_binary: false,
@@ -1237,6 +1293,7 @@ mod tests {
                 issue_comments_15d: 0,
                 issue_comments_30d: 0,
                 issue_labels: Default::default(),
+                issue_label_colors: Default::default(),
                 recent_issues: vec![],
                 issue_heat: None,
                 commit_heat: None,
@@ -1246,6 +1303,7 @@ mod tests {
                 visible: false,
                 visible_reason: None,
                 recent_prs: vec![],
+                ci_usage_30d: Default::default(),
                 layer: std::collections::BTreeSet::new(),
                 has_default_binary: false,
             },
@@ -1327,6 +1385,7 @@ mod tests {
             issue_comments_15d: 0,
             issue_comments_30d: 0,
             issue_labels: Default::default(),
+            issue_label_colors: Default::default(),
             recent_issues: vec![],
             issue_heat: None,
             commit_heat: None,
@@ -1338,6 +1397,7 @@ mod tests {
             layer: std::collections::BTreeSet::new(),
             has_default_binary: false,
             recent_prs: vec![],
+            ci_usage_30d: Default::default(),
         }
     }
 
