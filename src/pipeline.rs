@@ -12,6 +12,23 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 /// never a copy. Undated (unparseable date) lands in 30d only: the
 /// server returned it under `since: $w30`, but it can't be placed in
 /// a smaller window.
+/// Label census over the sampled threads: counts labels on
+/// currently-open threads only. Closed threads are resolved work,
+/// not backlog scheduling mix, so they never count (a `rust x1`
+/// from a closed issue must not read as open backlog).
+fn open_issue_label_census(recent_issues: &[crate::github::RecentIssue]) -> BTreeMap<String, u32> {
+    let mut issue_labels: BTreeMap<String, u32> = BTreeMap::new();
+    for ri in recent_issues {
+        if !ri.state.eq_ignore_ascii_case("open") {
+            continue;
+        }
+        for l in &ri.labels {
+            *issue_labels.entry(l.clone()).or_insert(0) += 1;
+        }
+    }
+    issue_labels
+}
+
 fn bucket_windows(
     commits: &[crate::github::BranchCommit],
     now: &chrono::DateTime<chrono::Utc>,
@@ -432,17 +449,7 @@ pub async fn collect_live(
                 .min(u32::MAX as usize) as u32
         };
         let (cc1, cc5, cc15, cc30) = (in_window(1), in_window(5), in_window(15), in_window(30));
-        let mut issue_labels: BTreeMap<String, u32> = BTreeMap::new();
-        // Backlog only: labels on currently-open threads. Closed
-        // threads are resolved work, not scheduling mix.
-        for ri in &velocity.recent_issues {
-            if !ri.state.eq_ignore_ascii_case("open") {
-                continue;
-            }
-            for l in &ri.labels {
-                *issue_labels.entry(l.clone()).or_insert(0) += 1;
-            }
-        }
+        let issue_labels = open_issue_label_census(&velocity.recent_issues);
         let recent_issues: Vec<graph::RecentIssue> = velocity
             .recent_issues
             .iter()
@@ -1128,6 +1135,31 @@ mod tests {
         assert!(velocity_blackout(49, 97));
         assert!(velocity_blackout(97, 97));
         assert!(!velocity_blackout(0, 0));
+    }
+
+    #[test]
+    fn open_issue_label_census_ignores_closed_threads() {
+        // term-wm case: `rust x1` came from closed #400; no open
+        // thread carries it, so the census must not show it.
+        use crate::github::RecentIssue;
+        let ri = |number: u64, state: &str, labels: &[&str]| RecentIssue {
+            number,
+            title: format!("issue {number}"),
+            state: state.to_string(),
+            labels: labels.iter().map(|s| s.to_string()).collect(),
+            comments: vec![],
+        };
+        let recent = vec![
+            ri(414, "OPEN", &["enhancement"]),
+            ri(131, "OPEN", &["enhancement", "needs research"]),
+            ri(400, "CLOSED", &["bug", "rust"]),
+            ri(398, "CLOSED", &["bug"]),
+        ];
+        let got = open_issue_label_census(&recent);
+        let mut want = BTreeMap::new();
+        want.insert("enhancement".to_string(), 2);
+        want.insert("needs research".to_string(), 1);
+        assert_eq!(got, want);
     }
 
     #[test]

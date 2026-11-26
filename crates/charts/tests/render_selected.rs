@@ -282,9 +282,15 @@ fn selected_fragment_ranks_by_score_not_stars() {
     assert!(md.contains("align=\"right\""), "radar floated on every row");
     // Dependents ride as text, zeros included — nothing is suppressed
     // for looking empty.
-    assert!(md.contains("used by 3"), "fan-in spelled out");
-    assert!(md.contains("used by 0"), "zeros still print");
-    assert!(md.contains("uses 1"), "fan-out spelled out");
+    assert!(
+        md.contains("reuse: 3 in-graph dependents"),
+        "fan-in spelled out"
+    );
+    assert!(
+        md.contains("reuse: 0 in-graph dependents"),
+        "zeros still print"
+    );
+    assert!(md.contains("· 1 in-graph dependency"), "singular fan-out");
     // The heat badge is the committed indicator file, sized and centered
     // on the text — `align` is the only vertical alignment GitHub keeps.
     assert!(
@@ -295,15 +301,17 @@ fn selected_fragment_ranks_by_score_not_stars() {
         md.contains("width=\"24\" align=\"absmiddle\""),
         "badge sized and truly centered (`middle` measures 4px low):\n{md}"
     );
-    // Classification line: positional tags, identity, tree audit.
+    // Classification line: positional tags, identity, size, focus.
+    // Recency and branch count stay out — the proof line's 30d
+    // commits already carry what's live.
     assert!(
-        md.contains("layer: `middleware · application`"),
-        "layer spelled out"
+        md.contains(
+            "layer: `middleware · application` · Rust · Apache-2.0 · size: 6.2 MB | focus: -99.00"
+        ),
+        "identity then focus:\n{md}"
     );
-    assert!(md.contains("focus: -99.00"), "focus gauge");
-    assert!(md.contains("last commit: 2026-11-15"), "recency date");
-    assert!(md.contains("branches: 2"), "branch count");
-    assert!(md.contains("size: 6.2 MB"), "size in reader units");
+    assert!(!md.contains("last commit:"), "recency stays out");
+    assert!(!md.contains("branches:"), "branch count stays out");
     // No fixture node carries llms.txt, so no row prints a docs
     // segment at all.
     assert!(!md.contains("docs:"), "docs audit stays out:\n{md}");
@@ -311,35 +319,39 @@ fn selected_fragment_ranks_by_score_not_stars() {
         md.contains("fork of other/Quiet (+12 own commits)"),
         "diverged fork says so"
     );
-    // Proof line: backlog, structure and the homepage — the full URL,
-    // never a truncated host. Back in a list, pipes are safe again, so
-    // the backlog closes one group and reuse opens the next.
+    // Proof line: backlog closes its own group now — reuse rides
+    // branched under the classification line above.
     assert!(
-        md.contains("69 open issues | used by 3"),
-        "backlog closes its group"
+        md.contains("69 open issues</sub>"),
+        "proof line ends at backlog"
     );
     assert!(
-        md.contains("[https://crates.io/crates/r0](https://crates.io/crates/r0)"),
-        "homepage printed in full, linked"
+        md.contains("\u{2514} reuse: 3 in-graph dependents \u{b7} 0 in-graph dependencies</sub>"),
+        "reuse branched under layer"
     );
-    // Thread traffic: one consolidated counts-only line. Titles were cut
-    // (signal destruction at portfolio scale); the 30d window and the
-    // lifetime states share a single metric.
     assert!(
-        md.contains("issues 30d: 6 opened · 5 closed · 9 comments"),
+        md.contains("<sub>[crates.io/crates/r0](https://crates.io/crates/r0)</sub>"),
+        "homepage leads discovery, display trimmed"
+    );
+    assert!(
+        !md.contains("[https://crates.io/crates/r0](https://crates.io/crates/r0)"),
+        "no scheme in the display text:\n{md}"
+    );
+    // Thread traffic: lifetime states and the 30d window ride on
+    // separate lines, counts only, never titles. Titles were cut
+    // (signal destruction at portfolio scale).
+    assert!(
+        md.contains("issues/30d: 6 opened · 5 closed · 9 comments"),
         "issue window"
     );
+    assert!(md.contains("issue heat: 1.40"), "gauge on the window line");
     assert!(
-        md.contains("issue heat: 1.40 · label census:"),
-        "gauge then census prefix"
+        md.contains("labels: [enhancement ×5](https://github.com/me/r0/labels/enhancement) · [bug ×4](https://github.com/me/r0/labels/bug)"),
+        "census as capped text links:\n{md}"
     );
     assert!(
-        md.contains("<a href=\"https://github.com/me/r0/labels/enhancement\"><img src=\"https://img.shields.io/static/v1?label=enhancement&message=%C3%975&color=0e8a16"),
-        "census chip wears GitHub's own green and links to the label"
-    );
-    assert!(
-        md.contains("<a href=\"https://github.com/me/r0/labels/bug\"><img src=\"https://img.shields.io/static/v1?label=bug&message=%C3%974&color=555555"),
-        "uncolored labels fall back to grey"
+        !md.contains("img.shields.io"),
+        "no shields in selected rows"
     );
     assert!(
         md.contains("PRs (3): 1 merged · 1 open · 1 closed"),
@@ -405,42 +417,25 @@ fn selected_fragment_emits_ci_badges_per_label_set() {
     };
     let g = jzombie_graph::output::render_json(&Graph::new(nodes, vec![])).unwrap();
     let md = charts::render_selected_md(&g).unwrap();
-    // Raw keys verbatim on the left, that key's minutes on the
-    // right, nothing inferred.
+    // Collapsed text: total minutes plus every runner, most
+    // expensive first, and an actions link — nothing inferred,
+    // no per-runner shields.
+    assert!(md.contains("CI/30d: 45.5 min"), "total minutes:\n{md}");
     assert!(
-        md.contains("label=ubuntu-latest&message=12.5%20min"),
-        "raw key, raw minutes:\n{md}"
+        md.contains("ubuntu-24.04-arm 30.0 min · ubuntu-latest 12.5 min · windows-11-arm 3.0 min"),
+        "all runners listed, priciest first:\n{md}"
     );
     assert!(
-        md.contains("label=ubuntu-24.04-arm&message=30.0%20min"),
-        "raw ARM key untouched:\n{md}"
+        md.contains("[actions](https://github.com/me/r0/actions)"),
+        "actions link kept:\n{md}"
     );
     assert!(
-        md.contains("label=windows-11-arm&message=3.0%20min"),
-        "raw ARM key untouched:\n{md}"
-    );
-    assert!(!md.contains("arm64"), "no invented arch tags");
-    assert!(
-        md.contains("<a href=\"https://github.com/me/r0/actions\"><img src=\"https://img.shields.io/static/v1?label=ubuntu-latest"),
-        "badges link to the repo Actions tab:\n{md}"
+        !md.contains("img.shields.io"),
+        "no shields in selected rows"
     );
     assert!(
-        md.find("<sub>CI/30d:").expect("CI line") > md.find("label census:").expect("threads line"),
-        "CI badges ride last, after the thread counts"
-    );
-    let color_of = |label: &str| -> String {
-        let needle = format!("label={label}&message=");
-        let at = md
-            .find(&needle)
-            .unwrap_or_else(|| panic!("missing {label}"));
-        let rest = &md[at + needle.len()..];
-        let c = rest.find("&color=").expect("badge has color") + "&color=".len();
-        rest[c..c + 6].to_string()
-    };
-    assert_ne!(
-        color_of("ubuntu-latest"),
-        color_of("ubuntu-24.04-arm"),
-        "same OS, different keys, different colors"
+        md.find("<sub>CI/30d:").expect("CI line") > md.find("labels:").expect("threads line"),
+        "CI rides last, after the thread lines"
     );
     // One CI line on the row that ran, none on the row that didn't.
     assert_eq!(

@@ -1080,8 +1080,6 @@ struct SelectedRow {
     language: Option<String>,
     license: Option<String>,
     focus: Option<f32>,
-    last_commit: Option<String>,
-    branches: usize,
     size_kb: u32,
     /// Agent-parseability audit from the default-branch tree:
     /// llms.txt presence. Readme, license, and agents.md never print.
@@ -1262,8 +1260,6 @@ fn selected_rows(graph: &jzombie_graph::graph::Graph) -> Vec<SelectedRow> {
                 language: nd.language.clone(),
                 license: nd.license.clone(),
                 focus: nd.focus,
-                last_commit: nd.last_commit_at.map(|t| t.format("%Y-%m-%d").to_string()),
-                branches: nd.branch_heat.len(),
                 size_kb: nd.size_kb,
                 surfaces,
                 issues_open_30d: nd.issues_open_30d,
@@ -1282,47 +1278,10 @@ fn selected_rows(graph: &jzombie_graph::graph::Graph) -> Vec<SelectedRow> {
         .collect()
 }
 
-/// Shield color: a visual distinguisher derived from the exact
-/// label-set string (FNV-1a hue, lightness from higher bits so
-/// near-identical keys still separate), nothing more. It carries no
-/// OS/arch meaning — the text beside it is the raw key, verbatim.
-/// Equal keys always read equal.
-fn ci_badge_color(label_set: &str) -> String {
-    let mut hash: u64 = 0xcbf29ce484222325;
-    for b in label_set.bytes() {
-        hash ^= u64::from(b);
-        hash = hash.wrapping_mul(0x100000001b3);
-    }
-    let hue = (hash % 360) as f64;
-    let light = 0.38 + ((hash >> 24) % 3) as f64 * 0.08;
-    const SAT: f64 = 0.70;
-    let c = (1.0 - (2.0 * light - 1.0).abs()) * SAT;
-    let x = c * (1.0 - ((hue / 60.0) % 2.0 - 1.0).abs());
-    let (r, g, b) = if hue < 60.0 {
-        (c, x, 0.0)
-    } else if hue < 120.0 {
-        (x, c, 0.0)
-    } else if hue < 180.0 {
-        (0.0, c, x)
-    } else if hue < 240.0 {
-        (0.0, x, c)
-    } else if hue < 300.0 {
-        (x, 0.0, c)
-    } else {
-        (c, 0.0, x)
-    };
-    let m = light - c / 2.0;
-    format!(
-        "{:02X}{:02X}{:02X}",
-        ((r + m) * 255.0) as u8,
-        ((g + m) * 255.0) as u8,
-        ((b + m) * 255.0) as u8,
-    )
-}
-
-/// Percent-encode a shields.io query value: alphanumerics plus
-/// `-_.~` ride through, everything else becomes `%XX`.
-fn shield_param(s: &str) -> String {
+/// Percent-encode a label for a `/labels/...` path segment:
+/// alphanumerics plus `-_.~` ride through, everything else
+/// becomes `%XX` (`needs research` -> `needs%20research`).
+fn label_path(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for b in s.bytes() {
         if b.is_ascii_alphanumeric() || b == b'-' || b == b'_' || b == b'.' || b == b'~' {
@@ -1332,61 +1291,6 @@ fn shield_param(s: &str) -> String {
         }
     }
     out
-}
-
-/// One shield per census label: left side names the exact label,
-/// right side carries its count, painted with GitHub's own stored
-/// hex — never inferred. Missing or malformed colors fall back to
-/// grey (old graphs predate the field). Each badge links to that
-/// repo's issue list filtered to the label.
-fn label_census_badges(
-    repo_url: &str,
-    labels: &[(String, u32)],
-    colors: &std::collections::BTreeMap<String, String>,
-) -> String {
-    labels
-        .iter()
-        .map(|(label, count)| {
-            let stored = colors.get(label).map(String::as_str).unwrap_or_default();
-            let color = if stored.len() == 6 && stored.bytes().all(|b| b.is_ascii_hexdigit()) {
-                stored
-            } else {
-                "555555"
-            };
-            let msg = format!("\u{d7}{count}");
-            format!(
-                "<a href=\"{repo_url}/labels/{}\"><img src=\"https://img.shields.io/static/v1?label={}&message={}&color={}&style=flat-square\" align=\"absmiddle\" alt=\"label {label} {msg}\"></a>",
-                shield_param(label),
-                shield_param(label),
-                shield_param(&msg),
-                color,
-            )
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-/// One shield badge per runner label-set: left side names the
-/// exact stored key, right side carries that key's minutes, nothing
-/// inferred. Each badge links to the repo's Actions tab (per-run
-/// URLs aren't stored — only aggregates). Empty CI renders no line
-/// at all — absence of CI is not zero-cost CI.
-fn ci_badges(actions_url: &str, ci: &jzombie_graph::graph::CiUsage) -> String {
-    ci.minutes_by_label
-        .iter()
-        .map(|(label, min)| {
-            let msg = format!("{min:.1} min");
-            format!(
-                "<a href=\"{actions_url}\"><img src=\"https://img.shields.io/static/v1?label={}&message={}&color={}&style=flat-square\" align=\"absmiddle\" alt=\"CI {}: {}\"></a>",
-                shield_param(label),
-                shield_param(&msg),
-                ci_badge_color(label),
-                label,
-                msg,
-            )
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
 }
 
 /// Render the selected-work fragment: heading, the sentence that states
@@ -1428,17 +1332,45 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
         // Topics capped: the first N links carry the architecture, the
         // rest collapse to a `+N more` count instead of nine search links
         // that bury the metrics.
+        // Discovery: the site link first, topic search links (capped)
+        // stepped in beneath it. The long docs URL used to trail the
+        // topic list and wrap mid-list; leading with it keeps the
+        // wrap-prone item on its own line.
+        if let Some(home) = row
+            .homepage
+            .as_deref()
+            .map(str::trim)
+            .filter(|h| !h.is_empty())
+        {
+            // Trimmed display (scheme and trailing slash off, full
+            // URL kept in the href).
+            let display = home
+                .trim_start_matches("https://")
+                .trim_start_matches("http://")
+                .trim_end_matches('/');
+            lines.push(format!("<sub>[{display}]({home})</sub>"));
+        }
         if !row.topics.is_empty() {
-            let mut tags: Vec<String> = row
+            let mut discover: Vec<String> = row
                 .topics
                 .iter()
                 .take(SELECTED_TAG_MAX)
                 .map(|t| topic_link(&row.owner, t))
                 .collect();
             if row.topics.len() > SELECTED_TAG_MAX {
-                tags.push(format!("+{} more", row.topics.len() - SELECTED_TAG_MAX));
+                discover.push(format!("+{} more", row.topics.len() - SELECTED_TAG_MAX));
             }
-            lines.push(format!("<sub>{}</sub>", tags.join(" ")));
+            let joined = discover.join(" ");
+            if row
+                .homepage
+                .as_deref()
+                .map(str::trim)
+                .is_some_and(|h| !h.is_empty())
+            {
+                lines.push(format!("<sub>\u{2514} {joined}</sub>"));
+            } else {
+                lines.push(format!("<sub>{joined}</sub>"));
+            }
         }
 
         // One classification line: what the repo *is* and how it
@@ -1451,26 +1383,21 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
         if let Some(lic) = &row.license {
             identity.push(lic.clone());
         }
+        if row.size_kb > 0 {
+            identity.push(format!("size: {}", size_label(row.size_kb)));
+        }
         if let Some(note) = &row.fork_note {
             identity.push(note.clone());
         }
         if !row.surfaces.is_empty() {
             identity.push(format!("docs: {}", row.surfaces.join(", ")));
         }
+        // State is focus only: recency and branch count already read
+        // through the proof line (30d commits) and the radar, so the
+        // classification line stays one concept.
         let mut state: Vec<String> = vec![];
         if let Some(f) = row.focus {
             state.push(format!("focus: {f:+.2}"));
-        }
-        if let Some(d) = &row.last_commit {
-            state.push(format!("last commit: {d}"));
-        }
-        state.push(if row.branches == 1 {
-            "branch: 1".to_string()
-        } else {
-            format!("branches: {}", row.branches)
-        });
-        if row.size_kb > 0 {
-            state.push(format!("size: {}", size_label(row.size_kb)));
         }
         let mut groups: Vec<String> = vec![];
         if !identity.is_empty() {
@@ -1481,85 +1408,127 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
         }
         lines.push(format!("<sub>{}</sub>", groups.join(" | ")));
 
-        // The proof line: gauge, volume, pull, backlog, reuse, site — the
-        // full URL, never a truncated host. The badge file carries its own
-        // 44px design size; inline here it asks for 24. Vertical centering
-        // uses the legacy `absmiddle`, because GitHub strips `style` — and
-        // `middle` is not a synonym: browsers map it to middle-on-
-        // baseline, which measures ~4px low against the text, while
-        // `absmiddle` is true centering (measured within 0.5px).
+        // The proof line: gauge, volume, pull, backlog. The
+        // badge file carries its own 44px design size; inline here it
+        // badge file carries its own 44px design size; inline here it
+        // asks for 24. Vertical centering uses the legacy `absmiddle`,
+        // because GitHub strips `style` — and `middle` is not a synonym:
+        // browsers map it to middle-on-baseline, which measures ~4px
+        // low against the text, while `absmiddle` is true centering
+        // (measured within 0.5px). The site link rides the discovery
+        // line above, never here.
         let commits = if row.commits_30d == 1 {
             "1 commit in 30d".to_string()
         } else {
             format!("{} commits in 30d", row.commits_30d)
         };
-        let mut proof = format!(
-            "<img src=\"{badge}\" width=\"24\" align=\"absmiddle\" alt=\"\"> {band} \u{b7} {commits} \u{b7} \u{2605}{stars} \u{b7} \u{2442}{forks} \u{b7} {open} open issues | used by {fan_in} \u{b7} uses {fan_out}",
+        // In-graph edges only — never totals, never people: the
+        // counts name the graph so they can't read as world-wide
+        // dependents or GitHub's global "Used by". Rides its own
+        // branched line under the classification it qualifies.
+        let fan_in = format!(
+            "{} {}",
+            row.fan_in,
+            if row.fan_in == 1 {
+                "in-graph dependent"
+            } else {
+                "in-graph dependents"
+            }
+        );
+        let fan_out = format!(
+            "{} {}",
+            row.fan_out,
+            if row.fan_out == 1 {
+                "in-graph dependency"
+            } else {
+                "in-graph dependencies"
+            }
+        );
+        lines.push(format!(
+            "<sub>\u{2514} reuse: {fan_in} \u{b7} {fan_out}</sub>"
+        ));
+        let proof = format!(
+            "<img src=\"{badge}\" width=\"24\" align=\"absmiddle\" alt=\"\"> {band} \u{b7} {commits} \u{b7} \u{2605}{stars} \u{b7} \u{2442}{forks} \u{b7} {open} open issues",
             badge = jzombie_graph::paths::indicator_url(row.band),
             band = row.band,
             commits = commits,
             stars = row.stars,
             forks = row.forks,
             open = row.open_issues,
-            fan_in = row.fan_in,
-            fan_out = row.fan_out,
         );
-        if let Some(home) = &row.homepage {
-            proof.push_str(&format!(" \u{b7} [{home}]({home})"));
-        }
         lines.push(format!("<sub>{proof}</sub>"));
 
-        // One consolidated thread line: window counts, gauge, census,
-        // then lifetime totals — counts only, never titles. The old
-        // layout printed the 30d window and the lifetime states as two
-        // near-identical lines plus literal PR/issue titles; this is the
-        // single unified metric.
+        // Thread lines: lifetime states on one line, the 30d
+        // velocity window next, the sampled label mix stepped in
+        // beneath as a tree branch. Counts only, never titles.
+        // Labels close the group they describe instead of leading it.
         if row.prs_total > 0
             || row.issues_total > 0
             || row.issues_open_30d > 0
             || row.issues_closed_30d > 0
         {
-            let mut threads: Vec<String> = vec![];
+            let mut lifetime: Vec<String> = vec![];
             if row.prs_total > 0 {
-                threads.push(thread_counts(
+                lifetime.push(thread_counts(
                     &format!("PRs ({})", row.prs_total),
                     &row.prs_states,
                 ));
             }
             if row.issues_total > 0 {
-                threads.push(thread_counts(
+                lifetime.push(thread_counts(
                     &format!("issues ({})", row.issues_total),
                     &row.issues_states,
                 ));
             }
+            if !lifetime.is_empty() {
+                lines.push(format!("<sub>{}</sub>", lifetime.join(" \u{b7} ")));
+            }
             let mut window = vec![format!(
-                "issues 30d: {} opened \u{b7} {} closed \u{b7} {} comments",
+                "issues/30d: {} opened \u{b7} {} closed \u{b7} {} comments",
                 row.issues_open_30d, row.issues_closed_30d, row.issue_comments_30d
             )];
             if let Some(h) = row.issue_heat {
                 window.push(format!("issue heat: {h:.2}"));
             }
-            threads.push(window.join(" \u{b7} "));
+            lines.push(format!("<sub>{}</sub>", window.join(" \u{b7} ")));
             if !row.labels.is_empty() {
-                // Census chips paint with GitHub's own stored hex and
-                // link to the repo's issue list for that label — the
-                // text form (`enhancement×5`) hid both.
-                threads.push(format!(
-                    "label census: {}",
-                    label_census_badges(&row.url, &row.labels, &row.label_colors)
+                // Tree branch under the thread group, text links only.
+                // Shields stacked into rainbows here; text wraps cheaply.
+                let shown: Vec<String> = row
+                    .labels
+                    .iter()
+                    .map(|(label, count)| {
+                        format!(
+                            "[{label} \u{d7}{count}]({}/labels/{})",
+                            row.url,
+                            label_path(label)
+                        )
+                    })
+                    .collect();
+                lines.push(format!(
+                    "<sub>\u{2514} labels: {}</sub>",
+                    shown.join(" \u{b7} ")
                 ));
             }
-            lines.push(format!("<sub>{}</sub>", threads.join(" \u{b7} ")));
         }
 
-        // CI badges last: one shield per runner label-set on its own
-        // shrunk line, under a `CI/30d` flag that says what the
-        // minutes are. Skipped entirely when the repo ran no sampled
-        // CI, so empty rows don't grow a line that says nothing.
+        // CI collapsed to one text line: total plus every runner's
+        // minutes, most expensive first, then the actions link.
+        // Skipped entirely when the repo ran no sampled CI, so empty
+        // rows don't grow a line that says nothing. Per-runner shields
+        // wrapped to two rainbow rows and hid the small runners.
         if !row.ci.minutes_by_label.is_empty() {
+            let total: f32 = row.ci.minutes_by_label.values().sum();
+            let mut runners: Vec<(&String, &f32)> = row.ci.minutes_by_label.iter().collect();
+            runners.sort_by(|a, b| b.1.partial_cmp(a.1).unwrap_or(std::cmp::Ordering::Equal));
+            let runners = runners
+                .iter()
+                .map(|(label, min)| format!("{label} {min:.1} min"))
+                .collect::<Vec<_>>()
+                .join(" \u{b7} ");
             lines.push(format!(
-                "<sub>CI/30d: {}</sub>",
-                ci_badges(&format!("{}/actions", row.url), &row.ci)
+                "<sub>CI/30d: {total:.1} min \u{b7} {runners} \u{b7} [actions]({}/actions)</sub>",
+                row.url
             ));
         }
 
