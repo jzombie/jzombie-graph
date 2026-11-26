@@ -1,6 +1,6 @@
 {
   "schema_version": 9,
-  "generated_at": "2026-11-26T04:36:28.213056050Z",
+  "generated_at": "2026-11-26T16:24:08.681733174Z",
   "velocity_scope": "all",
   "velocity_owner": "jzombie",
   "nodes": [
@@ -36,7 +36,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -55.433334,
+      "focus": -55.466667,
       "branch_heat": [
         {
           "branch": "main",
@@ -48,18 +48,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/CloverISO",
@@ -94,7 +94,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -87.03333,
+      "focus": -87.066666,
       "branch_heat": [
         {
           "branch": "master",
@@ -106,18 +106,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/EmulatorJS",
@@ -166,18 +166,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/VboxInsideDocker",
@@ -236,18 +236,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/adapter",
@@ -297,18 +297,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/airtap",
@@ -398,6 +398,11 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": true,
       "layer": [
@@ -405,12 +410,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/aws-lambda-developer-guide",
@@ -539,18 +539,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/bitcode",
@@ -600,18 +600,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/bm25",
@@ -661,6 +661,11 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [
         {
           "number": 1,
@@ -675,12 +680,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/cargo-samply",
@@ -746,6 +746,11 @@
           "state": "OPEN"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": true,
       "layer": [
@@ -753,12 +758,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/chroma",
@@ -1598,18 +1598,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/code-complexity",
@@ -1646,7 +1646,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -58.266666,
+      "focus": -58.3,
       "branch_heat": [
         {
           "branch": "dependabot/npm_and_yarn/ajv-6.12.6",
@@ -1698,6 +1698,11 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": true,
       "layer": [
@@ -1705,12 +1710,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/codspeed-runner",
@@ -1792,6 +1792,11 @@
           "state": "OPEN"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": true,
       "layer": [
@@ -1799,12 +1804,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/codspeed-rust",
@@ -1842,7 +1842,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -13.833333,
+      "focus": -13.866667,
       "last_commit_at": "2025-10-06T05:52:29Z",
       "branch_heat": [
         {
@@ -1870,6 +1870,11 @@
           "state": "OPEN"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": true,
       "layer": [
@@ -1877,12 +1882,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/cognitive-services-speech-sdk",
@@ -2459,18 +2459,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/datafusion",
@@ -2520,6 +2520,11 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": true,
       "layer": [
@@ -2527,12 +2532,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/deepwiki-to-mdbook",
@@ -2603,6 +2603,13 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 1,
+        "jobs": 1,
+        "minutes_by_label": {
+          "ubuntu-latest": 0.2
+        }
+      },
       "recent_issues": [
         {
           "number": 4,
@@ -2628,12 +2635,7 @@
         "isolated"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/docker-coturn",
@@ -2690,18 +2692,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "tier3: isolated, no portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/docker-lynx",
@@ -2752,18 +2754,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "tier3: isolated, no portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/docker-mqtt-mosquitto-cloudflare-tunnel",
@@ -2958,6 +2960,13 @@
           "state": "CLOSED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 9,
+        "jobs": 14,
+        "minutes_by_label": {
+          "ubuntu-latest": 11.7
+        }
+      },
       "recent_issues": [
         {
           "number": 25,
@@ -3029,12 +3038,7 @@
         "isolated"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/docker-orbstack-openvpn",
@@ -3075,7 +3079,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -7.5,
+      "focus": -7.5333333,
       "last_commit_at": "2026-04-14T14:42:45Z",
       "branch_heat": [
         {
@@ -3088,6 +3092,11 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [
         {
           "number": 1,
@@ -3102,12 +3111,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "tier3: isolated, no portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/dockview",
@@ -3157,18 +3161,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/duckdb-pong-in-sql",
@@ -3202,7 +3206,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -13.033334,
+      "focus": -13.066667,
       "branch_heat": [
         {
           "branch": "master",
@@ -3214,18 +3218,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/etf-matcher-data-encoder",
@@ -3273,18 +3277,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "tier3: isolated, no portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/etf-matcher-pub",
@@ -3334,18 +3338,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "tier3: isolated, no portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/fastembed-rs",
@@ -3404,18 +3408,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/fontman",
@@ -3450,7 +3454,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -70.833336,
+      "focus": -70.86667,
       "last_commit_at": "2021-01-30T15:11:39Z",
       "branch_heat": [
         {
@@ -3800,18 +3804,18 @@
           "state": "OPEN"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "tier3: isolated, no portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/fortran-hello-world",
@@ -3859,18 +3863,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "tier3: isolated, no portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/globcat.sh",
@@ -3963,6 +3967,11 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [
         {
           "number": 5,
@@ -3986,12 +3995,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "tier3: isolated, no portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/insanely-fast-whisper",
@@ -4039,6 +4043,11 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": true,
       "layer": [
@@ -4046,12 +4055,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/install-barrier",
@@ -4098,18 +4102,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "tier3: isolated, no portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/jzombie",
@@ -4119,13 +4123,13 @@
       "private": false,
       "upstream": null,
       "ahead_by": null,
-      "pushed_at": "2026-11-25T05:23:23Z",
+      "pushed_at": "2026-11-26T05:22:31Z",
       "topics": [],
       "language": "Go Template",
       "stars": 0,
       "forks_count": 0,
       "open_issues": 2,
-      "size_kb": 200,
+      "size_kb": 210,
       "has_readme": true,
       "commits_1d": 0,
       "commits_5d": 1,
@@ -4182,6 +4186,13 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 10,
+        "jobs": 10,
+        "minutes_by_label": {
+          "ubuntu-latest": 1.7
+        }
+      },
       "recent_issues": [
         {
           "number": 2,
@@ -4203,12 +4214,7 @@
         "isolated"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/jzombie-graph",
@@ -4218,7 +4224,7 @@
       "private": false,
       "upstream": null,
       "ahead_by": null,
-      "pushed_at": "2026-11-25T04:37:35Z",
+      "pushed_at": "2026-11-26T15:51:11Z",
       "description": "Nightly map of my GitHub portfolio: real dependency edges plus a self-normalized Developer Focus gauge ranking where attention is going.",
       "topics": [
         "automation",
@@ -4237,15 +4243,15 @@
       "language": "Rust",
       "stars": 0,
       "forks_count": 0,
-      "open_issues": 4,
+      "open_issues": 5,
       "license": "Apache-2.0",
-      "size_kb": 927,
+      "size_kb": 981,
       "has_readme": true,
       "has_license_file": true,
-      "commits_1d": 0,
-      "commits_5d": 5,
-      "commits_15d": 16,
-      "commits_30d": 100,
+      "commits_1d": 2,
+      "commits_5d": 7,
+      "commits_15d": 18,
+      "commits_30d": 102,
       "issues_open_1d": 0,
       "issues_open_5d": 1,
       "issues_open_15d": 2,
@@ -4262,10 +4268,18 @@
         "enhancement": 3
       },
       "issue_heat": 0.44444445,
-      "commit_heat": 0.20666666,
-      "focus": 0.29222223,
-      "last_commit_at": "2026-11-24T07:09:02Z",
+      "commit_heat": 0.4509804,
+      "focus": 0.44771242,
+      "last_commit_at": "2026-11-26T15:50:28Z",
       "branch_heat": [
+        {
+          "branch": "ci-minutes",
+          "is_default": false,
+          "commits_1d": 2,
+          "commits_5d": 7,
+          "commits_15d": 18,
+          "commits_30d": 100
+        },
         {
           "branch": "main",
           "is_default": true,
@@ -4276,6 +4290,12 @@
         }
       ],
       "recent_prs": [
+        {
+          "title": "Add 30-day CI usage tracking and reporting",
+          "branch": "ci-minutes",
+          "base": "main",
+          "state": "OPEN"
+        },
         {
           "title": "nightly: checkout with PAT so push matches ruleset bypass",
           "branch": "bump-oxdock3",
@@ -4391,6 +4411,13 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 10,
+        "jobs": 18,
+        "minutes_by_label": {
+          "ubuntu-latest": 66.1
+        }
+      },
       "recent_issues": [
         {
           "number": 23,
@@ -4432,12 +4459,7 @@
         "application"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/karma-jasmine-typescript-boilerplate",
@@ -4474,7 +4496,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -49.3,
+      "focus": -49.333332,
       "last_commit_at": "2022-11-07T13:59:29Z",
       "branch_heat": [
         {
@@ -4487,18 +4509,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/karma-sinon",
@@ -4534,7 +4556,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -103.566666,
+      "focus": -103.6,
       "branch_heat": [
         {
           "branch": "master",
@@ -4546,18 +4568,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/lab-qemu-portable",
@@ -4584,7 +4606,7 @@
         "windows"
       ],
       "language": "Shell",
-      "stars": 2,
+      "stars": 3,
       "forks_count": 0,
       "open_issues": 1,
       "size_kb": 73,
@@ -4665,6 +4687,18 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 10,
+        "jobs": 50,
+        "minutes_by_label": {
+          "macos-15": 41.3,
+          "ubuntu-24.04": 51.2,
+          "ubuntu-24.04-arm": 58.0,
+          "ubuntu-latest": 22.1,
+          "windows-11-arm": 145.3,
+          "windows-latest": 73.1
+        }
+      },
       "recent_issues": [
         {
           "number": 5,
@@ -4688,12 +4722,7 @@
         "isolated"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/libtest-mimic",
@@ -4731,7 +4760,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -26.033333,
+      "focus": -26.066668,
       "branch_heat": [
         {
           "branch": "master",
@@ -4743,18 +4772,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/live-assets",
@@ -4801,6 +4830,11 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [
         {
           "number": 1,
@@ -4815,12 +4849,7 @@
         "isolated"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/matrixmultiply",
@@ -4857,7 +4886,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -10.733334,
+      "focus": -10.766666,
       "branch_heat": [
         {
           "branch": "master",
@@ -4869,6 +4898,11 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": true,
       "layer": [
@@ -4876,12 +4910,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/ml-ferret",
@@ -4916,7 +4945,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -35.6,
+      "focus": -35.633335,
       "branch_heat": [
         {
           "branch": "main",
@@ -4928,18 +4957,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/msgpack-lite",
@@ -4977,7 +5006,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -48.466667,
+      "focus": -48.5,
       "branch_heat": [
         {
           "branch": "master",
@@ -4989,6 +5018,11 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": true,
       "layer": [
@@ -4996,12 +5030,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/nbcommands",
@@ -5039,7 +5068,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -63.066666,
+      "focus": -63.1,
       "branch_heat": [
         {
           "branch": "master",
@@ -5051,18 +5080,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/node-ViGEmClient",
@@ -5111,18 +5140,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/node-avatar-builder",
@@ -5158,7 +5187,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -69.066666,
+      "focus": -69.1,
       "last_commit_at": "2021-03-24T15:14:57Z",
       "branch_heat": [
         {
@@ -5187,18 +5216,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/npm-expansions",
@@ -5279,18 +5308,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/pagefind",
@@ -5340,6 +5369,11 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": true,
       "layer": [
@@ -5347,12 +5381,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/pandarallel",
@@ -5402,18 +5431,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/pipper",
@@ -5597,6 +5626,11 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [
         {
           "number": 26,
@@ -5631,12 +5665,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "tier3: isolated, no portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/posix-shell-tests",
@@ -5672,7 +5701,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -50.3,
+      "focus": -50.333332,
       "branch_heat": [
         {
           "branch": "master",
@@ -5684,18 +5713,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/potrace-wasm",
@@ -5744,18 +5773,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/py-enum-with-dict",
@@ -5888,6 +5917,11 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [
         {
           "number": 13,
@@ -5904,12 +5938,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "tier3: isolated, no portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/qr-code-styling",
@@ -5947,7 +5976,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -49.1,
+      "focus": -49.133335,
       "branch_heat": [
         {
           "branch": "Stijn-van-Nieulande-master",
@@ -6143,18 +6172,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/ratatui",
@@ -6205,6 +6234,11 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": true,
       "layer": [
@@ -6212,12 +6246,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/react-mosaic",
@@ -6266,18 +6295,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/react-ts-tradingview-widgets",
@@ -6327,18 +6356,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/request-skippable-animation-frame",
@@ -6390,6 +6419,11 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [
         {
           "number": 2,
@@ -6415,12 +6449,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "tier3: isolated, no portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/rust-abs-file-macro",
@@ -6485,6 +6514,11 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": true,
       "layer": [
@@ -6492,12 +6526,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "tier3: isolated, no portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/rust-argtuner",
@@ -6707,6 +6736,15 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 10,
+        "jobs": 35,
+        "minutes_by_label": {
+          "macos-latest": 11.7,
+          "ubuntu-latest": 51.5,
+          "windows-latest": 30.7
+        }
+      },
       "recent_issues": [
         {
           "number": 50,
@@ -6800,12 +6838,7 @@
         "application"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/rust-cache-manager",
@@ -6855,7 +6888,7 @@
         "bug": 1,
         "enhancement": 1
       },
-      "focus": -1.6,
+      "focus": -1.6333333,
       "last_commit_at": "2026-10-08T05:58:24Z",
       "branch_heat": [
         {
@@ -6965,6 +6998,13 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 4,
+        "jobs": 4,
+        "minutes_by_label": {
+          "ubuntu-latest": 2.2
+        }
+      },
       "recent_issues": [
         {
           "number": 20,
@@ -7004,12 +7044,7 @@
         "foundation"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/rust-cargo-pkg-info-struct-builder",
@@ -7152,18 +7187,18 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": true,
       "layer": [
         "application"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/rust-embed-bytes",
@@ -7247,18 +7282,18 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "foundation"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/rust-etf-matcher-vector-config-loader",
@@ -7333,18 +7368,18 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "tier3: isolated, no portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/rust-line-ending",
@@ -7389,7 +7424,7 @@
       "issue_comments_30d": 0,
       "issue_labels": {},
       "commit_heat": 0.0,
-      "focus": -0.93333334,
+      "focus": -0.96666664,
       "last_commit_at": "2026-10-28T16:04:08Z",
       "branch_heat": [
         {
@@ -7469,6 +7504,15 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 10,
+        "jobs": 19,
+        "minutes_by_label": {
+          "macos-latest": 0.6,
+          "ubuntu-latest": 14.7,
+          "windows-latest": 1.2
+        }
+      },
       "recent_issues": [
         {
           "number": 12,
@@ -7483,12 +7527,7 @@
         "foundation"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/rust-llkv",
@@ -7784,6 +7823,11 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [
         {
           "number": 230,
@@ -7876,12 +7920,7 @@
         "application"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/rust-muxio",
@@ -8112,6 +8151,15 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 10,
+        "jobs": 35,
+        "minutes_by_label": {
+          "macos-latest": 7.5,
+          "ubuntu-latest": 51.5,
+          "windows-latest": 13.5
+        }
+      },
       "recent_issues": [
         {
           "number": 132,
@@ -8207,12 +8255,7 @@
         "foundation"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/rust-oxdock",
@@ -8222,7 +8265,7 @@
       "private": false,
       "upstream": null,
       "ahead_by": null,
-      "pushed_at": "2026-11-26T04:20:22Z",
+      "pushed_at": "2026-11-26T15:56:06Z",
       "description": "An experimental DSL used for building embeddable artifacts and orchestrating pipelines.",
       "topics": [
         "build-tools",
@@ -8237,9 +8280,9 @@
       "homepage": "https://crates.io/crates/oxdock",
       "stars": 1,
       "forks_count": 0,
-      "open_issues": 85,
+      "open_issues": 86,
       "license": "Apache-2.0",
-      "size_kb": 6513,
+      "size_kb": 5290,
       "has_readme": true,
       "has_agents_md": true,
       "has_license_file": true,
@@ -8248,7 +8291,7 @@
       "commits_15d": 118,
       "commits_30d": 128,
       "issues_open_1d": 11,
-      "issues_open_5d": 17,
+      "issues_open_5d": 18,
       "issues_open_15d": 28,
       "issues_open_30d": 46,
       "issues_closed_1d": 0,
@@ -8257,17 +8300,17 @@
       "issues_closed_30d": 20,
       "issue_comments_1d": 2,
       "issue_comments_5d": 2,
-      "issue_comments_15d": 2,
-      "issue_comments_30d": 2,
+      "issue_comments_15d": 3,
+      "issue_comments_30d": 3,
       "issue_labels": {
-        "bug": 5,
+        "bug": 4,
         "enhancement": 5,
         "needs research": 1
       },
-      "issue_heat": 12.666667,
+      "issue_heat": 8.666667,
       "commit_heat": 10.083333,
-      "focus": 11.375,
-      "last_commit_at": "2026-11-26T04:20:19Z",
+      "focus": 9.375,
+      "last_commit_at": "2026-11-26T15:56:02Z",
       "branch_heat": [
         {
           "branch": "168-centralize-cli-user-facing-errors-behind-constructors-with-stable-message-keys",
@@ -8303,6 +8346,12 @@
         }
       ],
       "recent_prs": [
+        {
+          "title": "168 centralize cli user facing errors behind constructors with stable message keys",
+          "branch": "168-centralize-cli-user-facing-errors-behind-constructors-with-stable-message-keys",
+          "base": "main",
+          "state": "OPEN"
+        },
         {
           "title": "[ci/installer] Refactor error exit sequences to use FAIL command",
           "branch": "311-audit-fail-cleanup",
@@ -8416,15 +8465,27 @@
           "branch": "dependabot/cargo/russh-0.65.1",
           "base": "feat/render-action",
           "state": "MERGED"
-        },
-        {
-          "title": "feat: Typed function returns",
-          "branch": "287-enforce-declared-func-return-types-hard-no-legacy-fallback-async-func-returns-handle",
-          "base": "main",
-          "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 10,
+        "jobs": 208,
+        "minutes_by_label": {
+          "macos-latest": 131.0,
+          "ubuntu-26.04-arm": 98.4,
+          "ubuntu-latest": 209.2,
+          "windows-11-arm": 140.3,
+          "windows-latest": 169.0
+        }
+      },
       "recent_issues": [
+        {
+          "number": 168,
+          "title": "Centralize CLI user-facing errors behind constructors with stable message keys",
+          "state": "OPEN",
+          "labels": [],
+          "comments": 1
+        },
         {
           "number": 344,
           "title": "Rust-exported record schemas should be namespaced like host funcs",
@@ -8506,15 +8567,6 @@
             "needs research"
           ],
           "comments": 0
-        },
-        {
-          "number": 338,
-          "title": "McpSession::init does not set state.module_table: nested host-module IMPORTs fail under --mcp",
-          "state": "OPEN",
-          "labels": [
-            "bug"
-          ],
-          "comments": 0
         }
       ],
       "has_default_binary": false,
@@ -8522,12 +8574,7 @@
         "middleware"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/rust-ratatui-example-counter-app",
@@ -8575,6 +8622,11 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": true,
       "layer": [
@@ -8582,12 +8634,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "tier3: isolated, no portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/rust-ratatui-example-json-editor-app",
@@ -8635,6 +8682,11 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": true,
       "layer": [
@@ -8642,12 +8694,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "tier3: isolated, no portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/rust-reqwest-drive",
@@ -8860,6 +8907,15 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 10,
+        "jobs": 22,
+        "minutes_by_label": {
+          "macos-latest": 2.4,
+          "ubuntu-latest": 26.1,
+          "windows-latest": 10.7
+        }
+      },
       "recent_issues": [
         {
           "number": 56,
@@ -8881,12 +8937,7 @@
         "middleware"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/rust-sec-fetcher",
@@ -9090,6 +9141,15 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 10,
+        "jobs": 29,
+        "minutes_by_label": {
+          "macos-latest": 17.5,
+          "ubuntu-latest": 91.0,
+          "windows-latest": 127.7
+        }
+      },
       "recent_issues": [
         {
           "number": 76,
@@ -9111,12 +9171,7 @@
         "application"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/rust-simd-r-drive",
@@ -9345,6 +9400,15 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 10,
+        "jobs": 27,
+        "minutes_by_label": {
+          "macos-latest": 21.8,
+          "ubuntu-latest": 39.7,
+          "windows-latest": 27.4
+        }
+      },
       "recent_issues": [
         {
           "number": 87,
@@ -9411,12 +9475,7 @@
         "application"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/rust-simple-virtual-dom",
@@ -9463,6 +9522,11 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": true,
       "layer": [
@@ -9470,12 +9534,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/rust-stdin-nonblocking",
@@ -9521,7 +9580,7 @@
       "issue_labels": {
         "bug": 1
       },
-      "focus": -20.733334,
+      "focus": -20.766666,
       "last_commit_at": "2025-03-13T04:54:14Z",
       "branch_heat": [
         {
@@ -9571,6 +9630,11 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [
         {
           "number": 6,
@@ -9588,12 +9652,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "tier3: isolated, no portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/rust-string-auto-indent",
@@ -9675,6 +9734,11 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [
         {
           "number": 4,
@@ -9689,12 +9753,7 @@
         "middleware"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/rust-string-replace-all",
@@ -9765,18 +9824,18 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "tier3: isolated, no portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/rust-ticker-sniffer",
@@ -9963,18 +10022,18 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": true,
       "layer": [
         "application"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/rust-triplets",
@@ -10187,6 +10246,15 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 10,
+        "jobs": 26,
+        "minutes_by_label": {
+          "macos-latest": 9.5,
+          "ubuntu-latest": 41.2,
+          "windows-latest": 17.3
+        }
+      },
       "recent_issues": [
         {
           "number": 192,
@@ -10284,12 +10352,7 @@
         "middleware"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/sauce",
@@ -10355,18 +10418,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/sdp-transform",
@@ -10415,6 +10478,11 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": true,
       "layer": [
@@ -10422,12 +10490,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/simple-peer",
@@ -10845,18 +10908,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/spacy-nlp",
@@ -10894,7 +10957,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -93.36667,
+      "focus": -93.4,
       "branch_heat": [
         {
           "branch": "master",
@@ -10906,18 +10969,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/sqlite-sqllogictest-corpus",
@@ -10959,7 +11022,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -12.7,
+      "focus": -12.733334,
       "last_commit_at": "2025-11-09T12:20:22Z",
       "branch_heat": [
         {
@@ -10979,18 +11042,18 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/sqlsmith-sqllogictest-corpus-generator",
@@ -11044,18 +11107,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "tier3: isolated, no portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/sshfs-mac-docker",
@@ -11097,7 +11160,7 @@
       "issue_comments_30d": 0,
       "issue_labels": {},
       "commit_heat": 0.6666667,
-      "focus": 0.23333335,
+      "focus": 0.20000002,
       "last_commit_at": "2026-11-12T14:36:07Z",
       "branch_heat": [
         {
@@ -11110,18 +11173,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/str0m",
@@ -11171,18 +11234,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/temp-zombie-procreator",
@@ -11222,7 +11285,7 @@
         "Discovery": 2,
         "enhancement": 1
       },
-      "focus": -63.866665,
+      "focus": -63.9,
       "last_commit_at": "2021-08-27T15:15:51Z",
       "branch_heat": [
         {
@@ -11235,6 +11298,11 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [
         {
           "number": 2,
@@ -11269,12 +11337,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "tier3: isolated, no portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/tensorflow-addons",
@@ -11323,18 +11386,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/term-icon-lab",
@@ -11390,6 +11453,11 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [
         {
           "number": 2,
@@ -11405,12 +11473,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "tier3: isolated, no portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/term-wm",
@@ -11446,7 +11509,7 @@
       "commits_30d": 13,
       "issues_open_1d": 0,
       "issues_open_5d": 2,
-      "issues_open_15d": 5,
+      "issues_open_15d": 4,
       "issues_open_30d": 8,
       "issues_closed_1d": 0,
       "issues_closed_5d": 0,
@@ -11638,6 +11701,15 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 10,
+        "jobs": 24,
+        "minutes_by_label": {
+          "macos-latest": 45.7,
+          "ubuntu-latest": 69.5,
+          "windows-latest": 13.4
+        }
+      },
       "recent_issues": [
         {
           "number": 415,
@@ -11736,12 +11808,7 @@
         "application"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/term-wm-vt100",
@@ -11919,6 +11986,15 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 10,
+        "jobs": 25,
+        "minutes_by_label": {
+          "macos-latest": 2.1,
+          "ubuntu-latest": 25.3,
+          "windows-latest": 5.5
+        }
+      },
       "recent_issues": [
         {
           "number": 23,
@@ -11947,12 +12023,7 @@
         "foundation"
       ],
       "visible": true,
-      "visible_reason": "fork: diverged (ahead of upstream), has portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: diverged (ahead of upstream), has portfolio edge"
     },
     {
       "id": "jzombie/termtosvg",
@@ -12034,6 +12105,11 @@
           "state": "OPEN"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": true,
       "layer": [
@@ -12041,12 +12117,7 @@
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "tier3: isolated, no portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/trystero",
@@ -12096,18 +12167,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/ts-lorem-ipsum-word-frequencies",
@@ -12142,7 +12213,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -60.666668,
+      "focus": -60.7,
       "last_commit_at": "2021-12-01T14:22:03Z",
       "branch_heat": [
         {
@@ -12155,18 +12226,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "tier3: isolated, no portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: isolated, no portfolio edge"
     },
     {
       "id": "jzombie/umap-rs",
@@ -12216,18 +12287,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/unlocker",
@@ -12283,18 +12354,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/vectorizer",
@@ -12332,7 +12403,7 @@
       "issue_comments_15d": 0,
       "issue_comments_30d": 0,
       "issue_labels": {},
-      "focus": -48.533333,
+      "focus": -48.566666,
       "branch_heat": [
         {
           "branch": "master",
@@ -12344,18 +12415,18 @@
         }
       ],
       "recent_prs": [],
+      "ci_usage_30d": {
+        "runs_sampled": 0,
+        "jobs": 0,
+        "minutes_by_label": {}
+      },
       "recent_issues": [],
       "has_default_binary": false,
       "layer": [
         "isolated"
       ],
       "visible": false,
-      "visible_reason": "fork: neither diverged nor load-bearing",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "fork: neither diverged nor load-bearing"
     },
     {
       "id": "jzombie/windows-headless",
@@ -12580,6 +12651,14 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 10,
+        "jobs": 22,
+        "minutes_by_label": {
+          "ubuntu-latest": 123.6,
+          "windows-latest": 7.5
+        }
+      },
       "recent_issues": [
         {
           "number": 58,
@@ -12610,12 +12689,7 @@
         "application"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/zenosmosis-blog",
@@ -12637,7 +12711,7 @@
       "has_agents_md": true,
       "commits_1d": 0,
       "commits_5d": 1,
-      "commits_15d": 18,
+      "commits_15d": 15,
       "commits_30d": 27,
       "issues_open_1d": 0,
       "issues_open_5d": 0,
@@ -12656,8 +12730,8 @@
         "enhancement": 1
       },
       "issue_heat": 0.121212125,
-      "commit_heat": 0.5185185,
-      "focus": 0.18653198,
+      "commit_heat": 0.44444445,
+      "focus": 0.14949493,
       "last_commit_at": "2026-11-21T22:15:06Z",
       "branch_heat": [
         {
@@ -12665,7 +12739,7 @@
           "is_default": true,
           "commits_1d": 0,
           "commits_5d": 1,
-          "commits_15d": 16,
+          "commits_15d": 13,
           "commits_30d": 25
         },
         {
@@ -12673,7 +12747,7 @@
           "is_default": false,
           "commits_1d": 0,
           "commits_5d": 0,
-          "commits_15d": 15,
+          "commits_15d": 12,
           "commits_30d": 24
         }
       ],
@@ -12787,6 +12861,13 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 10,
+        "jobs": 20,
+        "minutes_by_label": {
+          "ubuntu-latest": 5.0
+        }
+      },
       "recent_issues": [
         {
           "number": 23,
@@ -12840,12 +12921,7 @@
         "isolated"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     },
     {
       "id": "jzombie/zenosmosis-website",
@@ -13021,6 +13097,13 @@
           "state": "MERGED"
         }
       ],
+      "ci_usage_30d": {
+        "runs_sampled": 10,
+        "jobs": 20,
+        "minutes_by_label": {
+          "ubuntu-latest": 4.1
+        }
+      },
       "recent_issues": [
         {
           "number": 27,
@@ -13071,12 +13154,7 @@
         "isolated"
       ],
       "visible": true,
-      "visible_reason": "tier3: >=1 portfolio edge",
-      "ci_usage_30d": {
-        "runs_sampled": 0,
-        "jobs": 0,
-        "minutes_by_label": {}
-      }
+      "visible_reason": "tier3: >=1 portfolio edge"
     }
   ],
   "edges": [
@@ -13297,7 +13375,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-25T04:37:35Z",
+      "recency": "2026-11-26T15:51:11Z",
       "version": "0.44.1-alpha"
     },
     {
@@ -13327,7 +13405,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-25T04:37:35Z",
+      "recency": "2026-11-26T15:51:11Z",
       "version": "0.13.5-alpha.1"
     },
     {
@@ -13417,7 +13495,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-26T04:20:22Z",
+      "recency": "2026-11-26T15:56:06Z",
       "version": "1.6.0"
     },
     {
@@ -13427,7 +13505,7 @@
       "declaring_branches": [
         "main"
       ],
-      "recency": "2026-11-26T04:20:22Z",
+      "recency": "2026-11-26T15:56:06Z",
       "version": "0.17.0-alpha"
     },
     {
