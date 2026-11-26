@@ -85,7 +85,7 @@
       ]
     },
     "CiUsage": {
-      "description": "CI usage over the trailing 30d, sampled from recent completed\nworkflow runs (REST `actions/runs` + per-run `jobs`). Wall-clock\nminutes per raw runner label-set, never billed minutes: the billable\ntiming endpoint is closing down and was private-only anyway, and\nGraphQL exposes no runner labels at all. Keys are the job's labels\nsorted and `+`-joined as-is (`ubuntu-latest`,\n`Linux+self-hosted+X64`); empty labels read as `unlabeled`.\nFail-open empty — most repos run no CI, and `—` renders for empty,\nnever `0 min`.",
+      "description": "CI usage, trailing 30d: wall-clock minutes per raw runner\nlabel-set (`+`-joined).",
       "type": "object",
       "properties": {
         "jobs": {
@@ -96,7 +96,7 @@
           "minimum": 0
         },
         "minutes_by_label": {
-          "description": "Wall-clock minutes per raw label-set, 1-decimal. The key set is\nthe inventory (OS + arch together, exactly as the API gave them).",
+          "description": "Minutes per label-set.",
           "type": "object",
           "additionalProperties": {
             "type": "number",
@@ -105,7 +105,7 @@
           "default": {}
         },
         "runs_sampled": {
-          "description": "Completed runs sampled (capped at collection; newest first).",
+          "description": "Completed runs sampled (capped, newest first).",
           "type": "integer",
           "format": "uint32",
           "default": 0,

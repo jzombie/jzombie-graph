@@ -135,25 +135,17 @@ pub struct RecentIssue {
     pub comments: u32,
 }
 
-/// CI usage over the trailing 30d, sampled from recent completed
-/// workflow runs (REST `actions/runs` + per-run `jobs`). Wall-clock
-/// minutes per raw runner label-set, never billed minutes: the billable
-/// timing endpoint is closing down and was private-only anyway, and
-/// GraphQL exposes no runner labels at all. Keys are the job's labels
-/// sorted and `+`-joined as-is (`ubuntu-latest`,
-/// `Linux+self-hosted+X64`); empty labels read as `unlabeled`.
-/// Fail-open empty — most repos run no CI, and `—` renders for empty,
-/// never `0 min`.
+/// CI usage, trailing 30d: wall-clock minutes per raw runner
+/// label-set (`+`-joined).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct CiUsage {
-    /// Completed runs sampled (capped at collection; newest first).
+    /// Completed runs sampled (capped, newest first).
     #[serde(default)]
     pub runs_sampled: u32,
     /// Jobs seen across the sampled runs.
     #[serde(default)]
     pub jobs: u32,
-    /// Wall-clock minutes per raw label-set, 1-decimal. The key set is
-    /// the inventory (OS + arch together, exactly as the API gave them).
+    /// Minutes per label-set.
     #[serde(default)]
     pub minutes_by_label: BTreeMap<String, f32>,
 }
