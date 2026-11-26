@@ -1,1 +1,1 @@
-[![flame](dashboard/charts/portfolio-graph-flame.svg?v=202611261624)](https://github.com/jzombie?tab=repositories)
+[![flame](dashboard/charts/portfolio-graph-flame.svg?v=202611262215)](https://github.com/jzombie?tab=repositories)
