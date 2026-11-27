@@ -1096,6 +1096,12 @@ struct SelectedRow {
     issues_closed_30d: u32,
     issue_comments_30d: u32,
     issue_heat: Option<f32>,
+    /// Rank of this row's issue heat among every issue-heat-bearing
+    /// node in the graph (1 = hottest), plus the pool size. Heat is
+    /// self-normalized (1.0 = own usual pace), so a raw `2.67` means
+    /// nothing without its rank — same reason focus prints `#n/m`.
+    issue_heat_rank: Option<usize>,
+    issue_heat_total: usize,
     labels: Vec<(String, u32)>,
     /// GitHub's own hex per label name, repo-scoped. Census chips
     /// paint with these; missing names fall back to grey.
@@ -1187,6 +1193,31 @@ fn selected_rows(graph: &jzombie_graph::graph::Graph) -> Vec<SelectedRow> {
     let focus_total = focus_sorted.len();
     let focus_rank_of = |id: &str| -> Option<usize> {
         focus_sorted
+            .iter()
+            .position(|(nid, _)| nid == id)
+            .map(|i| i + 1)
+    };
+    // Issue-heat rank pool: every issue-heat-bearing node, hottest
+    // first. Stored value first, computed fallback second — same
+    // source the row prints, so the `#n/m` denominator matches the
+    // focus rank's world (graph-wide, not selected-only).
+    let mut heat_sorted: Vec<(String, f32)> = graph
+        .nodes
+        .iter()
+        .filter_map(|nd| {
+            nd.issue_heat
+                .or_else(|| nd.issue_heat())
+                .map(|h| (nd.id.clone(), h))
+        })
+        .collect();
+    heat_sorted.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.0.cmp(&b.0))
+    });
+    let heat_total = heat_sorted.len();
+    let heat_rank_of = |id: &str| -> Option<usize> {
+        heat_sorted
             .iter()
             .position(|(nid, _)| nid == id)
             .map(|i| i + 1)
@@ -1298,7 +1329,9 @@ fn selected_rows(graph: &jzombie_graph::graph::Graph) -> Vec<SelectedRow> {
                 issues_open_30d: nd.issues_open_30d,
                 issues_closed_30d: nd.issues_closed_30d,
                 issue_comments_30d: nd.issue_comments_30d,
-                issue_heat: nd.issue_heat,
+                issue_heat: nd.issue_heat.or_else(|| nd.issue_heat()),
+                issue_heat_rank: heat_rank_of(&nd.id),
+                issue_heat_total: heat_total,
                 labels,
                 label_colors: nd.issue_label_colors.clone(),
                 prs_total,
@@ -1527,7 +1560,14 @@ pub fn render_selected_md(graph_json: &str) -> anyhow::Result<String> {
                 row.issues_open_30d, row.issues_closed_30d, row.issue_comments_30d
             )];
             if let Some(h) = row.issue_heat {
-                window.push(format!("issue heat: {h:.2}"));
+                if let Some(rank) = row.issue_heat_rank {
+                    window.push(format!(
+                        "issue heat: {h:.2} (#{rank}/{})",
+                        row.issue_heat_total
+                    ));
+                } else {
+                    window.push(format!("issue heat: {h:.2}"));
+                }
             }
             lines.push(format!("<sub>{}</sub>", window.join(" \u{b7} ")));
             if !row.labels.is_empty() {
