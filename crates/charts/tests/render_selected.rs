@@ -344,7 +344,7 @@ fn selected_fragment_ranks_by_score_not_stars() {
         md.contains("issues/30d: 6 opened · 5 closed · 9 comments"),
         "issue window"
     );
-    assert!(md.contains("issue heat: 1.40"), "gauge on the window line");
+    assert!(md.contains("issue heat: 1.40 (#1/1)"), "gauge on the window line");
     assert!(
         md.contains("labels: [enhancement ×5](https://github.com/me/r0/labels/enhancement) · [bug ×4](https://github.com/me/r0/labels/bug)"),
         "census as capped text links:\n{md}"
