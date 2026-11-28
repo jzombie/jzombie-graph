@@ -2,7 +2,7 @@
 
 **Cross-platform systems engineer specializing in Rust, [CLI/TUI desktop environments](https://github.com/jzombie/term-wm), and high-performance ingestion and scoring pipelines.**
 
-The following info is generated automatically from a [nightly graph build](https://github.com/jzombie/jzombie-graph/blob/main/data/portfolio-graph.json) of my GitHub profile. The pipeline and charts are built with [OxDock](https://github.com/jzombie/rust-oxdock), my custom DSL for building pipelines, with Rust handling collection.
+The following info is generated automatically from a [nightly graph build](https://github.com/jzombie/jzombie-graph/blob/main/data/portfolio-graph.json) of my GitHub profile. The pipeline and charts are built with [OxDock](https://github.com/jzombie/rust-oxdock), my custom DSL for [building pipelines and MCP servers](https://github.com/jzombie/rust-oxdock#mcp-hosting), with Rust handling collection.
 
 Additional info at [blog.zenosmosis.com](https://blog.zenosmosis.com).
 
